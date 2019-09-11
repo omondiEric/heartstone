@@ -307,20 +307,19 @@
                 (create-game [{:minions ["Mio"]}]))
 
            (is= (create-game [{:minions ["Mio"]
-                               ;:secrets ["Snake Trap"]
-                               :deck    ["War Golem"]
-                               :hand    ["Defender"]}
+                               :deck    ["Ronja"]
+                               :hand    ["Emil"]}
                               {:hero "Anduin Wrynn"}]
                              :player-id-in-turn "p2")
                 {:player-id-in-turn             "p2"
                  :players                       {"p1" {:id      "p1"
                                                        :deck    [{:entity-type :card
                                                                   :id          "c3"
-                                                                  :name        "War Golem"
+                                                                  :name        "Ronja"
                                                                   :owner-id    "p1"}]
                                                        :hand    [{:entity-type :card
                                                                   :id          "c4"
-                                                                  :name        "Defender"
+                                                                  :name        "Emil"
                                                                   :owner-id    "p1"}]
                                                        :minions [{:damage-taken                0
                                                                   :attacks-performed-this-turn 0
