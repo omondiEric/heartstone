@@ -67,15 +67,19 @@
            (is= (create-empty-state [(create-hero "Carl" :id "c")
                                      (create-hero "Gustaf")])
                 {:player-id-in-turn             "p1"
-                 :players                       {"p1" {:id      "p1"
-                                                       :deck    []
-                                                       :hand    []
-                                                       :minions []
-                                                       :hero    {:name         "Carl"
-                                                                 :id           "c"
-                                                                 :damage-taken 0
-                                                                 :entity-type  :hero}}
+                 :players                       {"p1" {:id       "p1"
+                                                       :mana     10
+                                                       :max-mana 10
+                                                       :deck     []
+                                                       :hand     []
+                                                       :minions  []
+                                                       :hero     {:name         "Carl"
+                                                                  :id           "c"
+                                                                  :damage-taken 0
+                                                                  :entity-type  :hero}}
                                                  "p2" {:id      "p2"
+                                                       :mana     10
+                                                       :max-mana 10
                                                        :deck    []
                                                        :hand    []
                                                        :minions []
@@ -94,6 +98,8 @@
       :players                       (->> heroes
                                           (map-indexed (fn [index hero]
                                                          {:id      (str "p" (inc index))
+                                                          :mana     10
+                                                          :max-mana 10
                                                           :deck    []
                                                           :hand    []
                                                           :minions []
@@ -295,24 +301,73 @@
           state
           cards))
 
+(defn get-mana
+  {:test (fn []
+           (is= (-> (create-empty-state)
+                    (get-mana "p1"))
+                10))}
+  [state player-id]
+  (get-in state [:players player-id :mana]))
+
+(defn update-mana
+  {:test (fn []
+           (is= (-> (create-empty-state)
+                    (update-mana "p1" 4)
+                    (get-mana "p1"))
+                4)
+           (is= (-> (create-empty-state)
+                    (update-mana "p1" dec)
+                    (get-mana "p1"))
+                9))}
+  [state player-id fn-or-value]
+  (if (fn? fn-or-value)
+    (update-in state [:players player-id :mana] fn-or-value)
+    (assoc-in state [:players player-id :mana] fn-or-value)))
+
+(defn get-max-mana
+  {:test (fn []
+           (is= (-> (create-empty-state)
+                    (get-max-mana "p1"))
+                10))}
+  [state player-id]
+  (get-in state [:players player-id :max-mana]))
+
+(defn update-max-mana
+  {:test (fn []
+           (is= (-> (create-empty-state)
+                    (update-max-mana "p1" 4)
+                    (get-max-mana "p1"))
+                4)
+           (is= (-> (create-empty-state)
+                    (update-max-mana "p1" dec)
+                    (get-max-mana "p1"))
+                9))}
+  [state player-id fn-or-value]
+  (if (fn? fn-or-value)
+    (update-in state [:players player-id :max-mana] fn-or-value)
+    (assoc-in state [:players player-id :max-mana] fn-or-value)))
+
 (defn create-game
   "Creates a game with the given deck, hand, minions (placed on the board), and heroes."
   {:test (fn []
            (is= (create-game) (create-empty-state))
 
-           (is= (create-game [{:hero (create-hero "Anduin Wrynn")}])
-                (create-game [{:hero "Anduin Wrynn"}]))
+           (is= (create-game [{:hero (create-hero "Carl")}])
+                (create-game [{:hero "Carl"}]))
 
            (is= (create-game [{:minions [(create-minion "Mio")]}])
                 (create-game [{:minions ["Mio"]}]))
 
            (is= (create-game [{:minions ["Mio"]
                                :deck    ["Ronja"]
-                               :hand    ["Emil"]}
-                              {:hero "Anduin Wrynn"}]
+                               :hand    ["Emil"]
+                               :mana 3}
+                              {:hero "Carl"}]
                              :player-id-in-turn "p2")
                 {:player-id-in-turn             "p2"
                  :players                       {"p1" {:id      "p1"
+                                                       :mana     3
+                                                       :max-mana 3
                                                        :deck    [{:entity-type :card
                                                                   :id          "c3"
                                                                   :name        "Ronja"
@@ -334,10 +389,12 @@
                                                                  :entity-type  :hero
                                                                  :damage-taken 0}}
                                                  "p2" {:id      "p2"
+                                                       :mana     10
+                                                       :max-mana 10
                                                        :deck    []
                                                        :hand    []
                                                        :minions []
-                                                       :hero    {:name         "Anduin Wrynn"
+                                                       :hero    {:name         "Carl"
                                                                  :id           "h2"
                                                                  :entity-type  :hero
                                                                  :damage-taken 0}}}
@@ -358,15 +415,18 @@
                                                       (:hero player-data)))
                                               data)) $
                      (reduce (fn [state {player-id :player-id
+                                         mana :mana
                                          minions   :minions
                                          deck      :deck
                                          hand      :hand}]
-                               (-> state
+                               (-> (if mana
+                                     (-> state
+                                         (update-mana player-id mana)
+                                         (update-max-mana player-id mana))
+                                     state)
                                    (add-minions-to-board player-id minions)
                                    (add-cards-to-deck player-id deck)
-                                   (add-cards-to-hand player-id hand)
-                                   ; (add-secrets player-id secrets)
-                                   ))
+                                   (add-cards-to-hand player-id hand)))
                              $
                              players-data))]
      (if (empty? kvs)
@@ -474,3 +534,40 @@
                 ["m2" "m3"]))}
   [state & ids]
   (reduce remove-minion state ids))
+
+(defn get-cards
+  ([state]
+   (let [player-ids (->> (get-players state)
+                         (map :id))]
+     (apply concat (map (fn [player-id] (get-cards state player-id)) player-ids))))
+  ([state player-id]
+   (concat (get-hand state player-id)
+           (get-deck state player-id))))
+
+(defn get-card
+  {:test (fn []
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (get-card "e")
+                    (:name))
+                "Emil"))}
+  [state card-id]
+  (->> (get-cards state)
+       (filter (fn [c] (= (:id c) card-id)))
+       (first)))
+
+(defn remove-card-from-hand
+  {:test (fn []
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")
+                                          "Mio"
+                                          "Ronja"]}])
+                    (remove-card-from-hand "p1" "e")
+                    (get-hand "p1")
+                    (count))
+                2))}
+  [state player-id card-id]
+  (update-in state [:players player-id :hand]
+             (fn [cards]
+               (->> cards
+                    (remove (fn [c] (= (:id c) card-id)))))))
+
+

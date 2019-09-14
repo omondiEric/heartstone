@@ -1,9 +1,16 @@
 (ns firestone.core-api
-  (:require [ysera.test :refer [is= error?]]
+  (:require [ysera.test :refer [is is= error?]]
             [ysera.error :refer [error]]
-            [firestone.construct :refer [create-game
+            [firestone.construct :refer [add-minion-to-board
+                                         create-card
+                                         create-game
+                                         create-minion
+                                         get-card
+                                         get-hand
+                                         get-minions
                                          get-player-id-in-turn
-                                         get-players]]))
+                                         get-players
+                                         remove-card-from-hand]]))
 
 (defn end-turn
   {:test (fn []
@@ -24,3 +31,24 @@
   (let [player-change-fn {"p1" "p2"
                           "p2" "p1"}]
     (update state :player-id-in-turn player-change-fn)))
+
+
+(defn play-minion-card
+  {:test (fn []
+           ; A minion should appear at the board
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (play-minion-card "p1" "e" 0)
+                    (get-minions "p1")
+                    (first)
+                    (:name))
+                "Emil")
+           ; The card should be erased from hand
+           (is (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                   (play-minion-card "p1" "e" 0)
+                   (get-hand "p1")
+                   (empty?))))}
+  [state player-id card-id position]
+  (let [card (get-card state card-id)]
+    (-> state
+        (remove-card-from-hand player-id card-id)
+        (add-minion-to-board player-id (create-minion (:name card)) position))))
