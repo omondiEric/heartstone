@@ -8,8 +8,12 @@
                                          create-hero
                                          create-minion
                                          get-heroes
+                                         get-hero
                                          get-minion
-                                         get-minions]]))
+                                         get-minions
+                                         remove-minion
+                                         remove-minions
+                                         update-minion]]))
 
 (defn get-character
   "Returns the character with the given id from the state."
@@ -117,4 +121,72 @@
          (= (:player-id-in-turn state) player-id)
          (< (:attacks-performed-this-turn attacker) 1)
          (not (sleepy? state attacker-id))
+         (> (get-attack state attacker-id) 0)
          (not= (:owner-id attacker) (:owner-id target)))))
+
+(defn attack-minion
+  "Attacks the enemy minion"
+  {:test (fn []
+           ; Your minion's health should be updated
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}
+                                  {:minions [(create-minion "Ronja" :id "r")]}])
+                    (attack-minion "p1" "e" "r")
+                    (get-health "e"))
+                2)
+           ; Target minion's health should be updated
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                  {:minions [(create-minion "Ronja" :id "r")]}])
+                    (attack-minion "p1" "m" "r")
+                    (get-health "r"))
+                1)
+           ; Your minion's attacks for this turn should be updated
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}
+                                  {:minions [(create-minion "Ronja" :id "r")]}])
+                    (attack-minion "p1" "e" "r")
+                    (get-minion "e")
+                    (:attacks-performed-this-turn))
+                1))}
+  [state player-id attacker-id target-id]
+  (let [attacker-attack-val (get-attack state attacker-id)
+        target-attack-val (get-attack state target-id)]
+    (if (valid-attack? state player-id attacker-id target-id) (-> (update-minion state attacker-id :damage-taken (+ target-attack-val))
+                                                                  (update-minion target-id :damage-taken (+ attacker-attack-val))
+                                                                  (update-minion attacker-id :attacks-performed-this-turn inc)))))
+(defn remove-dead-minions
+  "Removes dead minions at a given state and returns all living minions"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m1")
+                                             (create-minion "Mio" :id "m2" :damage-taken 2)]}
+                                  {:minions [(create-minion "Mio" :id "m3" :damage-taken 3)
+                                             (create-minion "Mio" :id "m4" :damage-taken 1)]}])
+                    (->> (remove-dead-minions)
+                         (map :id))
+                    )
+                ["m1" "m4"]))}
+  [state]
+  (->> (get-minions state)
+       (filter (fn [m] (> (->> (:id m) (get-health state)) 0)))))
+
+(defn attack-hero
+  "Attacks the enemy hero"
+  {:test (fn []
+           ; The enemy hero's health should be updated
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (attack-hero "p1" "m" "h2")
+                    (get-health "h2"))
+                29)
+           ; Your minion's attacks for this turn should be updated
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (attack-hero "p1" "e" "h2")
+                    (get-minion "e")
+                    (:attacks-performed-this-turn))
+                1))}
+  [state player-id attacker-id target-hero-id]
+  (let [attacker-attack-val (get-attack state attacker-id)
+        target-player-id (:owner-id (get-hero state target-hero-id))]
+    (when (valid-attack? state player-id attacker-id target-hero-id)
+      (-> (update-in state
+                     [:players target-player-id :hero :damage-taken]
+                     (fn [old-damage-taken]
+                       (+ old-damage-taken attacker-attack-val)))
+          (update-minion attacker-id :attacks-performed-this-turn inc)))))
