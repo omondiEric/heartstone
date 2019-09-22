@@ -75,18 +75,20 @@
                                                        :minions  []
                                                        :hero     {:name         "Carl"
                                                                   :id           "c"
+                                                                  :owner-id     "p1"
                                                                   :damage-taken 0
                                                                   :entity-type  :hero}}
-                                                 "p2" {:id      "p2"
+                                                 "p2" {:id       "p2"
                                                        :mana     10
                                                        :max-mana 10
-                                                       :deck    []
-                                                       :hand    []
-                                                       :minions []
-                                                       :hero    {:name         "Gustaf"
-                                                                 :id           "h2"
-                                                                 :damage-taken 0
-                                                                 :entity-type  :hero}}}
+                                                       :deck     []
+                                                       :hand     []
+                                                       :minions  []
+                                                       :hero     {:name         "Gustaf"
+                                                                  :id           "h2"
+                                                                  :owner-id     "p2"
+                                                                  :damage-taken 0
+                                                                  :entity-type  :hero}}}
                  :counter                       1
                  :minion-ids-summoned-this-turn []}))}
   ([heroes]
@@ -97,15 +99,17 @@
      {:player-id-in-turn             "p1"
       :players                       (->> heroes
                                           (map-indexed (fn [index hero]
-                                                         {:id      (str "p" (inc index))
-                                                          :mana     10
-                                                          :max-mana 10
-                                                          :deck    []
-                                                          :hand    []
-                                                          :minions []
-                                                          :hero    (if (contains? hero :id)
-                                                                     hero
-                                                                     (assoc hero :id (str "h" (inc index))))}))
+                                                         (let [player-id (str "p" (inc index))]
+                                                           {:id       player-id
+                                                            :mana     10
+                                                            :max-mana 10
+                                                            :deck     []
+                                                            :hand     []
+                                                            :minions  []
+                                                            :hero     (if (contains? hero :id)
+                                                                        (assoc hero :owner-id player-id)
+                                                                        (assoc hero :id (str "h" (inc index))
+                                                                                    :owner-id player-id))})))
                                           (reduce (fn [a v]
                                                     (assoc a (:id v) v))
                                                   {}))
@@ -361,43 +365,45 @@
            (is= (create-game [{:minions ["Mio"]
                                :deck    ["Ronja"]
                                :hand    ["Emil"]
-                               :mana 3}
+                               :mana    3}
                               {:hero "Carl"}]
                              :player-id-in-turn "p2")
                 {:player-id-in-turn             "p2"
-                 :players                       {"p1" {:id      "p1"
+                 :players                       {"p1" {:id       "p1"
                                                        :mana     3
                                                        :max-mana 3
-                                                       :deck    [{:entity-type :card
-                                                                  :id          "c3"
-                                                                  :name        "Ronja"
-                                                                  :owner-id    "p1"}]
-                                                       :hand    [{:entity-type :card
-                                                                  :id          "c4"
-                                                                  :name        "Emil"
-                                                                  :owner-id    "p1"}]
-                                                       :minions [{:damage-taken                0
-                                                                  :attacks-performed-this-turn 0
-                                                                  :added-to-board-time-id      2
-                                                                  :entity-type                 :minion
-                                                                  :name                        "Mio"
-                                                                  :id                          "m1"
-                                                                  :position                    0
-                                                                  :owner-id                    "p1"}]
-                                                       :hero    {:name         "Carl"
-                                                                 :id           "h1"
-                                                                 :entity-type  :hero
-                                                                 :damage-taken 0}}
-                                                 "p2" {:id      "p2"
+                                                       :deck     [{:entity-type :card
+                                                                   :id          "c3"
+                                                                   :name        "Ronja"
+                                                                   :owner-id    "p1"}]
+                                                       :hand     [{:entity-type :card
+                                                                   :id          "c4"
+                                                                   :name        "Emil"
+                                                                   :owner-id    "p1"}]
+                                                       :minions  [{:damage-taken                0
+                                                                   :attacks-performed-this-turn 0
+                                                                   :added-to-board-time-id      2
+                                                                   :entity-type                 :minion
+                                                                   :name                        "Mio"
+                                                                   :id                          "m1"
+                                                                   :position                    0
+                                                                   :owner-id                    "p1"}]
+                                                       :hero     {:name         "Carl"
+                                                                  :id           "h1"
+                                                                  :owner-id     "p1"
+                                                                  :entity-type  :hero
+                                                                  :damage-taken 0}}
+                                                 "p2" {:id       "p2"
                                                        :mana     10
                                                        :max-mana 10
-                                                       :deck    []
-                                                       :hand    []
-                                                       :minions []
-                                                       :hero    {:name         "Carl"
-                                                                 :id           "h2"
-                                                                 :entity-type  :hero
-                                                                 :damage-taken 0}}}
+                                                       :deck     []
+                                                       :hand     []
+                                                       :minions  []
+                                                       :hero     {:name         "Carl"
+                                                                  :id           "h2"
+                                                                  :owner-id     "p2"
+                                                                  :entity-type  :hero
+                                                                  :damage-taken 0}}}
                  :counter                       5
                  :minion-ids-summoned-this-turn []}))}
   ([data & kvs]
@@ -415,7 +421,7 @@
                                                       (:hero player-data)))
                                               data)) $
                      (reduce (fn [state {player-id :player-id
-                                         mana :mana
+                                         mana      :mana
                                          minions   :minions
                                          deck      :deck
                                          hand      :hand}]
@@ -570,4 +576,14 @@
                (->> cards
                     (remove (fn [c] (= (:id c) card-id)))))))
 
-
+(defn get-hero
+  {:test (fn []
+           (is= (-> (create-empty-state)
+                    (get-hero "h1")
+                    (:id))
+                "h1"))}
+  [state hero-id]
+  (->> (get-players state)
+       (map :hero)
+       (filter (fn [h] (= (:id h) hero-id)))
+       (first)))
