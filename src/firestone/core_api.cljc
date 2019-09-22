@@ -3,14 +3,19 @@
             [ysera.error :refer [error]]
             [firestone.construct :refer [add-minion-to-board
                                          create-card
+                                         create-empty-state
                                          create-game
                                          create-minion
                                          get-card
                                          get-hand
                                          get-minions
+                                         get-mana
+                                         get-mana-cost
                                          get-player-id-in-turn
                                          get-players
-                                         remove-card-from-hand]]))
+                                         remove-card-from-hand
+                                         update-mana]]
+            [firestone.core :refer [get-battlecry-fn]]))
 
 (defn end-turn
   {:test (fn []
@@ -32,6 +37,19 @@
                           "p2" "p1"}]
     (update state :player-id-in-turn player-change-fn)))
 
+(defn perform-battlecry
+  {:test (fn []
+           (is= (-> (create-card "Kato")
+                    (perform-battlecry "p1" "Kato")
+                    (get-in [:players "p1" :hero :damage-taken]))
+                4))}
+
+  [state player-id card]
+  (let [battlecry-fn (get-battlecry-fn card)]
+
+    (when battlecry-fn
+      ;apply battlecry function
+      (battlecry-fn state player-id))))
 
 (defn play-minion-card
   {:test (fn []
@@ -48,7 +66,13 @@
                    (get-hand "p1")
                    (empty?))))}
   [state player-id card-id position]
+  ;check if player has less than 7 minions on the board
+  (when-not (< (count (get-minions state player-id)) 7)
+    (error "The board is full."))
   (let [card (get-card state card-id)]
     (-> state
         (remove-card-from-hand player-id card-id)
-        (add-minion-to-board player-id (create-minion (:name card)) position))))
+        (add-minion-to-board player-id (create-minion (:name card)) position)
+        (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
+        ;(perform-battlecry player-id card)
+        )))

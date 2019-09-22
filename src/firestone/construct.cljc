@@ -2,6 +2,7 @@
   (:require [ysera.test :refer [is is-not is= error?]]
             [firestone.definitions :refer [get-definition]]
             [firestone.definitions-loader]))
+            ;[firestone.core :refer [get-battlecry-fn]]))
 
 
 (defn create-hero
@@ -328,6 +329,19 @@
     (update-in state [:players player-id :mana] fn-or-value)
     (assoc-in state [:players player-id :mana] fn-or-value)))
 
+;(defn update-damage
+  ;{:test (fn []
+      ;     (is= (-> (create-empty-state)
+     ;               (update-damage "p1" 4)
+    ;                (get-in [:players "p1" :hero :damage-taken]))
+   ;             4))}
+
+  ;[state player-id fn-or-value]
+  ;(if (fn? fn-or-value)
+
+;    (update-in state [:players player-id :hero :damage-taken] (get-battlecry-fn))
+ ;   (assoc-in state [:players player-id :hero :damage-taken] (get-battlecry-fn)))
+
 (defn get-max-mana
   {:test (fn []
            (is= (-> (create-empty-state)
@@ -587,3 +601,18 @@
        (map :hero)
        (filter (fn [h] (= (:id h) hero-id)))
        (first)))
+
+(defn get-mana-cost
+  {:test (fn []
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (get-mana-cost "e"))
+                4))}
+  [state card-id]
+  (let [card (get-card state card-id)
+        definition (get-definition card)]
+    (:mana-cost definition)))
+
+
+
+
+

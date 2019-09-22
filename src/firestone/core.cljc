@@ -74,6 +74,30 @@
         definition (get-definition (:name minion))]
     (:attack definition)))
 
+(defn get-battlecry-fn
+  "Returns the battlecry function of a minion or nil"
+  {:test (fn []
+           ;check that damage is taken
+           (is= (as-> (create-game [{:hand [(create-card "Kato" :id "k")]}]) $
+                      (get-battlecry-fn $ (create-card "Kato"))
+                      (get-in $ [:players "p2" :hero :damage-taken]))
+                4)
+           ;check that card is drawn
+           (is= (as-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}]) $
+                      (get-battlecry-fn $ (create-card "Emil"))
+                      (get-in $ [:players "p2" :deck]))
+                4)
+           )}
+  [state card]
+  (let [definition (get-definition card)
+        name (:name definition)]
+    (when (= name "Kato")
+      (update-in state [:players "p2" :hero :damage-taken] (:battlecry definition)))
+    (when (= name "Emil")
+      )))
+
+
+
 (defn sleepy?
   "Checks if the minion with given id is sleepy."
   {:test (fn []

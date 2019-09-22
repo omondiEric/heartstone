@@ -1,5 +1,6 @@
 (ns firestone.definition.card
   (:require [firestone.definitions :as definitions]))
+;[firestone.construct :refer [update-damage]]))
 
 (def card-definitions
   {
@@ -19,12 +20,13 @@
     :type      :minion}
 
    "Kato"
-   {:name "Kato"
-    :attack 4
-    :health 1
-    :mana-cost 4
-    :type :minion
-    :description "Battlecry: Deal 4 damage to the enemy hero."}
+   {:name        "Kato"
+    :attack      4
+    :health      1
+    :mana-cost   4
+    :type        :minion
+    :description "Battlecry: Deal 4 damage to the enemy hero."
+    :battlecry   (fn [x] (+ x 4))}
 
    "Emil"
    {:name        "Emil"
@@ -32,7 +34,8 @@
     :health      5
     :mana-cost   4
     :type        :minion
-    :description "Battlecry: Draw a card."}
+    :description "Battlecry: Draw a card."
+    :battlecry   "draw card"}
 
    })
 
