@@ -1,16 +1,28 @@
 (ns firestone.core-api
   (:require [ysera.test :refer [is is= error?]]
             [ysera.error :refer [error]]
-            [firestone.construct :refer [add-minion-to-board
+            [firestone.construct :refer [add-card-to-hand
+                                         add-minion-to-board
+                                         change-player-in-turn
                                          create-card
                                          create-game
                                          create-minion
+                                         draw-card-to-hand
+                                         fatigue-hero
+                                         inc-max-mana
                                          get-card
+                                         get-deck
                                          get-hand
+                                         get-mana
+                                         get-max-mana
                                          get-minions
                                          get-player-id-in-turn
                                          get-players
-                                         remove-card-from-hand]]))
+                                         remove-card-from-deck
+                                         remove-card-from-hand
+                                         restore-mana
+                                         update-mana
+                                         update-max-mana]]))
 
 (defn end-turn
   {:test (fn []
@@ -24,13 +36,37 @@
                     (get-player-id-in-turn))
                 "p1")
            (error? (-> (create-game)
-                       (end-turn "p2"))))}
+                       (end-turn "p2")))
+
+           (is= (-> (create-game)
+                    (end-turn "p1")
+                    (get-max-mana "p2"))
+                10)
+           (is= (-> (create-game)
+                    (update-max-mana "p2" 5)
+                    (end-turn "p1")
+                    (get-max-mana "p2"))
+                6)
+           (is= (-> (create-game)
+                    (update-max-mana "p2" 5)
+                    (update-mana "p2" 0)
+                    (end-turn "p1")
+                    (get-mana "p2"))
+                6))}
+
   [state player-id]
   (when-not (= (get-player-id-in-turn state) player-id)
     (error "The player with id " player-id " is not in turn."))
+
+  ;could be improved because it is a bit repetitive
   (let [player-change-fn {"p1" "p2"
                           "p2" "p1"}]
-    (update state :player-id-in-turn player-change-fn)))
+    (-> state
+        (change-player-in-turn)
+        (inc-max-mana (player-change-fn player-id))
+        (restore-mana (player-change-fn player-id)))))
+
+
 
 
 (defn play-minion-card
@@ -52,3 +88,68 @@
     (-> state
         (remove-card-from-hand player-id card-id)
         (add-minion-to-board player-id (create-minion (:name card)) position))))
+
+
+(defn draw-card
+  {:test (fn []
+           ;a card should appear in the hand
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (draw-card "p1")
+                    (get-hand "p1")
+                    (first)
+                    (:name))
+                "Emil")
+           ;draw cards consecutively
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")
+                                          "Mio"]}])
+                    (draw-card "p1")
+                    (draw-card "p1")
+                    (get-hand "p1")
+                    (last)
+                    (:name))
+                "Mio")
+           ;the card should be removed from the deck
+           (is (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (draw-card "p1")
+                    (get-deck "p1")
+                    (empty?)))
+           ;check hand size limit of 10 is maintained
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]
+                                  :hand [(create-card "Mio")
+                                         "Mio"
+                                         "Mio"
+                                         "Mio"
+                                         "Mio"
+                                         "Mio"
+                                         "Mio"
+                                         "Mio"
+                                         "Mio"
+                                         "Mio"]}])
+                   (draw-card "p1")
+                   (get-hand "p1")
+                   (count))
+               10)
+           ;check fatigue works
+           (is= (-> (create-game)
+                    (draw-card "p1")
+                    (get-in [:players "p1" :hero :damage-taken]))
+                    1)
+           (is= (-> (create-game)
+                    (draw-card "p1")
+                    (draw-card "p1")
+                    (get-in [:players "p1" :hero :damage-taken]))
+                3)
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (draw-card "p1")
+                    (get-in [:players "p1" :hero :damage-taken]))
+                0)
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (draw-card "p1")
+                    (draw-card "p1")
+                    (get-in [:players "p1" :hero :damage-taken]))
+                1)
+           )}
+  [state player-id]
+  (-> state
+      (fatigue-hero player-id)
+      (draw-card-to-hand player-id)))

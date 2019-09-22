@@ -73,6 +73,7 @@
                                                        :deck     []
                                                        :hand     []
                                                        :minions  []
+                                                       :fatigue-level 0
                                                        :hero     {:name         "Carl"
                                                                   :id           "c"
                                                                   :damage-taken 0
@@ -83,6 +84,7 @@
                                                        :deck    []
                                                        :hand    []
                                                        :minions []
+                                                       :fatigue-level 0
                                                        :hero    {:name         "Gustaf"
                                                                  :id           "h2"
                                                                  :damage-taken 0
@@ -103,6 +105,7 @@
                                                           :deck    []
                                                           :hand    []
                                                           :minions []
+                                                          :fatigue-level 0
                                                           :hero    (if (contains? hero :id)
                                                                      hero
                                                                      (assoc hero :id (str "h" (inc index))))}))
@@ -347,6 +350,7 @@
     (update-in state [:players player-id :max-mana] fn-or-value)
     (assoc-in state [:players player-id :max-mana] fn-or-value)))
 
+
 (defn create-game
   "Creates a game with the given deck, hand, minions (placed on the board), and heroes."
   {:test (fn []
@@ -384,6 +388,7 @@
                                                                   :id                          "m1"
                                                                   :position                    0
                                                                   :owner-id                    "p1"}]
+                                                       :fatigue-level 0
                                                        :hero    {:name         "Carl"
                                                                  :id           "h1"
                                                                  :entity-type  :hero
@@ -394,6 +399,7 @@
                                                        :deck    []
                                                        :hand    []
                                                        :minions []
+                                                       :fatigue-level 0
                                                        :hero    {:name         "Carl"
                                                                  :id           "h2"
                                                                  :entity-type  :hero
@@ -570,4 +576,146 @@
                (->> cards
                     (remove (fn [c] (= (:id c) card-id)))))))
 
+(defn remove-card-from-deck
+  {:test (fn []
+           (is (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (remove-card-from-deck "p1" "e")
+                    (get-deck "p1")
+                    (empty?))))}
+  [state player-id card-id]
+  (update-in state [:players player-id :deck]
+             (fn [cards]
+               (->> cards
+                    (remove (fn [c] (= (:id c) card-id)))))))
 
+(defn change-player-in-turn
+ {:test (fn []
+          (is= (-> (create-game)
+                   (change-player-in-turn)
+                   (get-player-id-in-turn))
+               "p2")
+          (is= (-> (create-game)
+                   (change-player-in-turn)
+                   (change-player-in-turn)
+                   (get-player-id-in-turn))
+               "p1"))}
+  [state]
+  (let [player-change-fn {"p1" "p2"
+                        "p2" "p1"}]
+    (update state :player-id-in-turn player-change-fn)))
+
+(defn inc-max-mana
+  {:test (fn []
+           (is= (-> (create-game)
+                    (inc-max-mana "p1")
+                    (get-max-mana "p1"))
+                10)
+           (is= (-> (create-game)
+                    (update-max-mana "p1" 5)
+                    (inc-max-mana "p1")
+                    (get-max-mana "p1"))
+                6))}
+  [state player-id]
+  (if (< (get-max-mana state player-id) 10)
+     (update-max-mana state player-id inc)
+     state))
+
+(defn restore-mana
+  {:test (fn []
+           (is= (-> (create-game)
+                    (update-mana "p1" 5)
+                    (restore-mana "p1")
+                    (get-mana "p1"))
+                10)
+           (is= (-> (create-game)
+                    (update-max-mana "p1" 5)
+                    (update-mana "p1" 0)
+                    (restore-mana "p1")
+                    (get-mana "p1"))
+                5))}
+  [state player-id]
+    (assoc-in state [:players player-id :mana] (get-max-mana state player-id)))
+
+(defn draw-card-to-hand
+  {:test (fn []
+           ;a card should appear in the hand
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (draw-card-to-hand "p1")
+                    (get-hand "p1")
+                    (first)
+                    (:name))
+                "Emil")
+           ;draw cards consecutively
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")
+                                          "Mio"]}])
+                    (draw-card-to-hand "p1")
+                    (draw-card-to-hand "p1")
+                    (get-hand "p1")
+                    (last)
+                    (:name))
+                "Mio")
+           ;the card should be removed from the deck
+           (is (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                   (draw-card-to-hand "p1")
+                   (get-deck "p1")
+                   (empty?)))
+           ;check hand size limit of 10 is maintained
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]
+                                   :hand [(create-card "Mio")
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"]}])
+                    (draw-card-to-hand "p1")
+                    (get-hand "p1")
+                    (count))
+                10))}
+  [state player-id]
+  (let [hand-size (count (get-hand state player-id))]
+    (let [card-id (:id (first (get-deck state player-id)))]
+      (if (<  hand-size 10)
+        (-> state
+            (add-card-to-hand player-id (get-card state card-id))
+            (remove-card-from-deck player-id card-id))
+        ;burn card if over hand size limit
+        (remove-card-from-deck state player-id card-id)))))
+
+(defn fatigue-hero
+  {:test (fn []
+           (is= (-> (create-game)
+                    (fatigue-hero "p1")
+                    (get-in [:players "p1" :fatigue-level]))
+                1)
+           (is= (-> (create-game)
+                    (fatigue-hero "p1")
+
+                    (get-in [:players "p1" :hero :damage-taken]))
+                1)
+           (is= (-> (create-game)
+                    (fatigue-hero "p1")
+                    (fatigue-hero "p1")
+                    (get-in [:players "p1" :fatigue-level]))
+                2)
+           (is= (-> (create-game)
+                    (fatigue-hero "p1")
+                    (fatigue-hero "p1")
+                    (get-in [:players "p1" :hero :damage-taken]))
+                3)
+           ;only fatigues hero if deck is empty
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (fatigue-hero "p1")
+                    (get-in [:players "p1" :hero :damage-taken]))
+                0)
+           )}
+  [state player-id]
+  (if (= (count (get-in state [:players player-id :deck])) 0)
+    (let [new-fatigue-level (inc (get-in state [:players player-id :fatigue-level]))]
+      (-> state
+          (assoc-in [:players player-id :fatigue-level] new-fatigue-level)
+          (update-in [:players player-id :hero :damage-taken] (fn [x] (+ x new-fatigue-level)))))
+    state))
