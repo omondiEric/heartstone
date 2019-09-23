@@ -86,6 +86,7 @@
                                                        :deck     []
                                                        :hand     []
                                                        :minions  []
+                                                       :fatigue-level 0
                                                        :hero     {:name         "Gustaf"
                                                                   :id           "h2"
                                                                   :owner-id     "p2"
@@ -713,14 +714,16 @@
                     (count))
                 10))}
   [state player-id]
-  (let [hand-size (count (get-hand state player-id))]
-    (let [card-id (:id (first (get-deck state player-id)))]
-      (if (<  hand-size 10)
-        (-> state
-            (add-card-to-hand player-id (get-card state card-id))
-            (remove-card-from-deck player-id card-id))
-        ;burn card if over hand size limit
-        (remove-card-from-deck state player-id card-id)))))
+  (if (> (count (get-in state [:players player-id :deck])) 0)
+    (let [hand-size (count (get-hand state player-id))]
+      (let [card-id (:id (first (get-deck state player-id)))]
+        (if (<  hand-size 10)
+          (-> state
+              (add-card-to-hand player-id (get-card state card-id))
+              (remove-card-from-deck player-id card-id))
+          ;burn card if over hand size limit
+          (remove-card-from-deck state player-id card-id))))
+    state))
 
 (defn fatigue-hero
   {:test (fn []

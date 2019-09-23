@@ -1,6 +1,7 @@
 (ns firestone.core-api
   (:require [ysera.test :refer [is is= error?]]
             [ysera.error :refer [error]]
+            [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [add-card-to-hand
                                          add-minion-to-board
                                          change-player-in-turn
@@ -27,8 +28,7 @@
                                          update-mana
                                          update-max-mana
                                          remove-card-from-hand
-                                         update-mana]]
-            [firestone.core :refer [get-battlecry-fn]]))
+                                         update-mana]]))
 
 
 (defn end-turn
@@ -73,33 +73,6 @@
         (inc-max-mana (player-change-fn player-id))
         (restore-mana (player-change-fn player-id)))))
 
-
-(defn play-minion-card
-  {:test (fn []
-           ; A minion should appear at the board
-           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
-                    (play-minion-card "p1" "e" 0)
-                    (get-minions "p1")
-                    (first)
-                    (:name))
-                "Emil")
-           ; The card should be erased from hand
-           (is (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
-                   (play-minion-card "p1" "e" 0)
-                   (get-hand "p1")
-                   (empty?))))}
-  [state player-id card-id position]
-  ;check if player has less than 7 minions on the board
-  (when-not (< (count (get-minions state player-id)) 7)
-    (error "The board is full."))
-  (let [card (get-card state card-id)]
-    (-> state
-        (remove-card-from-hand player-id card-id)
-        (add-minion-to-board player-id (create-minion (:name card)) position)
-        (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
-        ;(perform-battlecry player-id card)
-        )))
-
 (defn draw-card
   {:test (fn []
            ;a card should appear in the hand
@@ -120,30 +93,30 @@
                 "Mio")
            ;the card should be removed from the deck
            (is (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
-                    (draw-card "p1")
-                    (get-deck "p1")
-                    (empty?)))
+                   (draw-card "p1")
+                   (get-deck "p1")
+                   (empty?)))
            ;check hand size limit of 10 is maintained
            (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]
-                                  :hand [(create-card "Mio")
-                                         "Mio"
-                                         "Mio"
-                                         "Mio"
-                                         "Mio"
-                                         "Mio"
-                                         "Mio"
-                                         "Mio"
-                                         "Mio"
-                                         "Mio"]}])
-                   (draw-card "p1")
-                   (get-hand "p1")
-                   (count))
-               10)
+                                   :hand [(create-card "Mio")
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"]}])
+                    (draw-card "p1")
+                    (get-hand "p1")
+                    (count))
+                10)
            ;check fatigue works
            (is= (-> (create-game)
                     (draw-card "p1")
                     (get-in [:players "p1" :hero :damage-taken]))
-                    1)
+                1)
            (is= (-> (create-game)
                     (draw-card "p1")
                     (draw-card "p1")
@@ -163,4 +136,60 @@
   (-> state
       (fatigue-hero player-id)
       (draw-card-to-hand player-id)))
+
+(defn do-battlecry-fn
+  "Returns the battlecry function of a minion or nil"
+  {:test (fn []
+           ;check that damage is taken
+           (is= (-> (create-game [{:hand [(create-card "Kato" :id "k")]}])
+                    (do-battlecry-fn "p1" "p2" (create-card "Kato"))
+                    (get-in [:players "p2" :hero :damage-taken]))
+                4)
+           ;check that card is drawn
+            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}])
+                    (do-battlecry-fn "p1" "p2" (create-card "Emil"))
+                   (get-hand "p1")
+                  (count))
+             2)
+           )}
+  [state player-id target-player-id card]
+  (let [name (:name (get-definition card))]
+    (cond (= name "Kato")
+          (update-in state [:players target-player-id :hero :damage-taken] (fn [damage-taken] (+ damage-taken 4)))
+
+          (= name "Emil")
+          ;tate)))
+            (draw-card state player-id))))
+
+(defn play-minion-card
+  {:test (fn []
+           ; A minion should appear at the board
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (play-minion-card "p1" "p2" "e" 0)
+                    (get-minions "p1")
+                    (first)
+                    (:name))
+                "Emil")
+           ; The card should be erased from hand
+           (is (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                   (play-minion-card "p1" "p2" "e" 0)
+                   (get-hand "p1")
+                   (empty?)))
+           ;
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck[(create-card "Mio")]}])
+                   (play-minion-card "p1" "p2" "e" 0)
+                   (get-hand "p1")
+                   (count))
+                1))}
+  [state player-id target-player-id card-id position]
+  ;check if player has less than 7 minions on the board
+  (when-not (< (count (get-minions state player-id)) 7)
+    (error "The board is full."))
+  (let [card (get-card state card-id)]
+    (-> state
+        (remove-card-from-hand player-id card-id)
+        (add-minion-to-board player-id (create-minion (:name card)) position)
+        (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
+        (do-battlecry-fn player-id target-player-id card)
+        )))
 
