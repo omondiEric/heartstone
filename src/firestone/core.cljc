@@ -3,14 +3,18 @@
             [ysera.error :refer [error]]
             [ysera.collections :refer [seq-contains?]]
             [firestone.definitions :refer [get-definition]]
+            [firestone.core-api :refer [draw-card]]
             [firestone.construct :refer [create-card
                                          create-game
                                          create-hero
                                          create-minion
+                                         draw-card-to-hand
                                          get-heroes
                                          get-hero
+                                         get-hand
                                          get-minion
                                          get-minions
+                                         remove-card-from-deck
                                          remove-minion
                                          remove-minions
                                          update-minion]]))
