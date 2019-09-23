@@ -187,7 +187,9 @@
                 1))}
   [state player-id attacker-id target-hero-id]
   (let [attacker-attack-val (get-attack state attacker-id)
-        target-player-id (:owner-id (get-hero state target-hero-id))]
+        player-change-fn {"p1" "p2"
+                           "p2" "p1"}
+        target-player-id (player-change-fn player-id)]
     (when (valid-attack? state player-id attacker-id target-hero-id)
       (-> (update-in state
                      [:players target-player-id :hero :damage-taken]

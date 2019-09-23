@@ -77,7 +77,6 @@
                                                        :fatigue-level 0
                                                        :hero     {:name         "Carl"
                                                                   :id           "c"
-                                                                  :owner-id     "p1"
                                                                   :damage-taken 0
                                                                   :entity-type  :hero}}
                                                  "p2" {:id       "p2"
@@ -89,7 +88,6 @@
                                                        :fatigue-level 0
                                                        :hero     {:name         "Gustaf"
                                                                   :id           "h2"
-                                                                  :owner-id     "p2"
                                                                   :damage-taken 0
                                                                   :entity-type  :hero}}}
                  :counter                       1
