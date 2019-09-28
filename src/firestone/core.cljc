@@ -14,6 +14,7 @@
                                          get-hand
                                          get-minion
                                          get-minions
+                                         get-other-player-id
                                          remove-card-from-deck
                                          remove-minion
                                          remove-minions
@@ -187,9 +188,7 @@
                 1))}
   [state player-id attacker-id target-hero-id]
   (let [attacker-attack-val (get-attack state attacker-id)
-        player-change-fn {"p1" "p2"
-                           "p2" "p1"}
-        target-player-id (player-change-fn player-id)]
+        target-player-id (get-other-player-id player-id)]
     (when (valid-attack? state player-id attacker-id target-hero-id)
       (-> (update-in state
                      [:players target-player-id :hero :damage-taken]
