@@ -2,8 +2,10 @@
   (:require [firestone.definitions :as definitions]
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [create-game
-                                         create-card]]
-            [firestone.core-api :refer [do-battlecry-fn]]))
+                                         create-card
+                                         get-other-player-id]]
+            [firestone.core-api :refer [do-battlecry-fn
+                                        draw-card]]))
 
 (def card-definitions
   {
@@ -32,8 +34,9 @@
     :type        :minion
     :properties  #{}
     :description "Battlecry: Deal 4 damage to the enemy hero."
-    :battlecry   (fn [state target-player-id]
-                   (let [new-damage-taken (+ (get-in state [:players target-player-id :hero :damage-taken]) 4)]
+    :battlecry   (fn [state player-id]
+                   (let [target-player-id (get-other-player-id player-id)
+                         new-damage-taken (+ (get-in state [:players target-player-id :hero :damage-taken]) 4)]
                      (assoc-in state [:players target-player-id :hero :damage-taken] new-damage-taken)))}
 
    "Emil"
@@ -44,7 +47,8 @@
     :type        :minion
     :properties  #{}
     :description "Battlecry: Draw a card."
-    :battlecry   "draw card"}
+    :battlecry   (fn [state player-id]
+                   (draw-card state player-id))}
 
    "Jonatan"
    {:name        "Jonatan"
@@ -152,8 +156,5 @@
 
    })
 
-(let [battlecry (fn [state target-player-id] (update-in state [:players target-player-id :hero :damage-taken] (fn [damage-taken] (+ damage-taken 4))))]
-   (->(create-game)
-      (battlecry "p2")))
 
 (definitions/add-definitions! card-definitions)

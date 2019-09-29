@@ -139,32 +139,23 @@
 (defn do-battlecry-fn
   "Returns the battlecry function of a minion or nil"
   {:test (fn []
-           ;check that damage is taken
+           ;check that damage is taken for Kato
            (is= (-> (create-game [{:hand [(create-card "Kato" :id "k")]}])
+                    (do-battlecry-fn "p1" (create-card "Kato"))
                     (do-battlecry-fn "p2" (create-card "Kato"))
-                    (do-battlecry-fn "p1" (create-card "Kato"))
-                    (do-battlecry-fn "p1" (create-card "Kato"))
-                    (do-battlecry-fn "p1" (create-card "Kato"))
+                    (do-battlecry-fn "p2" (create-card "Kato"))
+                    (do-battlecry-fn "p2" (create-card "Kato"))
                     (get-in [:players "p1" :hero :damage-taken]))
                 12)
            ;check that card is drawn
-            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}])
-                    (do-battlecry-fn "p1" "p2" (create-card "Emil"))
-                   (get-hand "p1")
-                  (count))
-             2)
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}])
+                    (do-battlecry-fn "p1" (create-card "Emil"))
+                    (get-hand "p1")
+                    (count))
+                2)
            )}
-  [state target-id card]
-  ((:battlecry (get-definition card)) state target-id))
-  ;(let [battlecry (:battlecry (get-definition card))]
-    ;(battlecry state target-id)))
-    ;(cond (= name "Kato")
-    ;
-    ;      (= name "Emil")
-    ;      ;state)))
-    ;        (draw-card state player-id))))
-
-(let [battlecry #(:battlecry (get-definition (create-card "Kato" :id "k")))])
+  [state player-id card]
+  ((:battlecry (get-definition card)) state player-id))
 
 (defn play-minion-card
   {:test (fn []
@@ -181,20 +172,19 @@
                    (get-hand "p1")
                    (empty?)))
            ;
-           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck[(create-card "Mio")]}])
-                   (play-minion-card "p1" "e" 0)
-                   (get-hand "p1")
-                   (count))
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio")]}])
+                    (play-minion-card "p1" "e" 0)
+                    (get-hand "p1")
+                    (count))
                 1))}
   [state player-id card-id position]
   ;check if player has less than 7 minions on the board
   (when-not (< (count (get-minions state player-id)) 7)
     (error "The board is full."))
-  (let [card (get-card state card-id)
-        other-player-id (get-other-player-id player-id)]
+  (let [card (get-card state card-id)]
     (-> state
         (remove-card-from-hand player-id card-id)
         (add-minion-to-board player-id (create-minion (:name card)) position)
         (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
-        (do-battlecry-fn player-id other-player-id card)
+        (do-battlecry-fn player-id card)
         )))
