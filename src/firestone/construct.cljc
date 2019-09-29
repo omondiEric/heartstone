@@ -1,8 +1,8 @@
 (ns firestone.construct
   (:require [ysera.test :refer [is is-not is= error?]]
             [ysera.error :refer [error]]
-            [firestone.definitions :refer [get-definition]]
-            [firestone.definitions-loader]))
+            [firestone.definitions :refer [get-definition]]))
+            ;[firestone.definitions-loader]))
 ;[firestone.core :refer [get-battlecry-fn]]))
 
 
