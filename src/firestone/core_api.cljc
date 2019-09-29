@@ -22,6 +22,7 @@
                                          get-mana-cost
                                          get-player-id-in-turn
                                          get-players
+                                         get-other-player-id
                                          remove-card-from-deck
                                          remove-card-from-hand
                                          restore-mana
@@ -65,13 +66,11 @@
   (when-not (= (get-player-id-in-turn state) player-id)
     (error "The player with id " player-id " is not in turn."))
 
-  ;could be improved because it is a bit repetitive
-  (let [player-change-fn {"p1" "p2"
-                          "p2" "p1"}]
+  (let [other-player (get-other-player-id player-id)]
     (-> state
         (change-player-in-turn)
-        (inc-max-mana (player-change-fn player-id))
-        (restore-mana (player-change-fn player-id)))))
+        (inc-max-mana other-player)
+        (restore-mana other-player))))
 
 (defn draw-card
   {:test (fn []
@@ -165,31 +164,31 @@
   {:test (fn []
            ; A minion should appear at the board
            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
-                    (play-minion-card "p1" "p2" "e" 0)
+                    (play-minion-card "p1" "e" 0)
                     (get-minions "p1")
                     (first)
                     (:name))
                 "Emil")
            ; The card should be erased from hand
            (is (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
-                   (play-minion-card "p1" "p2" "e" 0)
+                   (play-minion-card "p1" "e" 0)
                    (get-hand "p1")
                    (empty?)))
            ;
            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck[(create-card "Mio")]}])
-                   (play-minion-card "p1" "p2" "e" 0)
+                   (play-minion-card "p1" "e" 0)
                    (get-hand "p1")
                    (count))
                 1))}
-  [state player-id target-player-id card-id position]
+  [state player-id card-id position]
   ;check if player has less than 7 minions on the board
   (when-not (< (count (get-minions state player-id)) 7)
     (error "The board is full."))
-  (let [card (get-card state card-id)]
+  (let [card (get-card state card-id)
+        other-player-id (get-other-player-id player-id)]
     (-> state
         (remove-card-from-hand player-id card-id)
         (add-minion-to-board player-id (create-minion (:name card)) position)
         (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
-        (do-battlecry-fn player-id target-player-id card)
+        (do-battlecry-fn player-id other-player-id card)
         )))
-
