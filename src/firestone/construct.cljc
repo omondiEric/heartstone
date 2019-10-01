@@ -58,7 +58,7 @@
                  :id                          "e"})
            )}
   [name & kvs]
-  (let [properties (->(get-definition name) (:properties))             ; Will be used later
+  (let [properties (-> (get-definition name) (:properties)) ; Will be used later
         minion {:damage-taken                0
                 :properties                  properties
                 :entity-type                 :minion
@@ -418,7 +418,7 @@
                                                                         :attacks-performed-this-turn 0
                                                                         :added-to-board-time-id      2
                                                                         :entity-type                 :minion
-                                                                        :properties                   #{}
+                                                                        :properties                  #{}
                                                                         :name                        "Mio"
                                                                         :id                          "m1"
                                                                         :position                    0
@@ -783,5 +783,49 @@
   ([seed limit]
    (let [gen (java.util.Random. seed)]
      (fn [] (.nextInt gen limit)))))
+
+;Gives divine shield to a card
+(defn give-divine-shield
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                    (give-divine-shield "k")
+                    (get-minion "k")
+                    (:properties) ; When I test this line I get back an empty set, D.S not added
+                    (contains? "Divine Shield"))
+                "true"))}
+  [state minion-id]
+
+  ;(def added-properties #{"divine Shield"})
+
+  (let [minion (get-minion state minion-id)
+        property-def (minion :properties)]
+    (def add-property #{"Divine Shield"})
+    (into property-def add-property)
+    ;(conj property-def "Divine Shield")
+    (update-in state [:minions minion-id :properties] property-def)))
+
+;(conj property-def "Divine Shield")))
+
+; (as-> state $
+;    (get-minion $ minion-id)
+;   (get-in $ [:minions minion-id :properties])
+;  (conj $ "Divine Shield")))
+
+;Remove divine shield from a card
+(defn remove-divine-shield
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k") {:properties #{"Divine Shield"}}]}])
+                    (remove-divine-shield "k")
+                    (get-minion "k")
+                    (:properties)
+                    (contains? "Divine Shield"))
+                "false"))}
+  [state minion-id]
+  (let [minion (get-minion state minion-id)
+        property-set (minion :properties)]
+    (disj property-set "Divine Shield")
+    (update-in state [:minions minion-id :properties] property-set)))
+
+
 
 
