@@ -3,14 +3,19 @@
             [ysera.error :refer [error]]
             [ysera.collections :refer [seq-contains?]]
             [firestone.definitions :refer [get-definition]]
+            [firestone.core-api :refer [draw-card]]
             [firestone.construct :refer [create-card
                                          create-game
                                          create-hero
                                          create-minion
+                                         draw-card-to-hand
                                          get-heroes
                                          get-hero
+                                         get-hand
                                          get-minion
                                          get-minions
+                                         get-other-player-id
+                                         remove-card-from-deck
                                          remove-minion
                                          remove-minions
                                          update-minion]]))
@@ -183,7 +188,7 @@
                 1))}
   [state player-id attacker-id target-hero-id]
   (let [attacker-attack-val (get-attack state attacker-id)
-        target-player-id (:owner-id (get-hero state target-hero-id))]
+        target-player-id (get-other-player-id player-id)]
     (when (valid-attack? state player-id attacker-id target-hero-id)
       (-> (update-in state
                      [:players target-player-id :hero :damage-taken]

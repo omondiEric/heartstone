@@ -1,6 +1,8 @@
-# My beautiful readme file
+# README
 
-It explains the architecture and design principles that this team has chosen and serves as a guide for teams on-boarding this project.  
+## Link to Sprint 1: 
+https://docs.google.com/document/d/1Z0TQg6t0_hzm04uQa3Sxht9ubH526gfCtT366ddC99U/edit?usp=sharing
+
 
 
 

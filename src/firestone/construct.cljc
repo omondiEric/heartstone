@@ -1,7 +1,9 @@
 (ns firestone.construct
   (:require [ysera.test :refer [is is-not is= error?]]
-            [firestone.definitions :refer [get-definition]]
-            [firestone.definitions-loader]))
+            [ysera.error :refer [error]]
+            [firestone.definitions :refer [get-definition]]))
+            ;[firestone.definitions-loader]))
+;[firestone.core :refer [get-battlecry-fn]]))
 
 
 (defn create-hero
@@ -44,18 +46,27 @@
                 {:attacks-performed-this-turn 1
                  :damage-taken                0
                  :entity-type                 :minion
+                 :properties                  #{}
                  :name                        "Mio"
-                 :id                          "m"}))}
+                 :id                          "m"})
+           (is= (create-minion "Elisabeth" :id "e")
+                {:attacks-performed-this-turn 0
+                 :damage-taken                0
+                 :entity-type                 :minion
+                 :properties                  #{"Divine Shield", "Taunt"}
+                 :name                        "Elisabeth"
+                 :id                          "e"})
+           )}
   [name & kvs]
-  (let [definition (get-definition name)                    ; Will be used later
+  (let [properties (->(get-definition name) (:properties))             ; Will be used later
         minion {:damage-taken                0
+                :properties                  properties
                 :entity-type                 :minion
                 :name                        name
                 :attacks-performed-this-turn 0}]
     (if (empty? kvs)
       minion
       (apply assoc minion kvs))))
-
 
 (defn create-empty-state
   "Creates an empty state with the given heroes."
@@ -67,28 +78,28 @@
            (is= (create-empty-state [(create-hero "Carl" :id "c")
                                      (create-hero "Gustaf")])
                 {:player-id-in-turn             "p1"
-                 :players                       {"p1" {:id       "p1"
-                                                       :mana     10
-                                                       :max-mana 10
-                                                       :deck     []
-                                                       :hand     []
-                                                       :minions  []
-                                                       :hero     {:name         "Carl"
-                                                                  :id           "c"
-                                                                  :owner-id     "p1"
-                                                                  :damage-taken 0
-                                                                  :entity-type  :hero}}
-                                                 "p2" {:id       "p2"
-                                                       :mana     10
-                                                       :max-mana 10
-                                                       :deck     []
-                                                       :hand     []
-                                                       :minions  []
-                                                       :hero     {:name         "Gustaf"
-                                                                  :id           "h2"
-                                                                  :owner-id     "p2"
-                                                                  :damage-taken 0
-                                                                  :entity-type  :hero}}}
+                 :players                       {"p1" {:id            "p1"
+                                                       :mana          10
+                                                       :max-mana      10
+                                                       :deck          []
+                                                       :hand          []
+                                                       :minions       []
+                                                       :fatigue-level 0
+                                                       :hero          {:name         "Carl"
+                                                                       :id           "c"
+                                                                       :damage-taken 0
+                                                                       :entity-type  :hero}}
+                                                 "p2" {:id            "p2"
+                                                       :mana          10
+                                                       :max-mana      10
+                                                       :deck          []
+                                                       :hand          []
+                                                       :minions       []
+                                                       :fatigue-level 0
+                                                       :hero          {:name         "Gustaf"
+                                                                       :id           "h2"
+                                                                       :damage-taken 0
+                                                                       :entity-type  :hero}}}
                  :counter                       1
                  :minion-ids-summoned-this-turn []}))}
   ([heroes]
@@ -99,17 +110,16 @@
      {:player-id-in-turn             "p1"
       :players                       (->> heroes
                                           (map-indexed (fn [index hero]
-                                                         (let [player-id (str "p" (inc index))]
-                                                           {:id       player-id
-                                                            :mana     10
-                                                            :max-mana 10
-                                                            :deck     []
-                                                            :hand     []
-                                                            :minions  []
-                                                            :hero     (if (contains? hero :id)
-                                                                        (assoc hero :owner-id player-id)
-                                                                        (assoc hero :id (str "h" (inc index))
-                                                                                    :owner-id player-id))})))
+                                                         {:id            (str "p" (inc index))
+                                                          :mana          10
+                                                          :max-mana      10
+                                                          :deck          []
+                                                          :hand          []
+                                                          :minions       []
+                                                          :fatigue-level 0
+                                                          :hero          (if (contains? hero :id)
+                                                                           hero
+                                                                           (assoc hero :id (str "h" (inc index))))}))
                                           (reduce (fn [a v]
                                                     (assoc a (:id v) v))
                                                   {}))
@@ -135,6 +145,16 @@
                 "p1"))}
   [state]
   (:player-id-in-turn state))
+
+(defn get-other-player-id
+  {:test (fn []
+           (is= (get-other-player-id "p1")
+                "p2")
+           (is= (get-other-player-id "p2")
+                "p1"))}
+  [player-id]
+  (if (= player-id "p1") "p2" "p1")
+  )
 
 (defn get-minions
   "Returns the minions on the board for the given player-id or for both players."
@@ -199,7 +219,7 @@
                 [{:id "m" :name "Mio"}])
            ; Adding a minion and update positions
            (let [minions (-> (create-empty-state)
-                             (add-minion-to-board "p1" (create-minion "Mio" :id "m1") 0)
+                             (add-minion-to-board "p1" (create-minion "Elisabeth" :id "m1") 0)
                              (add-minion-to-board "p1" (create-minion "Mio" :id "m2") 0)
                              (add-minion-to-board "p1" (create-minion "Mio" :id "m3") 1)
                              (get-minions "p1"))]
@@ -328,6 +348,19 @@
     (update-in state [:players player-id :mana] fn-or-value)
     (assoc-in state [:players player-id :mana] fn-or-value)))
 
+;(defn update-damage
+;{:test (fn []
+;     (is= (-> (create-empty-state)
+;               (update-damage "p1" 4)
+;                (get-in [:players "p1" :hero :damage-taken]))
+;             4))}
+
+;[state player-id fn-or-value]
+;(if (fn? fn-or-value)
+
+;    (update-in state [:players player-id :hero :damage-taken] (get-battlecry-fn))
+;   (assoc-in state [:players player-id :hero :damage-taken] (get-battlecry-fn)))
+
 (defn get-max-mana
   {:test (fn []
            (is= (-> (create-empty-state)
@@ -351,6 +384,7 @@
     (update-in state [:players player-id :max-mana] fn-or-value)
     (assoc-in state [:players player-id :max-mana] fn-or-value)))
 
+
 (defn create-game
   "Creates a game with the given deck, hand, minions (placed on the board), and heroes."
   {:test (fn []
@@ -369,41 +403,42 @@
                               {:hero "Carl"}]
                              :player-id-in-turn "p2")
                 {:player-id-in-turn             "p2"
-                 :players                       {"p1" {:id       "p1"
-                                                       :mana     3
-                                                       :max-mana 3
-                                                       :deck     [{:entity-type :card
-                                                                   :id          "c3"
-                                                                   :name        "Ronja"
-                                                                   :owner-id    "p1"}]
-                                                       :hand     [{:entity-type :card
-                                                                   :id          "c4"
-                                                                   :name        "Emil"
-                                                                   :owner-id    "p1"}]
-                                                       :minions  [{:damage-taken                0
-                                                                   :attacks-performed-this-turn 0
-                                                                   :added-to-board-time-id      2
-                                                                   :entity-type                 :minion
-                                                                   :name                        "Mio"
-                                                                   :id                          "m1"
-                                                                   :position                    0
-                                                                   :owner-id                    "p1"}]
-                                                       :hero     {:name         "Carl"
-                                                                  :id           "h1"
-                                                                  :owner-id     "p1"
-                                                                  :entity-type  :hero
-                                                                  :damage-taken 0}}
-                                                 "p2" {:id       "p2"
-                                                       :mana     10
-                                                       :max-mana 10
-                                                       :deck     []
-                                                       :hand     []
-                                                       :minions  []
-                                                       :hero     {:name         "Carl"
-                                                                  :id           "h2"
-                                                                  :owner-id     "p2"
-                                                                  :entity-type  :hero
-                                                                  :damage-taken 0}}}
+                 :players                       {"p1" {:id            "p1"
+                                                       :mana          3
+                                                       :max-mana      3
+                                                       :deck          [{:entity-type :card
+                                                                        :id          "c3"
+                                                                        :name        "Ronja"
+                                                                        :owner-id    "p1"}]
+                                                       :hand          [{:entity-type :card
+                                                                        :id          "c4"
+                                                                        :name        "Emil"
+                                                                        :owner-id    "p1"}]
+                                                       :minions       [{:damage-taken                0
+                                                                        :attacks-performed-this-turn 0
+                                                                        :added-to-board-time-id      2
+                                                                        :entity-type                 :minion
+                                                                        :properties                   #{}
+                                                                        :name                        "Mio"
+                                                                        :id                          "m1"
+                                                                        :position                    0
+                                                                        :owner-id                    "p1"}]
+                                                       :fatigue-level 0
+                                                       :hero          {:name         "Carl"
+                                                                       :id           "h1"
+                                                                       :entity-type  :hero
+                                                                       :damage-taken 0}}
+                                                 "p2" {:id            "p2"
+                                                       :mana          10
+                                                       :max-mana      10
+                                                       :deck          []
+                                                       :hand          []
+                                                       :minions       []
+                                                       :fatigue-level 0
+                                                       :hero          {:name         "Carl"
+                                                                       :id           "h2"
+                                                                       :entity-type  :hero
+                                                                       :damage-taken 0}}}
                  :counter                       5
                  :minion-ids-summoned-this-turn []}))}
   ([data & kvs]
@@ -587,3 +622,166 @@
        (map :hero)
        (filter (fn [h] (= (:id h) hero-id)))
        (first)))
+
+(defn get-mana-cost
+  {:test (fn []
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (get-mana-cost "e"))
+                4))}
+  [state card-id]
+  (let [card (get-card state card-id)
+        definition (get-definition card)]
+    (:mana-cost definition)))
+
+(defn remove-card-from-deck
+  {:test (fn []
+           (is (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                   (remove-card-from-deck "p1" "e")
+                   (get-deck "p1")
+                   (empty?))))}
+  [state player-id card-id]
+  (update-in state [:players player-id :deck]
+             (fn [cards]
+               (->> cards
+                    (remove (fn [c] (= (:id c) card-id)))))))
+
+(defn change-player-in-turn
+  {:test (fn []
+           (is= (-> (create-game)
+                    (change-player-in-turn)
+                    (get-player-id-in-turn))
+                "p2")
+           (is= (-> (create-game)
+                    (change-player-in-turn)
+                    (change-player-in-turn)
+                    (get-player-id-in-turn))
+                "p1"))}
+  [state]
+  (let [other-player (get-other-player-id (state :player-id-in-turn))]
+    (assoc state :player-id-in-turn other-player)))
+
+(defn inc-max-mana
+  {:test (fn []
+           (is= (-> (create-game)
+                    (inc-max-mana "p1")
+                    (get-max-mana "p1"))
+                10)
+           (is= (-> (create-game)
+                    (update-max-mana "p1" 5)
+                    (inc-max-mana "p1")
+                    (get-max-mana "p1"))
+                6))}
+  [state player-id]
+  (if (< (get-max-mana state player-id) 10)
+    (update-max-mana state player-id inc)
+    state))
+
+(defn restore-mana
+  {:test (fn []
+           (is= (-> (create-game)
+                    (update-mana "p1" 5)
+                    (restore-mana "p1")
+                    (get-mana "p1"))
+                10)
+           (is= (-> (create-game)
+                    (update-max-mana "p1" 5)
+                    (update-mana "p1" 0)
+                    (restore-mana "p1")
+                    (get-mana "p1"))
+                5))}
+  [state player-id]
+  (assoc-in state [:players player-id :mana] (get-max-mana state player-id)))
+
+(defn draw-card-to-hand
+  {:test (fn []
+           ;a card should appear in the hand
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (draw-card-to-hand "p1")
+                    (get-hand "p1")
+                    (first)
+                    (:name))
+                "Emil")
+           ;draw cards consecutively
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")
+                                          "Mio"]}])
+                    (draw-card-to-hand "p1")
+                    (draw-card-to-hand "p1")
+                    (get-hand "p1")
+                    (last)
+                    (:name))
+                "Mio")
+           ;the card should be removed from the deck
+           (is (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                   (draw-card-to-hand "p1")
+                   (get-deck "p1")
+                   (empty?)))
+           ;check hand size limit of 10 is maintained
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]
+                                   :hand [(create-card "Mio")
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"
+                                          "Mio"]}])
+                    (draw-card-to-hand "p1")
+                    (get-hand "p1")
+                    (count))
+                10))}
+  [state player-id]
+  (if (> (count (get-in state [:players player-id :deck])) 0)
+    (let [hand-size (count (get-hand state player-id))]
+      (let [card-id (:id (first (get-deck state player-id)))]
+        (if (< hand-size 10)
+          (-> state
+              (add-card-to-hand player-id (get-card state card-id))
+              (remove-card-from-deck player-id card-id))
+          ;burn card if over hand size limit
+          (remove-card-from-deck state player-id card-id))))
+    ;(error "Hand size limit reached")))
+    state))
+
+(defn fatigue-hero
+  {:test (fn []
+           (is= (-> (create-game)
+                    (fatigue-hero "p1")
+                    (get-in [:players "p1" :fatigue-level]))
+                1)
+           (is= (-> (create-game)
+                    (fatigue-hero "p1")
+                    (get-in [:players "p1" :hero :damage-taken]))
+                1)
+           (is= (-> (create-game)
+                    (fatigue-hero "p1")
+                    (fatigue-hero "p1")
+                    (get-in [:players "p1" :fatigue-level]))
+                2)
+           (is= (-> (create-game)
+                    (fatigue-hero "p1")
+                    (fatigue-hero "p1")
+                    (get-in [:players "p1" :hero :damage-taken]))
+                3)
+           ;only fatigues hero if deck is empty
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (fatigue-hero "p1")
+                    (get-in [:players "p1" :hero :damage-taken]))
+                0)
+           )}
+  [state player-id]
+  (if (= (count (get-in state [:players player-id :deck])) 0)
+    (let [new-fatigue-level (inc (get-in state [:players player-id :fatigue-level]))]
+      (-> state
+          (assoc-in [:players player-id :fatigue-level] new-fatigue-level)
+          (update-in [:players player-id :hero :damage-taken] (fn [x] (+ x new-fatigue-level)))))
+    state))
+
+;doesn't work
+(defn deterministic-random
+  ([seed limit]
+   (let [gen (java.util.Random. seed)]
+     (fn [] (.nextInt gen limit)))))
+
+
