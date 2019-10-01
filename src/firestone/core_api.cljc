@@ -141,9 +141,12 @@
   {:test (fn []
            ;check that damage is taken
            (is= (-> (create-game [{:hand [(create-card "Kato" :id "k")]}])
-                    (do-battlecry-fn "p1" "p2" (create-card "Kato"))
-                    (get-in [:players "p2" :hero :damage-taken]))
-                4)
+                    (do-battlecry-fn "p2" (create-card "Kato"))
+                    (do-battlecry-fn "p1" (create-card "Kato"))
+                    (do-battlecry-fn "p1" (create-card "Kato"))
+                    (do-battlecry-fn "p1" (create-card "Kato"))
+                    (get-in [:players "p1" :hero :damage-taken]))
+                12)
            ;check that card is drawn
             (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}])
                     (do-battlecry-fn "p1" "p2" (create-card "Emil"))
@@ -151,14 +154,17 @@
                   (count))
              2)
            )}
-  [state player-id target-player-id card]
-  (let [name (:name (get-definition card))]
-    (cond (= name "Kato")
-          (update-in state [:players target-player-id :hero :damage-taken] (fn [damage-taken] (+ damage-taken 4)))
+  [state target-id card]
+  ((:battlecry (get-definition card)) state target-id))
+  ;(let [battlecry (:battlecry (get-definition card))]
+    ;(battlecry state target-id)))
+    ;(cond (= name "Kato")
+    ;
+    ;      (= name "Emil")
+    ;      ;state)))
+    ;        (draw-card state player-id))))
 
-          (= name "Emil")
-          ;tate)))
-            (draw-card state player-id))))
+(let [battlecry #(:battlecry (get-definition (create-card "Kato" :id "k")))])
 
 (defn play-minion-card
   {:test (fn []

@@ -1,6 +1,9 @@
 (ns firestone.definition.card
-  (:require [firestone.definitions :as definitions]))
-;[firestone.construct :refer [update-damage]]))
+  (:require [firestone.definitions :as definitions]
+            [firestone.definitions :refer [get-definition]]
+            [firestone.construct :refer [create-game
+                                         create-card]]
+            [firestone.core-api :refer [do-battlecry-fn]]))
 
 (def card-definitions
   {
@@ -29,7 +32,9 @@
     :type        :minion
     :properties  #{}
     :description "Battlecry: Deal 4 damage to the enemy hero."
-    :battlecry   (fn [x] (+ x 4))}
+    :battlecry   (fn [state target-player-id]
+                   (let [new-damage-taken (+ (get-in state [:players target-player-id :hero :damage-taken]) 4)]
+                     (assoc-in state [:players target-player-id :hero :damage-taken] new-damage-taken)))}
 
    "Emil"
    {:name        "Emil"
@@ -146,5 +151,9 @@
     :description   "Deal 3 damage to a character."}
 
    })
+
+(let [battlecry (fn [state target-player-id] (update-in state [:players target-player-id :hero :damage-taken] (fn [damage-taken] (+ damage-taken 4))))]
+   (->(create-game)
+      (battlecry "p2")))
 
 (definitions/add-definitions! card-definitions)
