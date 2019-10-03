@@ -778,6 +778,36 @@
           (update-in [:players player-id :hero :damage-taken] (fn [x] (+ x new-fatigue-level)))))
     state))
 
+(defn give-taunt
+  "Gives taunt to a minion card"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (give-taunt "m")
+                    (get-minion "m")
+                    (:properties))
+                #{"Taunt"}))}
+  [state id]
+  (update-minion state id :properties (fn [x] (conj x "Taunt"))))
+
+(defn remove-taunt
+  "Removes taunt from a minion card"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (remove-taunt "e")
+                    (get-minion "e")
+                    (:properties))
+                #{"Divine Shield"}))}
+  [state id]
+  (update-minion state id :properties (fn [x] (disj x "Taunt"))))
+
+(defn has-taunt?
+  "Checks if minion has taunt"
+  {:test (fn []
+           (is (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (has-taunt? "e"))))}
+  [state id]
+  (contains? (:properties (get-minion state id)) "Taunt"))
+
 ;doesn't work
 (defn deterministic-random
   ([seed limit]

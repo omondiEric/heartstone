@@ -2,7 +2,9 @@
   (:require [firestone.definitions :as definitions]
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [create-game
-                                         create-card]]
+                                         create-card
+                                         get-minion
+                                         update-minion]]
             [firestone.core-api :refer [do-battlecry-fn]]))
 
 (def card-definitions
@@ -14,6 +16,7 @@
     :health     2
     :mana-cost  1
     :properties #{}
+    :end-of-turn false
     :type       :minion}
 
    "Ronja"
@@ -22,6 +25,7 @@
     :health     2
     :mana-cost  2
     :properties #{}
+    :end-of-turn false
     :type       :minion}
 
    "Kato"
@@ -31,6 +35,7 @@
     :mana-cost   4
     :type        :minion
     :properties  #{}
+    :end-of-turn false
     :description "Battlecry: Deal 4 damage to the enemy hero."
     :battlecry   (fn [state target-player-id]
                    (let [new-damage-taken (+ (get-in state [:players target-player-id :hero :damage-taken]) 4)]
@@ -43,6 +48,7 @@
     :mana-cost   4
     :type        :minion
     :properties  #{}
+    :end-of-turn false
     :description "Battlecry: Draw a card."
     :battlecry   "draw card"}
 
@@ -53,6 +59,7 @@
     :mana-cost   4
     :type        :minion
     :properties  #{"Taunt"}
+    :end-of-turn false
     :set         :custom
     :description "Taunt."}
 
@@ -62,7 +69,8 @@
     :health      5
     :mana-cost   2
     :type        :minion
-    :properties  #{}
+    :properties  #{"NoAttack"}
+    :end-of-turn false
     :set         :custom
     :description "Can't Attack."}
 
@@ -73,6 +81,7 @@
     :mana-cost   5
     :type        :minion
     :properties  #{"Divine Shield"}
+    :end-of-turn false
     :set         :custom
     :description "Divine Shield."}
 
@@ -83,6 +92,12 @@
     :mana-cost   3
     :type        :minion
     :properties  #{}
+    :end-of-turn (fn [state]
+                     (update-in state [:players :minions :id]
+                                (fn [id]
+                                  (if (= (:name get-minion state id) "Pippi")
+                                  state
+                                  (update-minion state id :damage-taken (+ 1))))))
     :set         :custom
     :description "At the end of your turn deal 1 damage to all other minions."}
 
@@ -93,6 +108,7 @@
     :mana-cost   3
     :type        :minion
     :properties  #{}
+    :end-of-turn false
     :set         :custom
     :description "At the end of your turn give a random minion taunt."}
 
@@ -103,6 +119,7 @@
     :mana-cost   6
     :type        :minion
     :properties  #{}
+    :end-of-turn false
     :set         :custom
     :description "Deathrattle: Take control of a random enemy minion."}
 
@@ -113,6 +130,7 @@
     :mana-cost   1
     :type        :minion
     :properties  #{"Taunt", "Divine Shield"}
+    :end-of-turn false
     :set         :custom
     :description "Taunt. Divine Shield."}
 
@@ -123,6 +141,7 @@
     :mana-cost   2
     :type        :minion
     :properties  #{}
+    :end-of-turn false
     :set         :custom
     :description "Deathrattle: Summon Elisabeth."}
 
@@ -133,6 +152,7 @@
     :mana-cost   3
     :type        :minion
     :properties  #{}
+    :end-of-turn false
     :set         :custom
     :description "Whenever a minion takes damage, gain taunt."}
 

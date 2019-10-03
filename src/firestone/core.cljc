@@ -9,6 +9,7 @@
                                          create-hero
                                          create-minion
                                          draw-card-to-hand
+                                         has-taunt?
                                          get-heroes
                                          get-hero
                                          get-hand
@@ -117,12 +118,26 @@
            ; Should not be able to attack if you already attacked this turn
            (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m" :attacks-performed-this-turn 1)]}
                                      {:minions [(create-minion "Ronja" :id "r")]}])
+                       (valid-attack? "p1" "m" "r")))
+           ; Should be able to attack if target minion has taunt
+           (is (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                     {:minions [(create-minion "Jonatan" :id "j")]}])
+                       (valid-attack? "p1" "m" "j")))
+           ; Should not be able to attack if target minion does not have taunt, but other enemy minions do
+           (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                     {:minions [(create-minion "Ronja" :id "r") (create-minion "Elisabeth" :id "e")]}])
                        (valid-attack? "p1" "m" "r"))))}
   [state player-id attacker-id target-id]
   (let [attacker (get-minion state attacker-id)
         target (get-character state target-id)]
     (and attacker
          target
+         ; either the target has taunt
+         (or (has-taunt? state target-id)
+             ; or no targets have taunt
+             (is-not (->> (get-minions state target-id)
+                           (map :id)
+                           (has-taunt? state))))
          (= (:player-id-in-turn state) player-id)
          (< (:attacks-performed-this-turn attacker) 1)
          (not (sleepy? state attacker-id))
