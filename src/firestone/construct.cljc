@@ -2,7 +2,7 @@
   (:require [ysera.test :refer [is is-not is= error?]]
             [ysera.error :refer [error]]
             [firestone.definitions :refer [get-definition]]))
-            ;[firestone.definitions-loader]))
+;[firestone.definitions-loader]))
 ;[firestone.core :refer [get-battlecry-fn]]))
 
 
@@ -784,47 +784,31 @@
    (let [gen (java.util.Random. seed)]
      (fn [] (.nextInt gen limit)))))
 
-;Gives divine shield to a card
+;Gives divine shield to a minion
 (defn give-divine-shield
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
                     (give-divine-shield "k")
                     (get-minion "k")
-                    (:properties) ; When I test this line I get back an empty set, D.S not added
-                    (contains? "Divine Shield"))
-                "true"))}
+                    (:properties))
+                    ;(contains? "Divine Shield")) using this might be better when we have a large set
+                #{"Divine Shield"}))}
   [state minion-id]
+  (update-minion state minion-id :properties (fn [property-set]
+                                               (conj property-set "Divine Shield"))))
 
-  ;(def added-properties #{"divine Shield"})
-
-  (let [minion (get-minion state minion-id)
-        property-def (minion :properties)]
-    (def add-property #{"Divine Shield"})
-    (into property-def add-property)
-    ;(conj property-def "Divine Shield")
-    (update-in state [:minions minion-id :properties] property-def)))
-
-;(conj property-def "Divine Shield")))
-
-; (as-> state $
-;    (get-minion $ minion-id)
-;   (get-in $ [:minions minion-id :properties])
-;  (conj $ "Divine Shield")))
-
-;Remove divine shield from a card
+;Remove divine shield from a minion
 (defn remove-divine-shield
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k") {:properties #{"Divine Shield"}}]}])
                     (remove-divine-shield "k")
                     (get-minion "k")
-                    (:properties)
-                    (contains? "Divine Shield"))
-                "false"))}
+                    (:properties))
+                    ;(contains? "Divine Shield"))
+                #{}))}
   [state minion-id]
-  (let [minion (get-minion state minion-id)
-        property-set (minion :properties)]
-    (disj property-set "Divine Shield")
-    (update-in state [:minions minion-id :properties] property-set)))
+  (update-minion state minion-id :properties (fn [property-set]
+                                               (disj property-set "Divine Shield"))))
 
 
 
