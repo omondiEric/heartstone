@@ -790,9 +790,9 @@
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
                     (give-divine-shield "k")
                     (get-minion "k")
-                    (:properties))
-                    ;(contains? "Divine Shield")) using this might be better when we have a large set
-                #{"Divine Shield"}))}
+                    (:properties)
+                    (contains? "Divine Shield"))            ;using this might be better when we have a large set
+                true))}
   [state minion-id]
   (update-minion state minion-id :properties (fn [property-set]
                                                (conj property-set "Divine Shield"))))
@@ -803,13 +803,53 @@
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k") {:properties #{"Divine Shield"}}]}])
                     (remove-divine-shield "k")
                     (get-minion "k")
-                    (:properties))
-                    ;(contains? "Divine Shield"))
-                #{}))}
+                    (:properties)
+                    (contains? "Divine Shield"))
+                false))}
   [state minion-id]
   (update-minion state minion-id :properties (fn [property-set]
                                                (disj property-set "Divine Shield"))))
 
 
+;deal damage to a minion
+(defn deal-damage
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e" :health 5)]}])
+                    (deal-damage "e")
+                    (get-minion "e")
+                    (:health))
+                4)
+           (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
+                    (deal-damage "h1")
+                    (get-hero "h1")
+                    (:damage-taken))
+                1)
+           )}
+  ;Deal 1 damage to a specified minion or hero
+  [state id]
+  (as-> state $
+        ;when damaging minion
+        (or (some (fn [a] (when (= (:id a) id) a))
+                  (update-minion $ id :health (fn [current-health]
+                                                (- current-health 1))))
+            ;when damaging hero
+            (some (fn [b] (when (= (:id b) id) b))
+                  (update-in $
+                          [:players "p1" :hero id :damage-taken] (fn [old-damage]
+                                                                   (inc old-damage)))))))
+
+
+;(update-minion state minion-id :health (fn [current-health]
+;                                         (- current-health 1))))
+;Deal 1 damage to all minions
+;([state]
+;Gives a list of all minions in current state
+; (get-minions state))
+
+;Deal given damage amount to a character
+; ()
+
+;Deal given damage amount to all characters
+;  ())
 
 
