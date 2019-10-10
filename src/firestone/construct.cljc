@@ -87,6 +87,7 @@
                                                        :fatigue-level 0
                                                        :hero          {:name         "Carl"
                                                                        :id           "c"
+                                                                       :owner-id     "p1"
                                                                        :damage-taken 0
                                                                        :entity-type  :hero}}
                                                  "p2" {:id            "p2"
@@ -98,6 +99,7 @@
                                                        :fatigue-level 0
                                                        :hero          {:name         "Gustaf"
                                                                        :id           "h2"
+                                                                       :owner-id     "p2"
                                                                        :damage-taken 0
                                                                        :entity-type  :hero}}}
                  :counter                       1
@@ -118,8 +120,9 @@
                                                           :minions       []
                                                           :fatigue-level 0
                                                           :hero          (if (contains? hero :id)
-                                                                           hero
-                                                                           (assoc hero :id (str "h" (inc index))))}))
+                                                                           (assoc hero :owner-id (str "p" (inc index)))
+                                                                           (assoc hero :id (str "h" (inc index))
+                                                                                       :owner-id (str "p" (inc index))))}))
                                           (reduce (fn [a v]
                                                     (assoc a (:id v) v))
                                                   {}))
@@ -348,19 +351,6 @@
     (update-in state [:players player-id :mana] fn-or-value)
     (assoc-in state [:players player-id :mana] fn-or-value)))
 
-;(defn update-damage
-;{:test (fn []
-;     (is= (-> (create-empty-state)
-;               (update-damage "p1" 4)
-;                (get-in [:players "p1" :hero :damage-taken]))
-;             4))}
-
-;[state player-id fn-or-value]
-;(if (fn? fn-or-value)
-
-;    (update-in state [:players player-id :hero :damage-taken] (get-battlecry-fn))
-;   (assoc-in state [:players player-id :hero :damage-taken] (get-battlecry-fn)))
-
 (defn get-max-mana
   {:test (fn []
            (is= (-> (create-empty-state)
@@ -426,6 +416,7 @@
                                                        :fatigue-level 0
                                                        :hero          {:name         "Carl"
                                                                        :id           "h1"
+                                                                       :owner-id     "p1"
                                                                        :entity-type  :hero
                                                                        :damage-taken 0}}
                                                  "p2" {:id            "p2"
@@ -437,6 +428,7 @@
                                                        :fatigue-level 0
                                                        :hero          {:name         "Carl"
                                                                        :id           "h2"
+                                                                       :owner-id     "p2"
                                                                        :entity-type  :hero
                                                                        :damage-taken 0}}}
                  :counter                       5
@@ -846,6 +838,13 @@
       (some (fn [h] (when (= (:id h) id) h))
             (get-heroes state))))
 
+(defn minion?
+  [character]
+  (= (:entity-type character) :minion))
+
+(defn ida-present
+  [state]
+  )
 
 ;deal damage to a minion
 (defn deal-damage
@@ -876,33 +875,27 @@
                     (:damage-taken))
                 0)
 
-           (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
+           (is= (-> (create-game [{:hero (create-hero "Carl")}])
                     (deal-damage "h1")
                     (get-hero "h1")
                     (:damage-taken))
                 1)
            )}
-  ;Deal 1 damage to a specified minion or hero
   ([state character-id]
-   (as-> state $
-         ;Is the given character a minion or hero?
-         (if-not (= (some #{(get-character $ character-id)} (get-minions $)) nil)
-           ;if character is minion and has divine shield, it is removed without being damaged
-           (if-not (has-divine-shield $ character-id)
-             (update-minion $ character-id :damage-taken (fn [x] (+ x 1)))
-             (remove-divine-shield $ character-id))
-           ;when character is hero //currently giving null pointer
-           (update-in $ [:hero character-id :damage-taken] (fn [x] (+ x 1))))))
-
+   (deal-damage state character-id 1))
   ;Deal specified amount of damage to the given character
   ([state character-id damage-amount]
-   (as-> state $
-         (if-not (= (some #{(get-character $ character-id)} (get-minions $)) nil)
-           ;what to do when test is false, i.e found a minion
-           (if-not (has-divine-shield $ character-id)
-             (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
-             (remove-divine-shield $ character-id))
-           (update-in $ [:hero character-id :damage-taken] (fn [x] (+ x damage-amount)))))))
+   (let [character (get-character state character-id)]
+     (as-> state $
+           (if (minion? character)
+             (if-not (has-divine-shield $ character-id)
+               (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
+               (remove-divine-shield $ character-id))
+             ;when character is hero
+             (update-in $ [:players (:owner-id character) :hero :damage-taken] (fn [x] (+ x damage-amount))))))))
+
+
+
 
 ;TODO "listen" in deal damage ?????
 ;TODO check if minion has divine shield before damaging. If yes remove divine shield - done
