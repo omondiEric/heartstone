@@ -3,7 +3,7 @@
             [ysera.error :refer [error]]
             [firestone.definitions :refer [get-definition]]))
 ;[firestone.definitions-loader]))
-;[firestone.core :refer [get-battlecry-fn]]))
+;[firestone.core :refer [get-character]]))
 
 
 (defn create-hero
@@ -784,6 +784,8 @@
    (let [gen (java.util.Random. seed)]
      (fn [] (.nextInt gen limit)))))
 
+;Returns true if given minion has divine shield
+
 ;Gives divine shield to a minion
 (defn give-divine-shield
   {:test (fn []
@@ -809,16 +811,71 @@
   [state minion-id]
   (update-minion state minion-id :properties (fn [property-set]
                                                (disj property-set "Divine Shield"))))
+(defn has-divine-shield
+  {:test (fn []
+           ;return true when minion has divine shield
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                    (give-divine-shield "k")
+                    (has-divine-shield "k"))
+                true)
+           ;return false when minion has no divine shield
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                    (has-divine-shield "k"))
+                false))}
+
+  [state minion-id]
+  (-> state
+      (get-minion minion-id)
+      (:properties)
+      (contains? "Divine Shield")))
+
+(defn get-character
+  "Returns the character with the given id from the state."
+  {:test (fn []
+           (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
+                    (get-character "h1")
+                    (:name))
+                "Carl")
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (get-character "m")
+                    (:name))
+                "Mio"))}
+  [state id]
+  (or (some (fn [m] (when (= (:id m) id) m))
+            (get-minions state))
+      (some (fn [h] (when (= (:id h) id) h))
+            (get-heroes state))))
 
 
 ;deal damage to a minion
 (defn deal-damage
   {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e" :health 5)]}])
+           ;test when damage amount is not provided
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
                     (deal-damage "e")
                     (get-minion "e")
-                    (:health))
+                    (:damage-taken))
+                1)
+           ;test when damage amount is provided
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (deal-damage "e" 3)
+                    (get-minion "e")
+                    (:damage-taken))
+                3)
+           ;test to see if amount of damage taken is updated well
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e" :damage-taken 1)]}])
+                    (deal-damage "e" 3)
+                    (get-minion "e")
+                    (:damage-taken))
                 4)
+           ;test that minion is not damaged when it has divine shield, AND that the shield is removed
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (give-divine-shield "e")
+                    (deal-damage "e")
+                    (get-minion "e")
+                    (:damage-taken))
+                0)
+
            (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
                     (deal-damage "h1")
                     (get-hero "h1")
@@ -826,30 +883,34 @@
                 1)
            )}
   ;Deal 1 damage to a specified minion or hero
-  [state id]
-  (as-> state $
-        ;when damaging minion
-        (or (some (fn [a] (when (= (:id a) id) a))
-                  (update-minion $ id :health (fn [current-health]
-                                                (- current-health 1))))
-            ;when damaging hero
-            (some (fn [b] (when (= (:id b) id) b))
-                  (update-in $
-                          [:players "p1" :hero id :damage-taken] (fn [old-damage]
-                                                                   (inc old-damage)))))))
+  ([state character-id]
+   (as-> state $
+         ;Is the given character a minion or hero?
+         (if-not (= (some #{(get-character $ character-id)} (get-minions $)) nil)
+           ;if character is minion and has divine shield, it is removed without being damaged
+           (if-not (has-divine-shield $ character-id)
+             (update-minion $ character-id :damage-taken (fn [x] (+ x 1)))
+             (remove-divine-shield $ character-id))
+           ;when character is hero //currently giving null pointer
+           (update-in $ [:hero character-id :damage-taken] (fn [x] (+ x 1))))))
+
+  ;Deal specified amount of damage to the given character
+  ([state character-id damage-amount]
+   (as-> state $
+         (if-not (= (some #{(get-character $ character-id)} (get-minions $)) nil)
+           ;what to do when test is false, i.e found a minion
+           (if-not (has-divine-shield $ character-id)
+             (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
+             (remove-divine-shield $ character-id))
+           (update-in $ [:hero character-id :damage-taken] (fn [x] (+ x damage-amount)))))))
+
+;TODO "listen" in deal damage ?????
+;TODO check if minion has divine shield before damaging. If yes remove divine shield - done
+;TODO check if Ida is on board and give her taunt - just for the minion case - get-minion returns nill when false
+
+;POI: Minions have both damage-taken and health fields. should deal damage update both of them,
+;or do we take care of this elsewhere.
 
 
-;(update-minion state minion-id :health (fn [current-health]
-;                                         (- current-health 1))))
-;Deal 1 damage to all minions
-;([state]
-;Gives a list of all minions in current state
-; (get-minions state))
-
-;Deal given damage amount to a character
-; ()
-
-;Deal given damage amount to all characters
-;  ())
 
 
