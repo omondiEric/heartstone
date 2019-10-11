@@ -842,9 +842,15 @@
   [character]
   (= (:entity-type character) :minion))
 
-(defn ida-present
+(defn ida-present?
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Ida" "i")]}])
+                    (ida-present?))
+                true))}
   [state]
-  )
+  (->> (get-minions state)
+       (filter (fn [m] (= (:id m) "i")))
+       (first)))
 
 ;deal damage to a minion
 (defn deal-damage
