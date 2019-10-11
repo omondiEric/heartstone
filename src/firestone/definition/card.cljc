@@ -4,7 +4,12 @@
             [firestone.construct :refer [create-game
                                          create-card
                                          get-minion
-                                         update-minion]]
+                                         update-minion
+                                         deal-damage
+                                         deal-damage-to-other-minions
+                                         deal-damage-to-all-characters
+                                         get-random-minion
+                                         give-taunt]]
             [firestone.core-api :refer [do-battlecry-fn]]))
 
 (def card-definitions
@@ -92,12 +97,9 @@
     :mana-cost   3
     :type        :minion
     :properties  #{}
-    :end-of-turn (fn [state]
-                     (update-in state [:players :minions :id]
-                                (fn [id]
-                                  (if (= (:name get-minion state id) "Pippi")
-                                  state
-                                  (update-minion state id :damage-taken (+ 1))))))
+    :end-of-turn (fn [state id]
+                   deal-damage-to-other-minions state id 1)
+
     :set         :custom
     :description "At the end of your turn deal 1 damage to all other minions."}
 
@@ -108,7 +110,8 @@
     :mana-cost   3
     :type        :minion
     :properties  #{}
-    :end-of-turn false
+    :end-of-turn (fn [state]
+                   give-taunt state (:id (get-random-minion state)))
     :set         :custom
     :description "At the end of your turn give a random minion taunt."}
 
@@ -153,6 +156,12 @@
     :type        :minion
     :properties  #{}
     :end-of-turn false
+    :custom-timing (fn [state]
+                     (update-in state [:players :minions :id]
+                                (fn [id]
+                                  (if (= (:name get-minion state id) "Ida")
+                                    (give-taunt state id)
+                                    state))))
     :set         :custom
     :description "Whenever a minion takes damage, gain taunt."}
 
@@ -161,6 +170,8 @@
     :mana-cost    2
     :type         :spell
     :set          :custom
+    :spell-fn     (fn [state]
+                    (deal-damage-to-all-characters state 2))
     :description  "Deal 2 damage to all characters."}
 
    "Radar Raid"
@@ -168,6 +179,8 @@
     :mana-cost    2
     :type         :spell
     :set          :custom
+    :spell-fn     (fn [state character-id]
+                    (deal-damage state character-id 3))
     :description   "Deal 3 damage to a character."}
 
    })

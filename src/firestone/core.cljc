@@ -19,6 +19,7 @@
                                          remove-card-from-deck
                                          remove-minion
                                          remove-minions
+                                         remove-taunt
                                          update-minion]]))
 
 (defn get-character
@@ -76,9 +77,8 @@
                     (get-attack "m"))
                 1))}
   [state id]
-  (let [minion (get-minion state id)
-        definition (get-definition (:name minion))]
-    (:attack definition)))
+  (let [minion (get-minion state id)]
+    (:attack minion)))
 
 (defn sleepy?
   "Checks if the minion with given id is sleepy."
@@ -91,6 +91,7 @@
   [state id]
   (seq-contains? (:minion-ids-summoned-this-turn state) id))
 
+; currently does not work D:
 (defn valid-attack?
   "Checks if the attack is valid"
   {:test (fn []
@@ -119,13 +120,18 @@
            (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m" :attacks-performed-this-turn 1)]}
                                      {:minions [(create-minion "Ronja" :id "r")]}])
                        (valid-attack? "p1" "m" "r")))
+           ; Should not be able to attack if you have "NoAttack" property
+           (is-not (-> (create-game [{:minions [(create-minion "Alfred" :id "a")]}
+                                 {:minions [(create-minion "Ronja" :id "r")]}])
+                   (valid-attack? "p1" "a" "r")))
            ; Should be able to attack if target minion has taunt
            (is (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
                                      {:minions [(create-minion "Jonatan" :id "j")]}])
                        (valid-attack? "p1" "m" "j")))
            ; Should not be able to attack if target minion does not have taunt, but other enemy minions do
            (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
-                                     {:minions [(create-minion "Ronja" :id "r") (create-minion "Elisabeth" :id "e")]}])
+                                     {:minions [(create-minion "Ronja" :id "r")
+                                                (create-minion "Elisabeth" :id "e")]}])
                        (valid-attack? "p1" "m" "r"))))}
   [state player-id attacker-id target-id]
   (let [attacker (get-minion state attacker-id)
@@ -135,9 +141,12 @@
          ; either the target has taunt
          (or (has-taunt? state target-id)
              ; or no targets have taunt
-             (is-not (->> (get-minions state target-id)
-                           (map :id)
-                           (has-taunt? state))))
+             (nil? (some #{:true}
+                         (->> (get-minions state target-id)
+                           (map (fn [m]
+                                  (has-taunt? state (:id m))))))))
+         ; check for "NoAttack" property
+         (not (contains? (:properties attacker) "NoAttack"))
          (= (:player-id-in-turn state) player-id)
          (< (:attacks-performed-this-turn attacker) 1)
          (not (sleepy? state attacker-id))
@@ -171,6 +180,7 @@
         target-attack-val (get-attack state target-id)]
     (if (valid-attack? state player-id attacker-id target-id) (-> (update-minion state attacker-id :damage-taken (+ target-attack-val))
                                                                   (update-minion target-id :damage-taken (+ attacker-attack-val))
+                                                                  (remove-taunt target-id)
                                                                   (update-minion attacker-id :attacks-performed-this-turn inc)))))
 (defn remove-dead-minions
   "Removes dead minions at a given state and returns all living minions"

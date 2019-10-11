@@ -31,6 +31,14 @@
                                          remove-card-from-hand
                                          update-mana]]))
 
+; call all the corresponding functions of all your minions at the end of your turn, return new state
+(defn end-turn-card-functions
+  {:test (fn []
+           )}
+  [state player-id]
+  (let [minions (get-minions state player-id)]
+    (reduce
+      (fn [minion] ((:end-of-turn minion) state)) minions)))
 
 (defn end-turn
   {:test (fn []
@@ -68,6 +76,7 @@
 
   (let [other-player (get-other-player-id player-id)]
     (-> state
+        (end-turn-card-functions player-id)
         (change-player-in-turn)
         (inc-max-mana other-player)
         (restore-mana other-player))))
@@ -198,3 +207,19 @@
         (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
         (do-battlecry-fn player-id other-player-id card)
         )))
+
+(defn play-spell-card
+  "Plays a spell card, removes it from hand"
+  {:test (fn []
+           )}
+  ; Plays spell card (not reliant on any character)
+  ([state player-id card-id]
+  ; call the spell card's function
+  (let [card (get-card state card-id)]
+    (:spell-fn (get-definition card)) state)
+    (remove-card-from-hand state player-id card-id))
+  ; Plays spell card on specific character
+  ([state player-id card-id character-id]
+  (let [card (get-card state card-id)]
+    (:spell-fn (get-definition card)) state character-id)
+    (remove-card-from-hand state player-id card-id)))
