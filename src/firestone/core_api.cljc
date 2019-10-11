@@ -2,6 +2,7 @@
   (:require [ysera.test :refer [is is= error?]]
             [ysera.error :refer [error]]
             [firestone.definitions :refer [get-definition]]
+            [firestone.core :refer [do-battlecry]]
             [firestone.construct :refer [add-card-to-hand
                                          add-minion-to-board
                                          change-player-in-turn
@@ -136,36 +137,15 @@
       (fatigue-hero player-id)
       (draw-card-to-hand player-id)))
 
-(defn do-battlecry-fn
-  "Returns the battlecry function of a minion or nil"
-  {:test (fn []
-           ;check that damage is taken for Kato
-           (is= (-> (create-game [{:hand [(create-card "Kato" :id "k")]}])
-                    (do-battlecry-fn "p1" (create-card "Kato"))
-                    (do-battlecry-fn "p2" (create-card "Kato"))
-                    (do-battlecry-fn "p2" (create-card "Kato"))
-                    (do-battlecry-fn "p2" (create-card "Kato"))
-                    (get-in [:players "p1" :hero :damage-taken]))
-                12)
-           ;check that card is drawn
-           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}])
-                    (do-battlecry-fn "p1" (create-card "Emil"))
-                    (get-hand "p1")
-                    (count))
-                2)
-           )}
-  [state player-id card]
-  ((:battlecry (get-definition card)) state player-id))
-
 (defn play-minion-card
   {:test (fn []
            ; A minion should appear at the board
-           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
-                    (play-minion-card "p1" "e" 0)
+           (is= (-> (create-game [{:hand [(create-card "Ronja" :id "r")]}])
+                    (play-minion-card "p1" "r" 0)
                     (get-minions "p1")
                     (first)
                     (:name))
-                "Emil")
+                "Ronja")
            ; The card should be erased from hand
            (is (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
                    (play-minion-card "p1" "e" 0)
@@ -186,5 +166,5 @@
         (remove-card-from-hand player-id card-id)
         (add-minion-to-board player-id (create-minion (:name card)) position)
         (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
-        (do-battlecry-fn player-id card)
+        (do-battlecry player-id card)
         )))

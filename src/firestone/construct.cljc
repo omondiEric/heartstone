@@ -1,7 +1,7 @@
 (ns firestone.construct
   (:require [ysera.test :refer [is is-not is= error?]]
             [ysera.error :refer [error]]
-            [ysera.random :refer [random-nth]]
+            [ysera.random :as random]
             [firestone.definitions :refer [get-definition]]))
 ;[firestone.definitions-loader]))
 ;[firestone.core :refer [get-battlecry-fn]]))
@@ -586,9 +586,12 @@
                       (remove-minions $ "m1" "m4")
                       (get-minions $)
                       (map :id $))
-                ["m2" "m3"]))}
+                ["m2" "m3"])
+           )}
   [state & ids]
-  (reduce remove-minion state ids))
+  (reduce remove-minion state ids)
+  )
+
 
 (defn switch-minion-side
   "Switches a minion from one player to the other"
@@ -605,16 +608,18 @@
                                              (create-minion "Mio" :id "m2")]}
                                   {:minions [(create-minion "Mio" :id "m3")
                                              (create-minion "Mio" :id "m4")]}])
-                    (switch-minion-side "m1")
-                    (get-minions "p2")
+                    (switch-minion-side "m4")
+                    (get-minions "p1")
                     (count))
                 3)
            )}
-  [state id]
-  (let [minion (get-minion state id)
+  [state minion-id]
+  (let [minion (get-minion state minion-id)
         player-id (get-other-player-id (minion :owner-id))]
-    (-> state (add-minion-to-board player-id minion 0)
-        (remove-minion id))))
+    (-> state
+        (remove-minion minion-id)
+        (add-minion-to-board player-id minion 0))))
+
 
 (defn get-cards
   ([state]
@@ -818,58 +823,54 @@
           (update-in [:players player-id :hero :damage-taken] (fn [x] (+ x new-fatigue-level)))))
     state))
 
-(defn get-random-element-from-collection
-  {:test (fn []
-           (is= (-> (get-random-element-from-collection 0 '(1 2 3))
-                    (last))
-                1)
-           )}
-  [seed collection]
-  (random-nth seed collection)
-  )
+(defn random-nth
+  [state coll]
+  (let [[new-seed random-element] (random/random-nth (:seed state) coll)]
+    [(assoc state :seed new-seed) random-element]))
 
 (defn get-random-minion
   {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m1")
-                                             (create-minion "Mio" :id "m2")
-                                             (create-minion "Emil" :id "e1")
-                                             (create-minion "Emil" :id "e2")]}
-                                  {:minions [(create-minion "Mio" :id "m3")
-                                             (create-minion "Mio" :id "m4")
-                                             (create-minion "Emil" :id "e3")
-                                             (create-minion "Emil" :id "e4")]}])
-                    (get-random-minion)
-                    (last)
-                    (:id))
-                "m1")
+           ;get a random minion from all
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")
+                                          (create-minion "Mio" :id "m2")
+                                          (create-minion "Emil" :id "e1")
+                                          (create-minion "Emil" :id "e2")]}
+                               {:minions [(create-minion "Mio" :id "m3")
+                                          (create-minion "Mio" :id "m4")
+                                          (create-minion "Emil" :id "e3")
+                                          (create-minion "Emil" :id "e4")]}]) $
+                 (get-random-minion $)
+                 (do (is= (:id (last $)) "m1")
+                     (is (not= (:seed (first $)) 0))))
+           ;get a random minion from specific player
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")
+                                          (create-minion "Mio" :id "m2")
+                                          (create-minion "Emil" :id "e1")
+                                          (create-minion "Emil" :id "e2")]}
+                               {:minions [(create-minion "Mio" :id "m3")
+                                          (create-minion "Mio" :id "m4")
+                                          (create-minion "Emil" :id "e3")
+                                          (create-minion "Emil" :id "e4")]}]) $
+                 (get-random-minion $ "p1")
+                 (do (is= (:id (last $)) "m1")
+                     (is (not= (:seed (first $)) 0))))
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")
+                                          (create-minion "Mio" :id "m2")
+                                          (create-minion "Emil" :id "e1")
+                                          (create-minion "Emil" :id "e2")]}
+                               {:minions [(create-minion "Mio" :id "m3")
+                                          (create-minion "Mio" :id "m4")
+                                          (create-minion "Emil" :id "e3")
+                                          (create-minion "Emil" :id "e4")]}]) $
+                 (get-random-minion $ "p2")
+                 (do (is= (:id (last $)) "m3")
+                     (is (not= (:seed (first $)) 0))))
            )}
-  [state]
-  (let [minions (concat (get-minions state "p1") (get-minion state "p2"))]
-    (get-random-element-from-collection (state :seed) minions)))
+  ([state]
+   (->> (get-minions state)
+        (random-nth state)))
+  ([state player-id]
+   (->> (get-minions state player-id)
+        (random-nth state))))
 
-(defn get-random-player-minion
-  {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m1")
-                                             (create-minion "Mio" :id "m2")
-                                             (create-minion "Emil" :id "e1")
-                                             (create-minion "Emil" :id "e2")]}])
-                    (get-random-player-minion "p1")
-                    (last)
-                    (:id))
-                "m1")
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m1")
-                                             (create-minion "Mio" :id "m2")
-                                             (create-minion "Emil" :id "e1")
-                                             (create-minion "Emil" :id "e2")]}
-                                  {:minions [(create-minion "Mio" :id "m3")
-                                             (create-minion "Mio" :id "m4")
-                                             (create-minion "Emil" :id "e3")
-                                             (create-minion "Emil" :id "e4")]}])
-                    (get-random-player-minion "p2")
-                    (last)
-                    (:id))
-                "m3")
-           )}
-  [state player-id]
-  (let [friendly-minions (get-minions state player-id)]
-    (get-random-element-from-collection (state :seed) friendly-minions)))
+

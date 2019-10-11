@@ -3,9 +3,14 @@
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [create-game
                                          create-card
-                                         get-other-player-id]]
-            [firestone.core-api :refer [do-battlecry-fn
-                                        draw-card]]))
+                                         create-minion
+                                         replace-minion
+                                         get-minion
+                                         get-random-minion
+                                         get-other-player-id
+                                         switch-minion-side
+                                         update-seed]]
+            [firestone.core-api :refer [draw-card]]))
 
 (def card-definitions
   {
@@ -108,7 +113,12 @@
     :type        :minion
     :properties  #{}
     :set         :custom
-    :description "Deathrattle: Take control of a random enemy minion."}
+    :description "Deathrattle: Take control of a random enemy minion."
+    :deathrattle (fn [state minion-id]
+                   (let [random-result (get-random-minion state (get-other-player-id (:owner-id (get-minion state minion-id))))]
+                     (-> state
+                         (switch-minion-side (:id (last random-result)))
+                         (update-seed (first random-result)))))}
 
    "Elisabeth"
    {:name        "Elisabeth"
@@ -128,7 +138,9 @@
     :type        :minion
     :properties  #{}
     :set         :custom
-    :description "Deathrattle: Summon Elisabeth."}
+    :description "Deathrattle: Summon Elisabeth."
+    :deathrattle (fn [state minion-id]
+                   (replace-minion state (create-minion "Elisabeth" :id minion-id)))}
 
    "Ida"
    {:name        "Ida"
@@ -141,20 +153,22 @@
     :description "Whenever a minion takes damage, gain taunt."}
 
    "Insect Swarm"
-   {:name         "Insect Swarm"
-    :mana-cost    2
-    :type         :spell
-    :set          :custom
-    :description  "Deal 2 damage to all characters."}
+   {:name        "Insect Swarm"
+    :mana-cost   2
+    :type        :spell
+    :set         :custom
+    :description "Deal 2 damage to all characters."}
 
    "Radar Raid"
-   {:name         "Radar Raid"
-    :mana-cost    2
-    :type         :spell
-    :set          :custom
-    :description   "Deal 3 damage to a character."}
+   {:name        "Radar Raid"
+    :mana-cost   2
+    :type        :spell
+    :set         :custom
+    :description "Deal 3 damage to a character."}
 
    })
 
 
 (definitions/add-definitions! card-definitions)
+
+
