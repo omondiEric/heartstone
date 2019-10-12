@@ -1,6 +1,7 @@
 (ns firestone.construct
   (:require [ysera.test :refer [is is-not is= error?]]
             [ysera.error :refer [error]]
+            [ysera.random :as random]
             [firestone.definitions :refer [get-definition]]))
 ;[firestone.definitions-loader]))
 ;[firestone.core :refer [get-character]]))
@@ -103,6 +104,7 @@
                                                                        :damage-taken 0
                                                                        :entity-type  :hero}}}
                  :counter                       1
+                 :seed                          0
                  :minion-ids-summoned-this-turn []}))}
   ([heroes]
    ; Creates Carl heroes if heroes are missing.
@@ -127,6 +129,7 @@
                                                     (assoc a (:id v) v))
                                                   {}))
       :counter                       1
+      :seed                          0
       :minion-ids-summoned-this-turn []}))
   ([]
    (create-empty-state [])))
@@ -432,6 +435,7 @@
                                                                        :entity-type  :hero
                                                                        :damage-taken 0}}}
                  :counter                       5
+                 :seed                          0
                  :minion-ids-summoned-this-turn []}))}
   ([data & kvs]
    (let [players-data (map-indexed (fn [index player-data]
@@ -770,13 +774,59 @@
           (update-in [:players player-id :hero :damage-taken] (fn [x] (+ x new-fatigue-level)))))
     state))
 
-;doesn't work
-(defn deterministic-random
-  ([seed limit]
-   (let [gen (java.util.Random. seed)]
-     (fn [] (.nextInt gen limit)))))
 
-;Returns true if given minion has divine shield
+(defn random-nth
+  [state coll]
+  (let [[new-seed random-element] (random/random-nth (:seed state) coll)]
+    [(assoc state :seed new-seed) random-element]))
+
+(defn get-random-minion
+  {:test (fn []
+           ;get a random minion from all
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")
+                                          (create-minion "Mio" :id "m2")
+                                          (create-minion "Emil" :id "e1")
+                                          (create-minion "Emil" :id "e2")]}
+                               {:minions [(create-minion "Mio" :id "m3")
+                                          (create-minion "Mio" :id "m4")
+                                          (create-minion "Emil" :id "e3")
+                                          (create-minion "Emil" :id "e4")]}]) $
+                 (get-random-minion $)
+                 (do (is= (:id (last $)) "m1")
+                     (is (not= (:seed (first $)) 0))))
+           ;get a random minion from specific player
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")
+                                          (create-minion "Mio" :id "m2")
+                                          (create-minion "Emil" :id "e1")
+                                          (create-minion "Emil" :id "e2")]}
+                               {:minions [(create-minion "Mio" :id "m3")
+                                          (create-minion "Mio" :id "m4")
+                                          (create-minion "Emil" :id "e3")
+                                          (create-minion "Emil" :id "e4")]}]) $
+                 (get-random-minion $ "p1")
+                 (do (is= (:id (last $)) "m1")
+                     (is (not= (:seed (first $)) 0))))
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")
+                                          (create-minion "Mio" :id "m2")
+                                          (create-minion "Emil" :id "e1")
+                                          (create-minion "Emil" :id "e2")]}
+                               {:minions [(create-minion "Mio" :id "m3")
+                                          (create-minion "Mio" :id "m4")
+                                          (create-minion "Emil" :id "e3")
+                                          (create-minion "Emil" :id "e4")]}]) $
+                 (get-random-minion $ "p2")
+                 (do (is= (:id (last $)) "m3")
+                     (is (not= (:seed (first $)) 0))))
+           )}
+  ([state]
+   (->> (get-minions state)
+        (random-nth state)))
+  ([state player-id]
+   (->> (get-minions state player-id)
+        (random-nth state))))
+
+
+
 
 ;Gives divine shield to a minion
 (defn give-divine-shield
@@ -785,7 +835,7 @@
                     (give-divine-shield "k")
                     (get-minion "k")
                     (:properties)
-                    (contains? "Divine Shield"))            ;using this might be better when we have a large set
+                    (contains? "Divine Shield"))
                 true))}
   [state minion-id]
   (update-minion state minion-id :properties (fn [property-set]
@@ -895,7 +945,9 @@
      (as-> state $
            (if (minion? character)
              (if-not (has-divine-shield $ character-id)
-               (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
+              ; (do
+                 (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
+                 ;(ida-present? $))
                ;TODO add ida power here - check ida using ida-present?
                (remove-divine-shield $ character-id))
              ;when character is hero
@@ -915,15 +967,17 @@
   (if (= (:name (get-definition hero)) "Carl")
     (let [hero-power (:hero-power (get-definition hero))
           power (:power-fn (get-definition hero-power))]
-      (power state player-minion-id)
-      state)))
+      (power state player-minion-id))
+    (let [hero-power (:hero-power (get-definition hero))
+          power (:power-fn (get-definition hero-power))]
+      (power state player-minion-id))))
+     ; state)))
 ;Strengthen
 ;([state hero player-id]
 ; (if (= (:name (get-definition hero)) "Gustaf")
 ;   (let [hero-power (:hero-power (get-definition hero))
 ;         power (:power-fn (get-definition hero-power))]
-;     (power state player-id)
-;     state))))
+;     (power state player-id)))))
 
 
 
