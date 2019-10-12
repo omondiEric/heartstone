@@ -7,7 +7,8 @@
                                          update-minion
                                          deal-damage
                                          deal-damage-to-other-minions
-                                         deal-damage-to-all-characters
+                                         deal-damage-to-all-minions
+                                         deal-damage-to-all-heroes
                                          get-random-minion
                                          give-taunt]]
             [firestone.core-api :refer [do-battlecry-fn]]))
@@ -156,12 +157,8 @@
     :type        :minion
     :properties  #{}
     :end-of-turn false
-    :custom-timing (fn [state]
-                     (update-in state [:players :minions :id]
-                                (fn [id]
-                                  (if (= (:name get-minion state id) "Ida")
-                                    (give-taunt state id)
-                                    state))))
+    :custom-timing (fn [state id]
+                     (give-taunt state id))
     :set         :custom
     :description "Whenever a minion takes damage, gain taunt."}
 
@@ -171,7 +168,8 @@
     :type         :spell
     :set          :custom
     :spell-fn     (fn [state]
-                    (deal-damage-to-all-characters state 2))
+                    (deal-damage-to-all-heroes state 2)
+                    (deal-damage-to-all-minions state 2))
     :description  "Deal 2 damage to all characters."}
 
    "Radar Raid"

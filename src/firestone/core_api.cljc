@@ -17,6 +17,7 @@
                                          get-hand
                                          get-mana
                                          get-max-mana
+                                         get-minion
                                          get-minions
                                          get-mana
                                          get-mana-cost
@@ -157,21 +158,21 @@
                     (get-in [:players "p1" :hero :damage-taken]))
                 12)
            ;check that card is drawn
-            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}])
                     (do-battlecry-fn "p1" "p2" (create-card "Emil"))
-                   (get-hand "p1")
-                  (count))
-             2)
+                    (get-hand "p1")
+                    (count))
+                2)
            )}
   [state target-id card]
   ((:battlecry (get-definition card)) state target-id))
-  ;(let [battlecry (:battlecry (get-definition card))]
-    ;(battlecry state target-id)))
-    ;(cond (= name "Kato")
-    ;
-    ;      (= name "Emil")
-    ;      ;state)))
-    ;        (draw-card state player-id))))
+;(let [battlecry (:battlecry (get-definition card))]
+;(battlecry state target-id)))
+;(cond (= name "Kato")
+;
+;      (= name "Emil")
+;      ;state)))
+;        (draw-card state player-id))))
 
 (let [battlecry #(:battlecry (get-definition (create-card "Kato" :id "k")))])
 
@@ -190,10 +191,10 @@
                    (get-hand "p1")
                    (empty?)))
            ;
-           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck[(create-card "Mio")]}])
-                   (play-minion-card "p1" "e" 0)
-                   (get-hand "p1")
-                   (count))
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio")]}])
+                    (play-minion-card "p1" "e" 0)
+                    (get-hand "p1")
+                    (count))
                 1))}
   [state player-id card-id position]
   ;check if player has less than 7 minions on the board
@@ -211,15 +212,41 @@
 (defn play-spell-card
   "Plays a spell card, removes it from hand"
   {:test (fn []
+           ; Testing Insect Swarm
+
+           ; Testing Radar Raid
+           (is= (as-> (create-game [{:hand [(create-card "Radar Raid" :id "r")] :deck [(create-card "Mio" :id "m")]}
+                                  {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}]) $
+                      ((:spell-fn (get-definition (get-card $ "r"))) $ "a") $
+                      ;(play-spell-card "p1" "r" "a")
+                      (get-minion $ "a")
+                      (:damage-taken))
+                3)
+           ; The card should be erased from hand
+           ;(is (-> (create-game [{:hand [(create-card "Radar Raid" :id "r")
+           ;                              (create-card "Emil" :id "e")]}])
+           ;        (play-spell-card "p1" "r" "e")
+           ;        (get-hand "p1")
+           ;        (empty?)))
+           ;;
+           ;(is= (-> (create-game [{:hand [(create-card "Radar Raid" :id "r")
+           ;                               (create-card "Insect Swarm" :id "i")
+           ;                               (create-card "Emil" :id "e")]}])
+           ;         (play-spell-card "p1" "r" "e")
+           ;         (get-hand "p1")
+           ;         (count))
+           ;     1)
            )}
   ; Plays spell card (not reliant on any character)
-  ([state player-id card-id]
-  ; call the spell card's function
-  (let [card (get-card state card-id)]
-    (:spell-fn (get-definition card)) state)
-    (remove-card-from-hand state player-id card-id))
-  ; Plays spell card on specific character
   ([state player-id card-id character-id]
-  (let [card (get-card state card-id)]
-    (:spell-fn (get-definition card)) state character-id)
-    (remove-card-from-hand state player-id card-id)))
+   ((:spell-fn (get-definition (get-card state card-id))) state character-id)))
+             ;(remove-card-from-hand player-id card-id)))
+   ; call the spell card's function
+  ; (let [card (get-card state card-id)]
+  ;   (-> ((:spell-fn (get-definition card)) state)
+  ;       (remove-card-from-hand player-id card-id))))
+  ;; Plays spell card on specific character
+  ;([state player-id card-id character-id]
+  ; (let [card (get-card state card-id)]
+  ;   (-> ((:spell-fn (get-definition card)) state character-id)
+  ;       (remove-card-from-hand player-id card-id)))))

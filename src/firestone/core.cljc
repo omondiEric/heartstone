@@ -141,8 +141,8 @@
          ; either the target has taunt
          (or (has-taunt? state target-id)
              ; or no targets have taunt
-             (nil? (some #{:true}
-                         (->> (get-minions state target-id)
+             (nil? (some true?
+                         (->> (get-minions state (get-other-player-id player-id))
                            (map (fn [m]
                                   (has-taunt? state (:id m))))))))
          ; check for "NoAttack" property
@@ -168,6 +168,12 @@
                     (attack-minion "p1" "m" "r")
                     (get-health "r"))
                 1)
+           ; Taunt should be removed after being attacked
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                  {:minions [(create-minion "Jonatan" :id "j")]}])
+                    (attack-minion "p1" "m" "j")
+                    (has-taunt? "j"))
+                false)
            ; Your minion's attacks for this turn should be updated
            (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}
                                   {:minions [(create-minion "Ronja" :id "r")]}])
