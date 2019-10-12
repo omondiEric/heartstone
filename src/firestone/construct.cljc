@@ -844,13 +844,13 @@
 
 (defn ida-present?
   {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Ida" "i")]}])
-                    (ida-present?))
-                true))}
+           (is= (-> (create-game [{:minions [(create-minion "Ida" :id "i")]}])
+                    (ida-present?)
+                    (:name))
+                "Ida"))}
   [state]
-  (->> (get-minions state)
-       (filter (fn [m] (= (:id m) "i")))
-       (first)))
+  (some (fn [m] (when (= (:name m) "Ida") m))
+        (get-minions state)))
 
 ;deal damage to a minion
 (defn deal-damage
@@ -896,15 +896,38 @@
            (if (minion? character)
              (if-not (has-divine-shield $ character-id)
                (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
+               ;TODO add ida power here - check ida using ida-present?
                (remove-divine-shield $ character-id))
              ;when character is hero
              (update-in $ [:players (:owner-id character) :hero :damage-taken] (fn [x] (+ x damage-amount))))))))
 
+(defn do-hero-power
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
+                                   :hero    (create-hero "Carl")}])
+                    (do-hero-power "Carl" "k")
+                    (get-minion "k")
+                    (:properties)
+                    (contains? "Divine Shield"))
+                true))}
+  [state hero player-minion-id]
+  ;blessing hero power
+  (if (= (:name (get-definition hero)) "Carl")
+    (let [hero-power (:hero-power (get-definition hero))
+          power (:power-fn (get-definition hero-power))]
+      (power state player-minion-id)
+      state)))
+;Strengthen
+;([state hero player-id]
+; (if (= (:name (get-definition hero)) "Gustaf")
+;   (let [hero-power (:hero-power (get-definition hero))
+;         power (:power-fn (get-definition hero-power))]
+;     (power state player-id)
+;     state))))
 
 
 
-;TODO "listen" in deal damage ?????
-;TODO check if minion has divine shield before damaging. If yes remove divine shield - done
+
 ;TODO check if Ida is on board and give her taunt - just for the minion case - get-minion returns nill when false
 
 ;POI: Minions have both damage-taken and health fields. should deal damage update both of them,

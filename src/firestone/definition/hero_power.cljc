@@ -1,5 +1,10 @@
 (ns firestone.definition.hero-power
-  (:require [firestone.definitions :as definitions]))
+  (:require [firestone.definitions :as definitions]
+            [firestone.construct :refer [give-divine-shield
+                                         deal-damage
+                                         remove-minion
+                                         get-random-minion
+                                         give-attack]]))
 
 (def hero-definitions
   {
@@ -8,12 +13,23 @@
    {:name        "Blessing"
     :type        :hero-power
     :mana-cost   2
-    :description "Give a minion Divine Shield."}
+    :power-fn (fn [state minion-id]
+             (give-divine-shield state minion-id))}
+    :description "Give a minion Divine Shield."
+
 
    "Strengthen"
    {:name        "Strengthen"
     :type        :hero-power
     :mana-cost   3
+    :power-fn (fn [state player-id]
+                (let [minion-1-id (:id (get-random-minion state player-id))
+                      alternate-state (remove-minion state minion-1-id)
+                      minion-2-id (:id (get-random-minion alternate-state player-id))]
+                  (deal-damage state minion-1-id 1)
+                  (deal-damage state minion-2-id 1)
+                  (give-attack state minion-1-id 2)
+                  (give-attack state minion-2-id 2)))
     :description "Deal 1 damage to two random friendly minions and give them +2 Attack."}
 
    })
