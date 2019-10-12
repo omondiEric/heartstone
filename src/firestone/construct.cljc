@@ -47,6 +47,7 @@
                 {:attacks-performed-this-turn 1
                  :damage-taken                0
                  :attack                      1
+                 :end-of-turn                 nil
                  :entity-type                 :minion
                  :properties                  #{}
                  :name                        "Mio"
@@ -55,6 +56,7 @@
                 {:attacks-performed-this-turn 0
                  :damage-taken                0
                  :attack                      1
+                 :end-of-turn                 nil
                  :entity-type                 :minion
                  :properties                  #{"Divine Shield", "Taunt"}
                  :name                        "Elisabeth"
@@ -63,8 +65,12 @@
   [name & kvs]
   (let [properties (-> (get-definition name) (:properties)) ; Will be used later
         attack (-> (get-definition name) (:attack))
+        end-of-turn (if (contains? (get-definition name) :end-of-turn)
+                      (-> (get-definition name) (:end-of-turn))
+                      nil)
         minion {:damage-taken                0
                 :attack                      attack
+                :end-of-turn                 end-of-turn
                 :properties                  properties
                 :entity-type                 :minion
                 :name                        name
@@ -92,6 +98,7 @@
                                                        :fatigue-level 0
                                                        :hero          {:name         "Carl"
                                                                        :id           "c"
+                                                                       :owner-id     "p1"
                                                                        :damage-taken 0
                                                                        :entity-type  :hero}}
                                                  "p2" {:id            "p2"
@@ -103,9 +110,11 @@
                                                        :fatigue-level 0
                                                        :hero          {:name         "Gustaf"
                                                                        :id           "h2"
+                                                                       :owner-id     "p2"
                                                                        :damage-taken 0
                                                                        :entity-type  :hero}}}
                  :counter                       1
+                 :seed                          0
                  :minion-ids-summoned-this-turn []}))}
   ([heroes]
    ; Creates Carl heroes if heroes are missing.
@@ -123,12 +132,14 @@
                                                           :minions       []
                                                           :fatigue-level 0
                                                           :hero          (if (contains? hero :id)
-                                                                           hero
-                                                                           (assoc hero :id (str "h" (inc index))))}))
+                                                                           (assoc hero :owner-id (str "p" (inc index)))
+                                                                           (assoc hero :id (str "h" (inc index))
+                                                                                       :owner-id (str "p" (inc index))))}))
                                           (reduce (fn [a v]
                                                     (assoc a (:id v) v))
                                                   {}))
       :counter                       1
+      :seed                          0
       :minion-ids-summoned-this-turn []}))
   ([]
    (create-empty-state [])))
@@ -426,12 +437,14 @@
                                                                         :entity-type                 :minion
                                                                         :properties                  #{}
                                                                         :name                        "Mio"
+                                                                        :end-of-turn                 nil
                                                                         :id                          "m1"
                                                                         :position                    0
                                                                         :owner-id                    "p1"}]
                                                        :fatigue-level 0
                                                        :hero          {:name         "Carl"
                                                                        :id           "h1"
+                                                                       :owner-id     "p1"
                                                                        :entity-type  :hero
                                                                        :damage-taken 0}}
                                                  "p2" {:id            "p2"
@@ -443,9 +456,11 @@
                                                        :fatigue-level 0
                                                        :hero          {:name         "Carl"
                                                                        :id           "h2"
+                                                                       :owner-id     "p2"
                                                                        :entity-type  :hero
                                                                        :damage-taken 0}}}
                  :counter                       5
+                 :seed                          0
                  :minion-ids-summoned-this-turn []}))}
   ([data & kvs]
    (let [players-data (map-indexed (fn [index player-data]

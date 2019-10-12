@@ -15,6 +15,7 @@
                                          get-card
                                          get-deck
                                          get-hand
+                                         get-hero
                                          get-mana
                                          get-max-mana
                                          get-minion
@@ -32,14 +33,26 @@
                                          remove-card-from-hand
                                          update-mana]]))
 
-; call all the corresponding functions of all your minions at the end of your turn, return new state
+; call all the corresponding functions of all your minions at the end of your turn
 (defn end-turn-card-functions
   {:test (fn []
-           )}
+           ; testing pippi function
+           (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
+                                             (create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e1")
+                                             (create-minion "Emil" :id "e2")]}])
+                    (end-turn-card-functions "p1")
+                    (get-minion "e1")
+                    (:damage-taken))
+                1))}
   [state player-id]
-  (let [minions (get-minions state player-id)]
-    (reduce
-      (fn [minion] ((:end-of-turn minion) state)) minions)))
+  (reduce
+    (fn [state minion]
+      (if (nil? (:end-of-turn minion))
+        state
+        ((:end-of-turn minion) state (:id minion))))
+    state
+    (get-minions state player-id)))
 
 (defn end-turn
   {:test (fn []
@@ -213,40 +226,49 @@
   "Plays a spell card, removes it from hand"
   {:test (fn []
            ; Testing Insect Swarm
-
+           (is= (-> (create-game [{:hand [(create-card "Insect Swarm" :id "i")] :deck [(create-card "Mio" :id "m")]}
+                                  {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}])
+                    (play-spell-card "p1" "i")
+                    (get-hero "h1")
+                    (:damage-taken))
+                2)
            ; Testing Radar Raid
-           (is= (as-> (create-game [{:hand [(create-card "Radar Raid" :id "r")] :deck [(create-card "Mio" :id "m")]}
-                                  {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}]) $
-                      ((:spell-fn (get-definition (get-card $ "r"))) $ "a") $
-                      ;(play-spell-card "p1" "r" "a")
-                      (get-minion $ "a")
-                      (:damage-taken))
-                3)
-           ; The card should be erased from hand
-           ;(is (-> (create-game [{:hand [(create-card "Radar Raid" :id "r")
-           ;                              (create-card "Emil" :id "e")]}])
-           ;        (play-spell-card "p1" "r" "e")
-           ;        (get-hand "p1")
-           ;        (empty?)))
-           ;;
-           ;(is= (-> (create-game [{:hand [(create-card "Radar Raid" :id "r")
-           ;                               (create-card "Insect Swarm" :id "i")
-           ;                               (create-card "Emil" :id "e")]}])
-           ;         (play-spell-card "p1" "r" "e")
-           ;         (get-hand "p1")
-           ;         (count))
-           ;     1)
-           )}
-  ; Plays spell card (not reliant on any character)
+           (is= (-> (create-game [{:hand [(create-card "Radar Raid" :id "r")] :deck [(create-card "Mio" :id "m")]}
+                                  {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}])
+                    (play-spell-card "p1" "r" "a")
+                    (get-minion "a")
+                    (:damage-taken))
+                3))}
   ([state player-id card-id character-id]
-   ((:spell-fn (get-definition (get-card state card-id))) state character-id)))
-             ;(remove-card-from-hand player-id card-id)))
-   ; call the spell card's function
-  ; (let [card (get-card state card-id)]
-  ;   (-> ((:spell-fn (get-definition card)) state)
-  ;       (remove-card-from-hand player-id card-id))))
-  ;; Plays spell card on specific character
-  ;([state player-id card-id character-id]
-  ; (let [card (get-card state card-id)]
-  ;   (-> ((:spell-fn (get-definition card)) state character-id)
-  ;       (remove-card-from-hand player-id card-id)))))
+   ((:spell-fn (get-definition (get-card state card-id))) state character-id))
+  ([state player-id card-id]
+   ((:spell-fn (get-definition (get-card state card-id))) state)))
+; The card should be erased from hand
+;(is (-> (create-game [{:hand [(create-card "Radar Raid" :id "r")
+;                              (create-card "Emil" :id "e")]}])
+;        (play-spell-card "p1" "r" "e")
+;        (get-hand "p1")
+;        (empty?)))
+;;
+;(is= (-> (create-game [{:hand [(create-card "Radar Raid" :id "r")
+;                               (create-card "Insect Swarm" :id "i")
+;                               (create-card "Emil" :id "e")]}])
+;         (play-spell-card "p1" "r" "e")
+;         (get-hand "p1")
+;         (count))
+;     1)
+;)}
+;[state player-id card-id character-id])
+; Plays spell card (not reliant on any character)
+;([state player-id card-id character-id]
+;((:spell-fn (get-definition (get-card state card-id))) state character-id)))
+;(remove-card-from-hand player-id card-id)))
+; call the spell card's function
+; (let [card (get-card state card-id)]
+;   (-> ((:spell-fn (get-definition card)) state)
+;       (remove-card-from-hand player-id card-id))))
+;; Plays spell card on specific character
+;([state player-id card-id character-id]
+; (let [card (get-card state card-id)]
+;   (-> ((:spell-fn (get-definition card)) state character-id)
+;       (remove-card-from-hand player-id card-id)))))
