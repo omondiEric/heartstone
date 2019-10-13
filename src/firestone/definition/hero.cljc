@@ -7,12 +7,14 @@
    "Carl"
    {:name       "Carl"
     :type       :hero
-    :health     30}
+    :health     30
+    :hero-power "Blessing"}
 
    "Gustaf"
    {:name       "Gustaf"
     :type       :hero
-    :health     30}
+    :health     30
+    :hero-power "Strengthen"}
 
    })
 

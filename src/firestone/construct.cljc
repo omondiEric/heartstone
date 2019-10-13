@@ -3,9 +3,6 @@
             [ysera.error :refer [error]]
             [ysera.random :as random]
             [firestone.definitions :refer [get-definition]]))
-;[firestone.definitions-loader]))
-;[firestone.core :refer [get-battlecry-fn]]))
-
 
 (defn create-hero
   "Creates a hero from its definition by the given hero name. The additional key-values will override the default values."
@@ -46,6 +43,8 @@
            (is= (create-minion "Mio" :id "m" :attacks-performed-this-turn 1)
                 {:attacks-performed-this-turn 1
                  :damage-taken                0
+                 :attack                      1
+                 :end-of-turn                 nil
                  :entity-type                 :minion
                  :properties                  #{}
                  :name                        "Mio"
@@ -53,6 +52,8 @@
            (is= (create-minion "Elisabeth" :id "e")
                 {:attacks-performed-this-turn 0
                  :damage-taken                0
+                 :attack                      1
+                 :end-of-turn                 nil
                  :entity-type                 :minion
                  :properties                  #{"Divine Shield", "Taunt"}
                  :name                        "Elisabeth"
@@ -60,7 +61,13 @@
            )}
   [name & kvs]
   (let [properties (-> (get-definition name) (:properties)) ; Will be used later
+        attack (-> (get-definition name) (:attack))
+        end-of-turn (if (contains? (get-definition name) :end-of-turn)
+                      (-> (get-definition name) (:end-of-turn))
+                      nil)
         minion {:damage-taken                0
+                :attack                      attack
+                :end-of-turn                 end-of-turn
                 :properties                  properties
                 :entity-type                 :minion
                 :name                        name
@@ -88,6 +95,7 @@
                                                        :fatigue-level 0
                                                        :hero          {:name         "Carl"
                                                                        :id           "c"
+                                                                       :owner-id     "p1"
                                                                        :damage-taken 0
                                                                        :entity-type  :hero}}
                                                  "p2" {:id            "p2"
@@ -99,6 +107,7 @@
                                                        :fatigue-level 0
                                                        :hero          {:name         "Gustaf"
                                                                        :id           "h2"
+                                                                       :owner-id     "p2"
                                                                        :damage-taken 0
                                                                        :entity-type  :hero}}}
                  :counter                       1
@@ -120,8 +129,9 @@
                                                           :minions       []
                                                           :fatigue-level 0
                                                           :hero          (if (contains? hero :id)
-                                                                           hero
-                                                                           (assoc hero :id (str "h" (inc index))))}))
+                                                                           (assoc hero :owner-id (str "p" (inc index)))
+                                                                           (assoc hero :id (str "h" (inc index))
+                                                                                       :owner-id (str "p" (inc index))))}))
                                           (reduce (fn [a v]
                                                     (assoc a (:id v) v))
                                                   {}))
@@ -361,19 +371,6 @@
     (update-in state [:players player-id :mana] fn-or-value)
     (assoc-in state [:players player-id :mana] fn-or-value)))
 
-;(defn update-damage
-;{:test (fn []
-;     (is= (-> (create-empty-state)
-;               (update-damage "p1" 4)
-;                (get-in [:players "p1" :hero :damage-taken]))
-;             4))}
-
-;[state player-id fn-or-value]
-;(if (fn? fn-or-value)
-
-;    (update-in state [:players player-id :hero :damage-taken] (get-battlecry-fn))
-;   (assoc-in state [:players player-id :hero :damage-taken] (get-battlecry-fn)))
-
 (defn get-max-mana
   {:test (fn []
            (is= (-> (create-empty-state)
@@ -428,17 +425,20 @@
                                                                         :name        "Emil"
                                                                         :owner-id    "p1"}]
                                                        :minions       [{:damage-taken                0
+                                                                        :attack                      1
                                                                         :attacks-performed-this-turn 0
                                                                         :added-to-board-time-id      2
                                                                         :entity-type                 :minion
                                                                         :properties                  #{}
                                                                         :name                        "Mio"
+                                                                        :end-of-turn                 nil
                                                                         :id                          "m1"
                                                                         :position                    0
                                                                         :owner-id                    "p1"}]
                                                        :fatigue-level 0
                                                        :hero          {:name         "Carl"
                                                                        :id           "h1"
+                                                                       :owner-id     "p1"
                                                                        :entity-type  :hero
                                                                        :damage-taken 0}}
                                                  "p2" {:id            "p2"
@@ -450,6 +450,7 @@
                                                        :fatigue-level 0
                                                        :hero          {:name         "Carl"
                                                                        :id           "h2"
+                                                                       :owner-id     "p2"
                                                                        :entity-type  :hero
                                                                        :damage-taken 0}}}
                  :counter                       5
@@ -873,4 +874,272 @@
    (->> (get-minions state player-id)
         (random-nth state))))
 
+(defn give-taunt
+  "Gives taunt to a minion card"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (give-taunt "m")
+                    (get-minion "m")
+                    (:properties)
+                    (contains? "Taunt"))
+                true))}
+  [state id]
+  (update-minion state id :properties (fn [x] (conj x "Taunt"))))
+
+(defn remove-taunt
+  "Removes taunt from a minion card"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (remove-taunt "e")
+                    (get-minion "e")
+                    (:properties)
+                    (contains? "Taunt"))
+                false))}
+  [state id]
+  (update-minion state id :properties (fn [x] (disj x "Taunt"))))
+
+(defn has-taunt?
+  "Checks if minion has taunt"
+  {:test (fn []
+           (is (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                   (has-taunt? "e"))))}
+  [state id]
+  (contains? (:properties (get-minion state id)) "Taunt"))
+
+;Gives divine shield to a card
+(defn give-divine-shield
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                    (give-divine-shield "k")
+                    (get-minion "k")
+                    (:properties)
+                    (contains? "Divine Shield"))            ;using this might be better when we have a large set
+                true))}
+  [state minion-id]
+  (update-minion state minion-id :properties (fn [property-set]
+                                               (conj property-set "Divine Shield"))))
+
+;Remove divine shield from a minion
+(defn remove-divine-shield
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k") {:properties #{"Divine Shield"}}]}])
+                    (remove-divine-shield "k")
+                    (get-minion "k")
+                    (:properties)
+                    (contains? "Divine Shield"))
+                false))}
+  [state minion-id]
+  (update-minion state minion-id :properties (fn [property-set]
+                                               (disj property-set "Divine Shield"))))
+(defn has-divine-shield
+  {:test (fn []
+           ;return true when minion has divine shield
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                    (give-divine-shield "k")
+                    (has-divine-shield "k"))
+                true)
+           ;return false when minion has no divine shield
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                    (has-divine-shield "k"))
+                false))}
+
+  [state minion-id]
+  (-> state
+      (get-minion minion-id)
+      (:properties)
+      (contains? "Divine Shield")))
+
+(defn get-character
+  "Returns the character with the given id from the state."
+  {:test (fn []
+           (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
+                    (get-character "h1")
+                    (:name))
+                "Carl")
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (get-character "m")
+                    (:name))
+                "Mio"))}
+  [state id]
+  (or (some (fn [m] (when (= (:id m) id) m))
+            (get-minions state))
+      (some (fn [h] (when (= (:id h) id) h))
+            (get-heroes state))))
+
+(defn minion?
+  {:test (fn []
+           (is= ((create-game [{:hero (create-hero "Carl" :id "h1")}])
+                 (minion? "Carl"))
+                nil))}
+  [character]
+  (if (= (:entity-type character) :minion)
+    true))
+
+(defn ida-present?
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Ida" :id "i")]}])
+                    (ida-present?)
+                    (:name))
+                "Ida")
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (ida-present?))
+                nil))}
+  [state]
+  (some (fn [m] (when (= (:name m) "Ida") m))
+        (get-minions state)))
+
+;deal damage to a minion
+(defn deal-damage
+  {:test (fn []
+           ;test when damage amount is not provided
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (deal-damage "e")
+                    (get-minion "e")
+                    (:damage-taken))
+                1)
+           ;test when damage amount is provided
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                    (deal-damage "k" 3)
+                    (get-minion "k")
+                    (:damage-taken))
+                3)
+           ;test to see if amount of damage taken is updated well
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m" :damage-taken 1)]}])
+                    (deal-damage "m" 3)
+                    (get-minion "m")
+                    (:damage-taken))
+                4)
+           ;test that minion is not damaged when it has divine shield, AND that the shield is removed
+           (is= (-> (create-game [{:minions [(create-minion "Ronja" :id "r")]}])
+                    (give-divine-shield "r")
+                    (deal-damage "r")
+                    (get-minion "r")
+                    (:damage-taken))
+                0)
+           ;test to see that Ida gets taunt when a minion is damaged
+           (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
+                                             (create-minion "Ida" :id "i")]}])
+                    (deal-damage "p")
+                    (get-minion "i")
+                    (:properties)
+                    (contains? "Taunt"))
+                true)
+
+           (is= (-> (create-game [{:hero (create-hero "Carl")}])
+                    (deal-damage "h1")
+                    (get-hero "h1")
+                    (:damage-taken))
+                1)
+           )}
+  ([state character-id]
+   (deal-damage state character-id 1))
+  ;Deal specified amount of damage to the given character
+  ([state character-id damage-amount]
+   (as-> state $
+         (let [character (get-character $ character-id)]
+           (if (minion? character)
+             ;when character is minion and has no divine shield
+             (if-not (has-divine-shield $ character-id)
+               (do
+                 ;ida not on board
+                 (when (= (ida-present? $) nil)
+                   (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount))))
+                 ;ida on board
+                 (-> (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
+                     (give-taunt (:id (ida-present? $)))))
+               ;minion has divine shield
+               (remove-divine-shield $ character-id))
+             ;when character is hero
+             (do
+               (update-in $ [:players (:owner-id character) :hero :damage-taken] (fn [x] (+ x damage-amount)))))))))
+
+(defn do-hero-power
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
+                                   :hero    (create-hero "Carl")}])
+                    (do-hero-power "Carl" "k")
+                    (get-minion "k")
+                    (:properties)
+                    (contains? "Divine Shield"))
+                true))}
+  [state hero player-minion-id]
+  ;blessing hero power
+  (if (= (:name (get-definition hero)) "Carl")
+    (let [hero-power (:hero-power (get-definition hero))
+          power (:power-fn (get-definition hero-power))]
+      (power state player-minion-id))
+    (let [hero-power (:hero-power (get-definition hero))
+          power (:power-fn (get-definition hero-power))]
+      (power state player-minion-id))))
+
+
+
+(defn deal-damage-to-all-heroes
+  "Deals damage to all heroes"
+  {:test (fn []
+           (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
+                    (deal-damage-to-all-heroes 1)
+                    (get-hero "h1")
+                    (:damage-taken))
+                1))}
+  [state damage]
+  (reduce (fn [state hero]
+            (deal-damage state (:id hero) damage))
+          state
+          (get-heroes state)))
+
+(defn deal-damage-to-all-minions
+  "Deals damage to all minions"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e")]}])
+                    (deal-damage-to-all-minions 2)
+                    (get-minion "e")
+                    (:damage-taken))
+                2)
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e")]}])
+                    (deal-damage-to-all-minions 3)
+                    (get-minion "m")
+                    (:damage-taken))
+                3))}
+  [state damage]
+  (reduce (fn [state minion]
+            (deal-damage state (:id minion) damage))
+          state
+          (get-minions state)))
+
+(defn deal-damage-to-other-minions
+  "Deals damage to all other minions except given one"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e")]}])
+                    (deal-damage-to-other-minions "m" 2)
+                    (get-minion "e")
+                    (:damage-taken))
+                2)
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e")]}])
+                    (deal-damage-to-other-minions "m" 2)
+                    (get-minion "m")
+                    (:damage-taken))
+                0))}
+  [state minion-id damage]
+  (reduce (fn [state minion]
+               (if (= (:id minion) minion-id)
+                 state
+                 (deal-damage state (:id minion) damage)))
+          state
+          (get-minions state)))
+
+(defn give-attack
+  "Gives attack to a minion"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (give-attack "e" 3)
+                    (get-minion "e")
+                    (:attack))
+                5))}
+  [state minion-id attack-amount]
+  (update-minion state minion-id :attack (fn [x] (+ x attack-amount))))
 
