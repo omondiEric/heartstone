@@ -958,7 +958,7 @@
            ;test to see that Ida gets taunt when a minion is damaged
            (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
                                              (create-minion "Ida" :id "i")]}])
-                    (deal-damage "p"))
+                    (deal-damage "p")
                     (get-minion "i")
                     (:properties)
                     (contains? "Taunt"))
