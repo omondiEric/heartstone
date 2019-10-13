@@ -157,8 +157,8 @@
     :type         :spell
     :set          :custom
     :spell-fn     (fn [state]
-                    (deal-damage-to-all-heroes state 2)
-                    (deal-damage-to-all-minions state 2))
+                    (-> (deal-damage-to-all-heroes state 2)
+                    (deal-damage-to-all-minions 2)))
     :description  "Deal 2 damage to all characters."}
 
    "Radar Raid"
