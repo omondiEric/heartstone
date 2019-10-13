@@ -3,6 +3,13 @@
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [create-game
                                          create-card
+                                         get-minion
+                                         update-minion
+                                         deal-damage
+                                         deal-damage-to-other-minions
+                                         deal-damage-to-all-minions
+                                         deal-damage-to-all-heroes
+                                         get-random-minion
                                          give-taunt]]
             [firestone.core-api :refer [do-battlecry-fn]]))
 
@@ -63,7 +70,7 @@
     :health      5
     :mana-cost   2
     :type        :minion
-    :properties  #{}
+    :properties  #{"NoAttack"}
     :set         :custom
     :description "Can't Attack."}
 
@@ -84,6 +91,8 @@
     :mana-cost   3
     :type        :minion
     :properties  #{}
+    :end-of-turn (fn [state id]
+                   (deal-damage-to-other-minions state id 1))
     :set         :custom
     :description "At the end of your turn deal 1 damage to all other minions."}
 
@@ -94,6 +103,8 @@
     :mana-cost   3
     :type        :minion
     :properties  #{}
+    :end-of-turn (fn [state id]
+                   give-taunt state (:id (get-random-minion state)))
     :set         :custom
     :description "At the end of your turn give a random minion taunt."}
 
@@ -124,6 +135,7 @@
     :mana-cost   2
     :type        :minion
     :properties  #{}
+    
     :set         :custom
     :description "Deathrattle: Summon Elisabeth."}
 
@@ -144,6 +156,9 @@
     :mana-cost    2
     :type         :spell
     :set          :custom
+    :spell-fn     (fn [state]
+                    (-> (deal-damage-to-all-heroes state 2)
+                    (deal-damage-to-all-minions 2)))
     :description  "Deal 2 damage to all characters."}
 
    "Radar Raid"
@@ -151,6 +166,8 @@
     :mana-cost    2
     :type         :spell
     :set          :custom
+    :spell-fn     (fn [state character-id]
+                    (deal-damage state character-id 3))
     :description   "Deal 3 damage to a character."}
 
    })
