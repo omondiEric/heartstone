@@ -2,7 +2,13 @@
   (:require [ysera.test :refer [is is= error?]]
             [ysera.error :refer [error]]
             [firestone.definitions :refer [get-definition]]
-            [firestone.core :refer [do-battlecry]]
+            [firestone.core :refer [do-battlecry
+                                    deal-damage
+                                    deal-damage-to-all-heroes
+                                    deal-damage-to-all-minions
+                                    get-attack
+                                    get-health
+                                    valid-attack?]]
             [firestone.construct :refer [add-card-to-hand
                                          add-minion-to-board
                                          change-player-in-turn
@@ -12,8 +18,6 @@
                                          create-hero
                                          create-minion
                                          draw-card-to-hand
-                                         deal-damage-to-all-heroes
-                                         deal-damage-to-all-minions
                                          fatigue-hero
                                          inc-max-mana
                                          get-card
@@ -34,8 +38,7 @@
                                          restore-mana
                                          update-mana
                                          update-max-mana
-                                         remove-card-from-hand
-                                         update-mana]]))
+                                         update-minion]]))
 
 ; call all the corresponding functions of all your minions at the end of your turn
 (defn end-turn-card-functions
@@ -194,6 +197,57 @@
         (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
         (do-battlecry player-id card)
         )))
+
+
+(defn attack-minion
+  "Attacks the enemy minion"
+  {:test (fn []
+           ; Your minion's health should be updated
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}
+                                  {:minions [(create-minion "Ronja" :id "r")]}])
+                    (attack-minion "p1" "e" "r")
+                    (get-health "e"))
+                2)
+           ; Target minion's health should be updated
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                  {:minions [(create-minion "Ronja" :id "r")]}])
+                    (attack-minion "p1" "m" "r")
+                    (get-health "r"))
+                1)
+           ; Your minion's attacks for this turn should be updated
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}
+                                  {:minions [(create-minion "Ronja" :id "r")]}])
+                    (attack-minion "p1" "e" "r")
+                    (get-minion "e")
+                    (:attacks-performed-this-turn))
+                1))}
+  [state player-id attacker-id target-id]
+  (let [attacker-attack-val (get-attack state attacker-id)
+        target-attack-val (get-attack state target-id)]
+    (if (valid-attack? state player-id attacker-id target-id) (-> (update-minion state attacker-id :attacks-performed-this-turn inc)
+                                                                  (deal-damage  attacker-id target-attack-val)
+                                                                  (deal-damage target-id attacker-attack-val)))))
+
+(defn attack-hero
+  "Attacks the enemy hero"
+  {:test (fn []
+           ; The enemy hero's health should be updated
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (attack-hero "p1" "m" "h2")
+                    (get-health "h2"))
+                29)
+           ; Your minion's attacks for this turn should be updated
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (attack-hero "p1" "e" "h2")
+                    (get-minion "e")
+                    (:attacks-performed-this-turn))
+                1))}
+  [state player-id attacker-id target-hero-id]
+  (let [attacker-attack-val (get-attack state attacker-id)]
+    (when (valid-attack? state player-id attacker-id target-hero-id)
+      (-> (deal-damage state target-hero-id attacker-attack-val)
+          (update-minion attacker-id :attacks-performed-this-turn inc)))))
+
 
 (defn play-spell-card
   "Plays a spell card, removes it from hand"

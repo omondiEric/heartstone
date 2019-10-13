@@ -988,71 +988,6 @@
   (some (fn [m] (when (= (:name m) "Ida") m))
         (get-minions state)))
 
-;deal damage to a minion
-(defn deal-damage
-  {:test (fn []
-           ;test when damage amount is not provided
-           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
-                    (deal-damage "e")
-                    (get-minion "e")
-                    (:damage-taken))
-                1)
-           ;test when damage amount is provided
-           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
-                    (deal-damage "k" 3)
-                    (get-minion "k")
-                    (:damage-taken))
-                3)
-           ;test to see if amount of damage taken is updated well
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m" :damage-taken 1)]}])
-                    (deal-damage "m" 3)
-                    (get-minion "m")
-                    (:damage-taken))
-                4)
-           ;test that minion is not damaged when it has divine shield, AND that the shield is removed
-           (is= (-> (create-game [{:minions [(create-minion "Ronja" :id "r")]}])
-                    (give-divine-shield "r")
-                    (deal-damage "r")
-                    (get-minion "r")
-                    (:damage-taken))
-                0)
-           ;test to see that Ida gets taunt when a minion is damaged
-           (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
-                                             (create-minion "Ida" :id "i")]}])
-                    (deal-damage "p")
-                    (get-minion "i")
-                    (:properties)
-                    (contains? "Taunt"))
-                true)
-
-           (is= (-> (create-game [{:hero (create-hero "Carl")}])
-                    (deal-damage "h1")
-                    (get-hero "h1")
-                    (:damage-taken))
-                1)
-           )}
-  ([state character-id]
-   (deal-damage state character-id 1))
-  ;Deal specified amount of damage to the given character
-  ([state character-id damage-amount]
-   (as-> state $
-         (let [character (get-character $ character-id)]
-           (if (minion? character)
-             ;when character is minion and has no divine shield
-             (if-not (has-divine-shield $ character-id)
-               (do
-                 ;ida not on board
-                 (when (= (ida-present? $) nil)
-                   (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount))))
-                 ;ida on board
-                 (-> (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
-                     (give-taunt (:id (ida-present? $)))))
-               ;minion has divine shield
-               (remove-divine-shield $ character-id))
-             ;when character is hero
-             (do
-               (update-in $ [:players (:owner-id character) :hero :damage-taken] (fn [x] (+ x damage-amount)))))))))
-
 (defn do-hero-power
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
@@ -1072,66 +1007,6 @@
           power (:power-fn (get-definition hero-power))]
       (power state player-minion-id))))
 
-
-
-(defn deal-damage-to-all-heroes
-  "Deals damage to all heroes"
-  {:test (fn []
-           (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
-                    (deal-damage-to-all-heroes 1)
-                    (get-hero "h1")
-                    (:damage-taken))
-                1))}
-  [state damage]
-  (reduce (fn [state hero]
-            (deal-damage state (:id hero) damage))
-          state
-          (get-heroes state)))
-
-(defn deal-damage-to-all-minions
-  "Deals damage to all minions"
-  {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")
-                                             (create-minion "Emil" :id "e")]}])
-                    (deal-damage-to-all-minions 2)
-                    (get-minion "e")
-                    (:damage-taken))
-                2)
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")
-                                             (create-minion "Emil" :id "e")]}])
-                    (deal-damage-to-all-minions 3)
-                    (get-minion "m")
-                    (:damage-taken))
-                3))}
-  [state damage]
-  (reduce (fn [state minion]
-            (deal-damage state (:id minion) damage))
-          state
-          (get-minions state)))
-
-(defn deal-damage-to-other-minions
-  "Deals damage to all other minions except given one"
-  {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")
-                                             (create-minion "Emil" :id "e")]}])
-                    (deal-damage-to-other-minions "m" 2)
-                    (get-minion "e")
-                    (:damage-taken))
-                2)
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")
-                                             (create-minion "Emil" :id "e")]}])
-                    (deal-damage-to-other-minions "m" 2)
-                    (get-minion "m")
-                    (:damage-taken))
-                0))}
-  [state minion-id damage]
-  (reduce (fn [state minion]
-               (if (= (:id minion) minion-id)
-                 state
-                 (deal-damage state (:id minion) damage)))
-          state
-          (get-minions state)))
-
 (defn give-attack
   "Gives attack to a minion"
   {:test (fn []
@@ -1142,4 +1017,3 @@
                 5))}
   [state minion-id attack-amount]
   (update-minion state minion-id :attack (fn [x] (+ x attack-amount))))
-

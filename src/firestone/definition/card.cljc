@@ -4,10 +4,6 @@
             [firestone.construct :refer [create-game
                                          create-card
                                          create-minion
-                                         deal-damage
-                                         deal-damage-to-other-minions
-                                         deal-damage-to-all-minions
-                                         deal-damage-to-all-heroes
                                          replace-minion
                                          get-minion
                                          get-random-minion
@@ -16,6 +12,10 @@
                                          switch-minion-side
                                          update-minion
                                          update-seed]]
+            [firestone.core :refer [deal-damage
+                                    deal-damage-to-other-minions
+                                    deal-damage-to-all-minions
+                                    deal-damage-to-all-heroes]]
             [firestone.core-api :refer [draw-card]]))
 
 (def card-definitions
@@ -147,43 +147,43 @@
     :mana-cost   2
     :type        :minion
     :properties  #{}
-    
+
     :set         :custom
     :description "Deathrattle: Summon Elisabeth."
     :deathrattle (fn [state minion-id]
                    (replace-minion state (create-minion "Elisabeth" :id minion-id)))}
 
    "Ida"
-   {:name        "Ida"
-    :attack      2
-    :health      4
-    :mana-cost   3
-    :type        :minion
-    :properties  #{}
+   {:name          "Ida"
+    :attack        2
+    :health        4
+    :mana-cost     3
+    :type          :minion
+    :properties    #{}
     :custom-timing (fn [state id]
                      (give-taunt state id))
-    :set         :custom
-    :description "Whenever a minion takes damage, gain taunt."}
+    :set           :custom
+    :description   "Whenever a minion takes damage, gain taunt."}
 
    "Insect Swarm"
 
-   {:name         "Insect Swarm"
-    :mana-cost    2
-    :type         :spell
-    :set          :custom
-    :spell-fn     (fn [state]
-                    (-> (deal-damage-to-all-heroes state 2)
-                    (deal-damage-to-all-minions 2)))
-    :description  "Deal 2 damage to all characters."}
+   {:name        "Insect Swarm"
+    :mana-cost   2
+    :type        :spell
+    :set         :custom
+    :spell-fn    (fn [state]
+                   (-> (deal-damage-to-all-heroes state 2)
+                       (deal-damage-to-all-minions 2)))
+    :description "Deal 2 damage to all characters."}
 
    "Radar Raid"
-   {:name         "Radar Raid"
-    :mana-cost    2
-    :type         :spell
-    :set          :custom
-    :spell-fn     (fn [state character-id]
-                    (deal-damage state character-id 3))
-    :description   "Deal 3 damage to a character."}
+   {:name        "Radar Raid"
+    :mana-cost   2
+    :type        :spell
+    :set         :custom
+    :spell-fn    (fn [state character-id]
+                   (deal-damage state character-id 3))
+    :description "Deal 3 damage to a character."}
 
    })
 

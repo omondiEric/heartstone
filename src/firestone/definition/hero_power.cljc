@@ -1,10 +1,10 @@
 (ns firestone.definition.hero-power
   (:require [firestone.definitions :as definitions]
             [firestone.construct :refer [give-divine-shield
-                                         deal-damage
                                          remove-minion
                                          give-attack
-                                         get-random-minion]]))
+                                         get-random-minion]]
+            [firestone.core :refer [deal-damage]]))
 
 (def hero-definitions
   {
