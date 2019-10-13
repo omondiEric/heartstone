@@ -850,6 +850,7 @@
   (update-minion state minion-id :properties (fn [property-set]
                                                (disj property-set "Divine Shield"))))
 
+;Gives divine shield to a card
 (defn give-divine-shield
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
@@ -879,8 +880,7 @@
       (:properties)
       (contains? "Divine Shield")))
 
-(defn
-  get-character
+(defn get-character
   "Returns the character with the given id from the state."
   {:test (fn []
            (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
@@ -1022,8 +1022,7 @@
                 1)
            )}
   [seed collection]
-  (random-nth seed collection)
-  )
+  (random-nth seed collection))
 
 (defn get-random-minion
   {:test (fn []
@@ -1057,8 +1056,41 @@
                 5))}
   [state minion-id attack-amount]
   (update-minion state minion-id :attack (fn [x] (+ x attack-amount))))
+                    (:properties) ; When I test this line I get back an empty set, D.S not added
+                    (contains? "Divine Shield"))
+                "true"))}
+  [state minion-id]
 
+  ;(def added-properties #{"divine Shield"})
 
+  (let [minion (get-minion state minion-id)
+        property-def (minion :properties)]
+    (def add-property #{"Divine Shield"})
+    (into property-def add-property)
+    ;(conj property-def "Divine Shield")
+    (update-in state [:minions minion-id :properties] property-def)))
+
+;(conj property-def "Divine Shield")))
+
+; (as-> state $
+;    (get-minion $ minion-id)
+;   (get-in $ [:minions minion-id :properties])
+;  (conj $ "Divine Shield")))
+
+;Remove divine shield from a card
+(defn remove-divine-shield
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k") {:properties #{"Divine Shield"}}]}])
+                    (remove-divine-shield "k")
+                    (get-minion "k")
+                    (:properties)
+                    (contains? "Divine Shield"))
+                "false"))}
+  [state minion-id]
+  (let [minion (get-minion state minion-id)
+        property-set (minion :properties)]
+    (disj property-set "Divine Shield")
+    (update-in state [:minions minion-id :properties] property-set)))
 
 
 
