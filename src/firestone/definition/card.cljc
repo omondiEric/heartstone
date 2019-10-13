@@ -2,7 +2,8 @@
   (:require [firestone.definitions :as definitions]
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [create-game
-                                         create-card]]
+                                         create-card
+                                         give-taunt]]
             [firestone.core-api :refer [do-battlecry-fn]]))
 
 (def card-definitions
@@ -133,6 +134,8 @@
     :mana-cost   3
     :type        :minion
     :properties  #{}
+    :custom-timing (fn [state id]
+                     (give-taunt state id))
     :set         :custom
     :description "Whenever a minion takes damage, gain taunt."}
 
