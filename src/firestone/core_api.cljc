@@ -8,15 +8,20 @@
                                          create-card
                                          create-empty-state
                                          create-game
+                                         create-hero
                                          create-minion
                                          draw-card-to-hand
+                                         deal-damage-to-all-heroes
+                                         deal-damage-to-all-minions
                                          fatigue-hero
                                          inc-max-mana
                                          get-card
                                          get-deck
                                          get-hand
+                                         get-hero
                                          get-mana
                                          get-max-mana
+                                         get-minion
                                          get-minions
                                          get-mana
                                          get-mana-cost
@@ -31,6 +36,26 @@
                                          remove-card-from-hand
                                          update-mana]]))
 
+; call all the corresponding functions of all your minions at the end of your turn
+(defn end-turn-card-functions
+  {:test (fn []
+           ; testing pippi function
+           (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
+                                             (create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e1")
+                                             (create-minion "Emil" :id "e2")]}])
+                    (end-turn-card-functions "p1")
+                    (get-minion "e1")
+                    (:damage-taken))
+                1))}
+  [state player-id]
+  (reduce
+    (fn [state minion]
+      (if (nil? (:end-of-turn minion))
+        state
+        ((:end-of-turn minion) state (:id minion))))
+    state
+    (get-minions state player-id)))
 
 (defn end-turn
   {:test (fn []
@@ -68,6 +93,7 @@
 
   (let [other-player (get-other-player-id player-id)]
     (-> state
+        (end-turn-card-functions player-id)
         (change-player-in-turn)
         (inc-max-mana other-player)
         (restore-mana other-player))))
@@ -148,21 +174,21 @@
                     (get-in [:players "p1" :hero :damage-taken]))
                 12)
            ;check that card is drawn
-            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}])
                     (do-battlecry-fn "p1" "p2" (create-card "Emil"))
-                   (get-hand "p1")
-                  (count))
-             2)
+                    (get-hand "p1")
+                    (count))
+                2)
            )}
   [state target-id card]
   ((:battlecry (get-definition card)) state target-id))
-  ;(let [battlecry (:battlecry (get-definition card))]
-    ;(battlecry state target-id)))
-    ;(cond (= name "Kato")
-    ;
-    ;      (= name "Emil")
-    ;      ;state)))
-    ;        (draw-card state player-id))))
+;(let [battlecry (:battlecry (get-definition card))]
+;(battlecry state target-id)))
+;(cond (= name "Kato")
+;
+;      (= name "Emil")
+;      ;state)))
+;        (draw-card state player-id))))
 
 (let [battlecry #(:battlecry (get-definition (create-card "Kato" :id "k")))])
 
@@ -181,10 +207,10 @@
                    (get-hand "p1")
                    (empty?)))
            ;
-           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck[(create-card "Mio")]}])
-                   (play-minion-card "p1" "e" 0)
-                   (get-hand "p1")
-                   (count))
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio")]}])
+                    (play-minion-card "p1" "e" 0)
+                    (get-hand "p1")
+                    (count))
                 1))}
   [state player-id card-id position]
   ;check if player has less than 7 minions on the board
@@ -198,3 +224,36 @@
         (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
         (do-battlecry-fn player-id other-player-id card)
         )))
+
+(defn play-spell-card
+  "Plays a spell card, removes it from hand"
+  {:test (fn []
+           ; The card should be erased from hand
+           (is= (-> (create-game [{:hand [(create-card "Radar Raid" :id "r")
+                                         (create-card "Emil" :id "e")]
+                                  :minions [(create-minion "Alfred" :id "a")]}])
+                   (play-spell-card "p1" "r" "a")
+                   (get-hand "p1")
+                   (count))
+                1)
+           ; Testing Insect Swarm
+           (is= (-> (create-game [{:hand [(create-card "Insect Swarm" :id "i")] :deck [(create-card "Mio" :id "m")]}
+                                  {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}
+                                  {:hero (create-hero "Carl" :id "h1")}])
+                    (play-spell-card "p1" "i")
+                    (get-hero "h1")
+                    (:damage-taken))
+                2)
+           ; Testing Radar Raid
+           (is= (-> (create-game [{:hand [(create-card "Radar Raid" :id "r")] :deck [(create-card "Mio" :id "m")]}
+                                  {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}])
+                    (play-spell-card "p1" "r" "a")
+                    (get-minion "a")
+                    (:damage-taken))
+                3))}
+  ([state player-id card-id character-id]
+   (-> ((:spell-fn (get-definition (get-card state card-id))) state character-id)
+   (remove-card-from-hand player-id card-id)))
+  ([state player-id card-id]
+   (-> ((:spell-fn (get-definition (get-card state card-id))) state)
+       (remove-card-from-hand player-id card-id))))
