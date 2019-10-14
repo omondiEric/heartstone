@@ -46,9 +46,8 @@
     :properties  #{}
     :description "Battlecry: Deal 4 damage to the enemy hero."
     :battlecry   (fn [state player-id]
-                   (let [target-player-id (get-other-player-id player-id)
-                         new-damage-taken (+ (get-in state [:players target-player-id :hero :damage-taken]) 4)]
-                     (assoc-in state [:players target-player-id :hero :damage-taken] new-damage-taken)))}
+                   (let [target-hero-id (get-in state [:players (get-other-player-id player-id) :hero :id])]
+                     (deal-damage state target-hero-id 4)))}
 
    "Emil"
    {:name        "Emil"
@@ -126,9 +125,7 @@
     :description "Deathrattle: Take control of a random enemy minion."
     :deathrattle (fn [state minion-id]
                    (let [random-result (get-random-minion state (get-other-player-id (:owner-id (get-minion state minion-id))))]
-                     (-> state
-                         (switch-minion-side (:id (last random-result)))
-                         (update-seed (first random-result)))))}
+                     (switch-minion-side state (:id (last random-result)))))}
 
    "Elisabeth"
    {:name        "Elisabeth"

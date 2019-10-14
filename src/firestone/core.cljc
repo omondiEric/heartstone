@@ -159,12 +159,12 @@
                        (valid-attack? "p1" "m" "r")))
            ; Should not be able to attack if you have "NoAttack" property
            (is-not (-> (create-game [{:minions [(create-minion "Alfred" :id "a")]}
-                                 {:minions [(create-minion "Ronja" :id "r")]}])
-                   (valid-attack? "p1" "a" "r")))
+                                     {:minions [(create-minion "Ronja" :id "r")]}])
+                       (valid-attack? "p1" "a" "r")))
            ; Should be able to attack if target minion has taunt
            (is (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
-                                     {:minions [(create-minion "Jonatan" :id "j")]}])
-                       (valid-attack? "p1" "m" "j")))
+                                 {:minions [(create-minion "Jonatan" :id "j")]}])
+                   (valid-attack? "p1" "m" "j")))
            ; Should not be able to attack if target minion does not have taunt, but other enemy minions do
            (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
                                      {:minions [(create-minion "Ronja" :id "r")
@@ -180,8 +180,8 @@
              ; or no targets have taunt
              (nil? (some true?
                          (->> (get-minions state (get-other-player-id player-id))
-                           (map (fn [m]
-                                  (has-taunt? state (:id m))))))))
+                              (map (fn [m]
+                                     (has-taunt? state (:id m))))))))
          ; check for "NoAttack" property
          (not (contains? (:properties attacker) "NoAttack"))
          (= (:player-id-in-turn state) player-id)
@@ -266,11 +266,11 @@
                       (map :id $))
                 ["ma"])
            (is (as-> (create-game [{:minions [(create-card "Madicken" :id "ma" :damage-taken 0)]}
-                                    {:minions [(create-card "Mio" :id "mi" :damage-taken 0)
-                                               (create-card "Uncle Nilsson" :id "n" :damage-taken 0)]}]) $
-                      (get-dead-minions-with-deathrattle $)
-                      (map :id $)
-                      (empty? $)))
+                                   {:minions [(create-card "Mio" :id "mi" :damage-taken 0)
+                                              (create-card "Uncle Nilsson" :id "n" :damage-taken 0)]}]) $
+                     (get-dead-minions-with-deathrattle $)
+                     (map :id $)
+                     (empty? $)))
            )}
   [state]
   (let [dead-minions (get-dead-minions state)]
@@ -304,10 +304,10 @@
   {:test (fn []
            ;check madicken summons elisabeth
            (is= (as-> (create-game [{:minions [(create-card "Madicken" :id "m1")
-                                             (create-card "Madicken" :id "m2")]}]) $
-                    (do-deathrattles $ "m1" "m2")
-                    (get-minions $ "p1")
-                    (map :name $))
+                                               (create-card "Madicken" :id "m2")]}]) $
+                      (do-deathrattles $ "m1" "m2")
+                      (get-minions $ "p1")
+                      (map :name $))
                 ["Elisabeth" "Elisabeth"])
            ;check Uncle Nilsson
            (is= (-> (create-game [{:minions [(create-card "Uncle Nilsson" :id "n")]}
@@ -488,3 +488,5 @@
           state
           (get-minions state)))
 
+(-> (create-game)
+    (get-random-minion))
