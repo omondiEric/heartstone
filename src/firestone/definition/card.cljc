@@ -3,15 +3,20 @@
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [create-game
                                          create-card
+                                         create-minion
+                                         replace-minion
                                          get-minion
-                                         update-minion
-                                         deal-damage
-                                         deal-damage-to-other-minions
-                                         deal-damage-to-all-minions
-                                         deal-damage-to-all-heroes
                                          get-random-minion
-                                         give-taunt]]
-            [firestone.core-api :refer [do-battlecry-fn]]))
+                                         get-other-player-id
+                                         give-taunt
+                                         switch-minion-side
+                                         update-minion
+                                         update-seed]]
+            [firestone.core :refer [deal-damage
+                                    deal-damage-to-other-minions
+                                    deal-damage-to-all-minions
+                                    deal-damage-to-all-heroes]]
+            [firestone.core-api :refer [draw-card]]))
 
 (def card-definitions
   {
@@ -40,9 +45,9 @@
     :type        :minion
     :properties  #{}
     :description "Battlecry: Deal 4 damage to the enemy hero."
-    :battlecry   (fn [state target-player-id]
-                   (let [new-damage-taken (+ (get-in state [:players target-player-id :hero :damage-taken]) 4)]
-                     (assoc-in state [:players target-player-id :hero :damage-taken] new-damage-taken)))}
+    :battlecry   (fn [state player-id]
+                   (let [target-hero-id (get-in state [:players (get-other-player-id player-id) :hero :id])]
+                     (deal-damage state target-hero-id 4)))}
 
    "Emil"
    {:name        "Emil"
@@ -52,7 +57,8 @@
     :type        :minion
     :properties  #{}
     :description "Battlecry: Draw a card."
-    :battlecry   "draw card"}
+    :battlecry   (fn [state player-id]
+                   (draw-card state player-id))}
 
    "Jonatan"
    {:name        "Jonatan"
@@ -116,7 +122,10 @@
     :type        :minion
     :properties  #{}
     :set         :custom
-    :description "Deathrattle: Take control of a random enemy minion."}
+    :description "Deathrattle: Take control of a random enemy minion."
+    :deathrattle (fn [state minion-id]
+                   (let [random-result (get-random-minion state (get-other-player-id (:owner-id (get-minion state minion-id))))]
+                     (switch-minion-side state (:id (last random-result)))))}
 
    "Elisabeth"
    {:name        "Elisabeth"
@@ -135,45 +144,47 @@
     :mana-cost   2
     :type        :minion
     :properties  #{}
-    
+
     :set         :custom
-    :description "Deathrattle: Summon Elisabeth."}
+    :description "Deathrattle: Summon Elisabeth."
+    :deathrattle (fn [state minion-id]
+                   (replace-minion state (create-minion "Elisabeth" :id minion-id)))}
 
    "Ida"
-   {:name        "Ida"
-    :attack      2
-    :health      4
-    :mana-cost   3
-    :type        :minion
-    :properties  #{}
+   {:name          "Ida"
+    :attack        2
+    :health        4
+    :mana-cost     3
+    :type          :minion
+    :properties    #{}
     :custom-timing (fn [state id]
                      (give-taunt state id))
-    :set         :custom
-    :description "Whenever a minion takes damage, gain taunt."}
+    :set           :custom
+    :description   "Whenever a minion takes damage, gain taunt."}
 
    "Insect Swarm"
-   {:name         "Insect Swarm"
-    :mana-cost    2
-    :type         :spell
-    :set          :custom
-    :spell-fn     (fn [state]
-                    (-> (deal-damage-to-all-heroes state 2)
-                    (deal-damage-to-all-minions 2)))
-    :description  "Deal 2 damage to all characters."}
+
+   {:name        "Insect Swarm"
+    :mana-cost   2
+    :type        :spell
+    :set         :custom
+    :spell-fn    (fn [state]
+                   (-> (deal-damage-to-all-heroes state 2)
+                       (deal-damage-to-all-minions 2)))
+    :description "Deal 2 damage to all characters."}
 
    "Radar Raid"
-   {:name         "Radar Raid"
-    :mana-cost    2
-    :type         :spell
-    :set          :custom
-    :spell-fn     (fn [state character-id]
-                    (deal-damage state character-id 3))
-    :description   "Deal 3 damage to a character."}
+   {:name        "Radar Raid"
+    :mana-cost   2
+    :type        :spell
+    :set         :custom
+    :spell-fn    (fn [state character-id]
+                   (deal-damage state character-id 3))
+    :description "Deal 3 damage to a character."}
 
    })
 
-(let [battlecry (fn [state target-player-id] (update-in state [:players target-player-id :hero :damage-taken] (fn [damage-taken] (+ damage-taken 4))))]
-   (->(create-game)
-      (battlecry "p2")))
 
 (definitions/add-definitions! card-definitions)
+
+

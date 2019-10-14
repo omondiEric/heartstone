@@ -1,10 +1,12 @@
 (ns firestone.definition.hero-power
   (:require [firestone.definitions :as definitions]
-            [firestone.construct :refer [give-divine-shield
-                                         deal-damage
-                                         remove-minion
+            [firestone.construct :refer [get-minions
                                          give-attack
-                                         get-random-minion]]))
+                                         get-random-minion
+                                         get-random-minions-distinct
+                                         give-divine-shield
+                                         remove-minion]]
+            [firestone.core :refer [deal-damage]]))
 
 (def hero-definitions
   {
@@ -13,8 +15,8 @@
    {:name        "Blessing"
     :type        :hero-power
     :mana-cost   2
-    :power-fn    (fn [state minion-id]
-                   (give-divine-shield state minion-id))
+    :power-fn    (fn [state target-id]
+                   (give-divine-shield state target-id))
     :description "Give a minion Divine Shield."}
 
    "Strengthen"
@@ -22,13 +24,11 @@
     :type        :hero-power
     :mana-cost   3
     :power-fn    (fn [state player-id]
-                   (let [minion-1-id (:id (get-random-minion state player-id))
-                         alternate-state (remove-minion state minion-1-id)
-                         minion-2-id (:id (get-random-minion alternate-state player-id))]
-                     (deal-damage state minion-1-id 1)
-                     (deal-damage state minion-2-id 1)
-                     (give-attack state minion-1-id 2)
-                     (give-attack state minion-2-id 2)))
+                   (let [minion-collection (map :id (take 2 (get-random-minions-distinct state 2 player-id)))
+                         give-2-attack (fn [state minion] (give-attack state minion 2))]
+                     (as-> state $
+                           (reduce give-2-attack $ minion-collection)
+                           (reduce deal-damage $ minion-collection))))
     :description "Deal 1 damage to two random friendly minions and give them +2 Attack."}
 
    })
