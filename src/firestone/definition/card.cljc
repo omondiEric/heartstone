@@ -182,6 +182,61 @@
                    (deal-damage state character-id 3))
     :description "Deal 3 damage to a character."}
 
+   "Herr Nilsson"
+   {:name        "Herr Nilsson"
+    :attack      1
+    :health      3
+    :mana-cost   3
+    :type        :minion
+    :set         :custom
+    :description "Poisonous"}
+
+   "Rasmus"
+   {:name        "Rasmus"
+    :attack      3
+    :health      5
+    :mana-cost   5
+    :type        :minion
+    :set         :custom
+    :description "Windfury"}
+
+   "Tjorven"
+   {:name        "Tjorven"
+    :attack      0
+    :health      2
+    :mana-cost   5
+    :type        :minion
+    :set         :custom
+    :description "Your other minions has windfury."}
+
+   "Astrid"
+   {:name        "Astrid"
+    :attack      3
+    :health      3
+    :mana-cost   4
+    :type        :minion
+    :set         :custom
+    :description "Battlecry: Copy another minions deathrattle."}
+
+   "Skrallan"
+   {:name        "Skrallan"
+    :attack      2
+    :health      2
+    :mana-cost   3
+    :type        :minion
+    :set         :custom
+    :description "After a friendly minion loses Divine Shield, gain +2/+2."}
+
+   "Annika"
+   {:name        "Annika"
+    :attack      2
+    :health      2
+    :mana-cost   3
+    :type        :minion
+    :set         :custom
+    :description "Battlecry: Give a minion +2 Attack this turn."}
+
+
    })
 
 
