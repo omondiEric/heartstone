@@ -26,7 +26,9 @@
     :attack     1
     :health     2
     :mana-cost  1
-    :properties #{}
+    :properties {:permanent     #{}
+                 :temporary     #{}
+                 :received-aura #{}}
     :type       :minion}
 
    "Ronja"
@@ -34,7 +36,9 @@
     :attack     3
     :health     2
     :mana-cost  2
-    :properties #{}
+    :properties {:permanent     #{}
+                 :temporary     #{}
+                 :received-aura #{}}
     :type       :minion}
 
    "Kato"
@@ -43,7 +47,9 @@
     :health      1
     :mana-cost   4
     :type        :minion
-    :properties  #{}
+    :properties  {:permanent     #{}
+                  :temporary     #{}
+                  :received-aura #{}}
     :description "Battlecry: Deal 4 damage to the enemy hero."
     :battlecry   (fn [state player-id]
                    (let [target-hero-id (get-in state [:players (get-other-player-id player-id) :hero :id])]
@@ -55,7 +61,9 @@
     :health      5
     :mana-cost   4
     :type        :minion
-    :properties  #{}
+    :properties  {:permanent     #{}
+                  :temporary     #{}
+                  :received-aura #{}}
     :description "Battlecry: Draw a card."
     :battlecry   (fn [state player-id]
                    (draw-card state player-id))}
@@ -66,7 +74,9 @@
     :health      6
     :mana-cost   4
     :type        :minion
-    :properties  #{"Taunt"}
+    :properties  {:permanent     #{"Taunt"}
+                  :temporary     #{}
+                  :received-aura #{}}
     :set         :custom
     :description "Taunt."}
 
@@ -76,7 +86,9 @@
     :health      5
     :mana-cost   2
     :type        :minion
-    :properties  #{"NoAttack"}
+    :properties  {:permanent     #{"NoAttack"}
+                  :temporary     #{}
+                  :received-aura #{}}
     :set         :custom
     :description "Can't Attack."}
 
@@ -86,7 +98,9 @@
     :health      5
     :mana-cost   5
     :type        :minion
-    :properties  #{"Divine Shield"}
+    :properties  {:permanent     #{"Divine Shield"}
+                  :temporary     #{}
+                  :received-aura #{}}
     :set         :custom
     :description "Divine Shield."}
 
@@ -96,7 +110,9 @@
     :health      4
     :mana-cost   3
     :type        :minion
-    :properties  #{}
+    :properties  {:permanent     #{}
+                  :temporary     #{}
+                  :received-aura #{}}
     :end-of-turn (fn [state id]
                    (deal-damage-to-other-minions state id 1))
     :set         :custom
@@ -108,7 +124,9 @@
     :health      4
     :mana-cost   3
     :type        :minion
-    :properties  #{}
+    :properties  {:permanent     #{}
+                  :temporary     #{}
+                  :received-aura #{}}
     :end-of-turn (fn [state id]
                    give-taunt state (:id (get-random-minion state)))
     :set         :custom
@@ -120,7 +138,9 @@
     :health      5
     :mana-cost   6
     :type        :minion
-    :properties  #{}
+    :properties  {:permanent     #{}
+                  :temporary     #{}
+                  :received-aura #{}}
     :set         :custom
     :description "Deathrattle: Take control of a random enemy minion."
     :deathrattle (fn [state minion-id]
@@ -133,7 +153,9 @@
     :health      1
     :mana-cost   1
     :type        :minion
-    :properties  #{"Taunt", "Divine Shield"}
+    :properties  {:permanent     #{"Taunt", "Divine Shield"}
+                  :temporary     #{}
+                  :received-aura #{}}
     :set         :custom
     :description "Taunt. Divine Shield."}
 
@@ -143,8 +165,9 @@
     :health      2
     :mana-cost   2
     :type        :minion
-    :properties  #{}
-
+    :properties  {:permanent     #{}
+                  :temporary     #{}
+                  :received-aura #{}}
     :set         :custom
     :description "Deathrattle: Summon Elisabeth."
     :deathrattle (fn [state minion-id]
@@ -156,7 +179,9 @@
     :health        4
     :mana-cost     3
     :type          :minion
-    :properties    #{}
+    :properties    {:permanent     #{}
+                    :temporary     #{}
+                    :received-aura #{}}
     :custom-timing (fn [state id]
                      (give-taunt state id))
     :set           :custom
@@ -188,6 +213,9 @@
     :health      3
     :mana-cost   3
     :type        :minion
+    :properties  {:permanent     #{}
+                  :temporary     #{}
+                  :received-aura #{}}
     :set         :custom
     :description "Poisonous"}
 
@@ -197,6 +225,9 @@
     :health      5
     :mana-cost   5
     :type        :minion
+    :properties  {:permanent     #{}
+                  :temporary     #{}
+                  :received-aura #{}}
     :set         :custom
     :description "Windfury"}
 
@@ -206,6 +237,9 @@
     :health      2
     :mana-cost   5
     :type        :minion
+    :properties  {:permanent     #{}
+                  :temporary     #{}
+                  :received-aura #{}}
     :set         :custom
     :description "Your other minions has windfury."}
 
@@ -215,6 +249,9 @@
     :health      3
     :mana-cost   4
     :type        :minion
+    :properties  {:permanent     #{}
+                  :temporary     #{}
+                  :received-aura #{}}
     :set         :custom
     :description "Battlecry: Copy another minions deathrattle."}
 
@@ -224,6 +261,9 @@
     :health      2
     :mana-cost   3
     :type        :minion
+    :properties  {:permanent     #{}
+                  :temporary     #{}
+                  :received-aura #{}}
     :set         :custom
     :description "After a friendly minion loses Divine Shield, gain +2/+2."}
 
@@ -233,9 +273,11 @@
     :health      2
     :mana-cost   3
     :type        :minion
+    :properties  {:permanent     #{}
+                  :temporary     #{}
+                  :received-aura #{}}
     :set         :custom
     :description "Battlecry: Give a minion +2 Attack this turn."}
-
 
    })
 

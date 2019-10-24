@@ -172,7 +172,8 @@
                        (valid-attack? "p1" "m" "r"))))}
   [state player-id attacker-id target-id]
   (let [attacker (get-minion state attacker-id)
-        target (get-character state target-id)]
+        target (get-character state target-id)
+        attacker-permanent-set (get-in attacker [:properties :permanent])]
     (and attacker
          target
          ; either the target has taunt
@@ -183,7 +184,7 @@
                               (map (fn [m]
                                      (has-taunt? state (:id m))))))))
          ; check for "NoAttack" property
-         (not (contains? (:properties attacker) "NoAttack"))
+         (not (contains? attacker-permanent-set "NoAttack"))
          (= (:player-id-in-turn state) player-id)
          (< (:attacks-performed-this-turn attacker) 1)
          (not (sleepy? state attacker-id))

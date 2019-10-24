@@ -293,7 +293,7 @@
                                    :hero    (create-hero "Carl")}])
                     (do-hero-power "p1" :target-id "k")
                     (get-minion "k")
-                    (:properties)
+                    (get-in [:properties :permanent])
                     (contains? "Divine Shield"))
                 true)
            ;check mana is decreased
