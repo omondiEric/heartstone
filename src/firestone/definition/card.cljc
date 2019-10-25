@@ -207,7 +207,7 @@
     :mana-cost   5
     :type        :minion
     :set         :custom
-    :description "Your other minions has windfury."}
+    :description "Your other minions have windfury."}
 
    "Astrid"
    {:name        "Astrid"

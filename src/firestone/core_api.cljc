@@ -363,6 +363,6 @@
              (assoc-in $ [:players player-id :hero :hero-power-used] true)
              (if (empty? target-id)
                (power-function $ player-id)
-               (give-divine-shield $ target-id))
+               (power-function $ target-id))
                )))))
 

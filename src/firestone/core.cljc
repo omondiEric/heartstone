@@ -346,6 +346,7 @@
         (reduce remove-minions state dead-minions)
         (as-> state $
               (reduce do-deathrattles $ dead-deathrattle-minions)
+              (reduce remove-minions $ dead-minions)
               (remove-dead-minions $)
               )))))
 
