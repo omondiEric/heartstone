@@ -9,6 +9,7 @@
                                          create-minion
                                          draw-card-to-hand
                                          get-card
+                                         get-character
                                          get-heroes
                                          get-hero
                                          get-hand
@@ -18,7 +19,7 @@
                                          get-random-minion
                                          give-divine-shield
                                          give-taunt
-                                         has-divine-shield
+                                         has-divine-shield?
                                          has-taunt?
                                          ida-present?
                                          minion?
@@ -29,24 +30,6 @@
                                          remove-minions
                                          switch-minion-side
                                          update-minion]]))
-
-(defn get-character
-  "Returns the character with the given id from the state."
-  {:test (fn []
-           (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
-                    (get-character "h1")
-                    (:name))
-                "Carl")
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
-                    (get-character "m")
-                    (:name))
-                "Mio"))}
-  [state id]
-  (or (some (fn [m] (when (= (:id m) id) m))
-            (get-minions state))
-      (some (fn [h] (when (= (:id h) id) h))
-            (get-heroes state))))
-
 
 (defn get-health
   "Returns the health of the character."
@@ -281,15 +264,15 @@
 (defn do-deathrattle
   {:test (fn []
            ;check madicken summons elisabeth
-           (is= (-> (create-game [{:minions [(create-card "Madicken" :id "m")]}])
+           (is= (-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}])
                     (do-deathrattle "m")
                     (get-minions "p1")
                     (first)
                     (:name))
                 "Elisabeth")
            ;check Uncle Nilsson
-           (is= (-> (create-game [{:minions [(create-card "Uncle Nilsson" :id "n")]}
-                                  {:minions [(create-card "Mio" :id "m")]}])
+           (is= (-> (create-game [{:minions [(create-minion "Uncle Nilsson" :id "n")]}
+                                  {:minions [(create-minion "Mio" :id "m")]}])
                     (do-deathrattle "n")
                     (get-minions "p2")
                     (count))
@@ -415,7 +398,7 @@
          (let [character (get-character $ character-id)]
            (if (minion? character)
              ;when character is minion and has no divine shield
-             (if-not (has-divine-shield $ character-id)
+             (if-not (has-divine-shield? $ character-id)
                (do
                  ;ida not on board
                  (if (= (ida-present? $) nil)

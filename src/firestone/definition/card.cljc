@@ -110,7 +110,10 @@
     :type        :minion
     :properties  #{}
     :end-of-turn (fn [state id]
-                   give-taunt state (:id (get-random-minion state)))
+                   (let [random-result (get-random-minion state)]
+                     (let [state (first random-result)
+                           random-minion (last random-result)]
+                       (give-taunt state (:id random-minion)))))
     :set         :custom
     :description "At the end of your turn give a random minion taunt."}
 
@@ -163,7 +166,6 @@
     :description   "Whenever a minion takes damage, gain taunt."}
 
    "Insect Swarm"
-
    {:name        "Insect Swarm"
     :mana-cost   2
     :type        :spell
@@ -235,7 +237,6 @@
     :type        :minion
     :set         :custom
     :description "Battlecry: Give a minion +2 Attack this turn."}
-
 
    })
 

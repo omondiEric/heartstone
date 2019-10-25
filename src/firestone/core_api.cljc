@@ -230,7 +230,8 @@
         target-attack-val (get-attack state target-id)]
     (if (valid-attack? state player-id attacker-id target-id) (-> (update-minion state attacker-id :attacks-performed-this-turn inc)
                                                                   (deal-damage attacker-id target-attack-val)
-                                                                  (deal-damage target-id attacker-attack-val)))))
+                                                                  (deal-damage target-id attacker-attack-val))
+                                                              (error "Cannot attack"))))
 
 (defn attack-hero
   "Attacks the enemy hero"

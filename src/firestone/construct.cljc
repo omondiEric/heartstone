@@ -530,6 +530,17 @@
   (->> (get-players state)
        (map :hero)))
 
+(defn get-characters
+  {:test (fn []
+           (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                  {:minions [(create-minion "Emil" :id "e")]}]) $
+                    (get-characters $)
+                    (map :id $))
+                ["h1", "h2", "m", "e"])
+           )}
+  [state]
+  (concat (get-heroes state) (get-minions state)))
+
 (defn replace-minion
   "Replaces a minion with the same id as the given new-minion."
   {:test (fn []
@@ -998,16 +1009,16 @@
   [state minion-id]
   (update-minion state minion-id :properties (fn [property-set]
                                                (disj property-set "Divine Shield"))))
-(defn has-divine-shield
+(defn has-divine-shield?
   {:test (fn []
            ;return true when minion has divine shield
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
                     (give-divine-shield "k")
-                    (has-divine-shield "k"))
+                    (has-divine-shield? "k"))
                 true)
            ;return false when minion has no divine shield
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
-                    (has-divine-shield "k"))
+                    (has-divine-shield? "k"))
                 false))}
 
   [state minion-id]
