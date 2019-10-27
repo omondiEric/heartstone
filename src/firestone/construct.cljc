@@ -8,19 +8,19 @@
   "Creates a hero from its definition by the given hero name. The additional key-values will override the default values."
   {:test (fn []
            (is= (create-hero "Carl")
-                {:name         "Carl"
-                 :entity-type  :hero
-                 :damage-taken 0
+                {:name            "Carl"
+                 :entity-type     :hero
+                 :damage-taken    0
                  :hero-power-used false})
            (is= (create-hero "Carl" :damage-taken 10)
-                {:name         "Carl"
-                 :entity-type  :hero
-                 :damage-taken 10
+                {:name            "Carl"
+                 :entity-type     :hero
+                 :damage-taken    10
                  :hero-power-used false}))}
   [name & kvs]
-  (let [hero {:name         name
-              :entity-type  :hero
-              :damage-taken 0
+  (let [hero {:name            name
+              :entity-type     :hero
+              :damage-taken    0
               :hero-power-used false}]
     (if (empty? kvs)
       hero
@@ -40,6 +40,28 @@
       card
       (apply assoc card kvs))))
 
+(def game-event-fn-names #{:end-of-turn, :on-minion-damage})
+
+(defn get-additional-minion-field
+  {:test (fn []
+           (is-not (nil? (get-additional-minion-field "Pippi" :end-of-turn)))
+           (is (nil? (get-additional-minion-field "Mio" :end-of-turn))))}
+  [minion-name game-event-key]
+  (let [game-event-from-defn (if (contains? (get-definition minion-name) game-event-key)
+                       (-> (get-definition minion-name) (game-event-key))
+                       nil)]
+    (when game-event-from-defn {game-event-key game-event-from-defn})))
+
+(defn get-all-additional-minion-fields
+  {:test (fn []
+           (is-not (empty? (get-all-additional-minion-fields "Pippi")))
+           (is (empty? (get-all-additional-minion-fields "Mio"))))}
+  [minion-name]
+  (reduce (fn [curr-map game-event-key]
+            (merge curr-map (get-additional-minion-field minion-name game-event-key)))
+          {}
+          game-event-fn-names))
+
 (defn create-minion
   "Creates a minion from its definition by the given minion name. The additional key-values will override the default values."
   {:test (fn []
@@ -47,34 +69,43 @@
                 {:attacks-performed-this-turn 1
                  :damage-taken                0
                  :attack                      1
-                 :end-of-turn                 nil
                  :entity-type                 :minion
-                 :properties                  #{}
+                 :properties                  {:permanent     #{}
+                                               :temporary     #{}}
                  :name                        "Mio"
                  :id                          "m"})
            (is= (create-minion "Elisabeth" :id "e")
                 {:attacks-performed-this-turn 0
                  :damage-taken                0
                  :attack                      1
-                 :end-of-turn                 nil
                  :entity-type                 :minion
-                 :properties                  #{"Divine Shield", "Taunt"}
+                 :properties                  {:permanent     #{"Divine Shield", "Taunt"}
+                                               :temporary     #{}}
                  :name                        "Elisabeth"
                  :id                          "e"})
+           (is= (create-minion "Ida" :id "i")
+                {:attacks-performed-this-turn 0
+                 :damage-taken                0
+                 :attack                      2
+                 :entity-type                 :minion
+                 :properties                  {:permanent     #{}
+                                               :temporary     #{}}
+                 :name                        "Ida"
+                 :id                          "i"
+                 :on-minion-damage            (:on-minion-damage (get-definition "Ida"))})
            )}
   [name & kvs]
   (let [properties (-> (get-definition name) (:properties)) ; Will be used later
         attack (-> (get-definition name) (:attack))
-        end-of-turn (if (contains? (get-definition name) :end-of-turn)
-                      (-> (get-definition name) (:end-of-turn))
-                      nil)
-        minion {:damage-taken                0
+        minion  (merge
+                {:damage-taken                0
                 :attack                      attack
-                :end-of-turn                 end-of-turn
                 :properties                  properties
                 :entity-type                 :minion
                 :name                        name
-                :attacks-performed-this-turn 0}]
+                :attacks-performed-this-turn 0}
+                (get-all-additional-minion-fields name)
+                )]
     (if (empty? kvs)
       minion
       (apply assoc minion kvs))))
@@ -96,12 +127,12 @@
                                                        :hand          []
                                                        :minions       []
                                                        :fatigue-level 0
-                                                       :hero          {:name         "Carl"
-                                                                       :id           "c"
-                                                                       :owner-id     "p1"
-                                                                       :damage-taken 0
+                                                       :hero          {:name            "Carl"
+                                                                       :id              "c"
+                                                                       :owner-id        "p1"
+                                                                       :damage-taken    0
                                                                        :hero-power-used false
-                                                                       :entity-type  :hero}}
+                                                                       :entity-type     :hero}}
                                                  "p2" {:id            "p2"
                                                        :mana          10
                                                        :max-mana      10
@@ -109,12 +140,12 @@
                                                        :hand          []
                                                        :minions       []
                                                        :fatigue-level 0
-                                                       :hero          {:name         "Gustaf"
-                                                                       :id           "h2"
-                                                                       :owner-id     "p2"
-                                                                       :damage-taken 0
+                                                       :hero          {:name            "Gustaf"
+                                                                       :id              "h2"
+                                                                       :owner-id        "p2"
+                                                                       :damage-taken    0
                                                                        :hero-power-used false
-                                                                       :entity-type  :hero}}}
+                                                                       :entity-type     :hero}}}
                  :counter                       1
                  :seed                          0
                  :minion-ids-summoned-this-turn []}))}
@@ -434,18 +465,18 @@
                                                                         :attacks-performed-this-turn 0
                                                                         :added-to-board-time-id      2
                                                                         :entity-type                 :minion
-                                                                        :properties                  #{}
+                                                                        :properties                  {:permanent     #{}
+                                                                                                      :temporary     #{}}
                                                                         :name                        "Mio"
-                                                                        :end-of-turn                 nil
                                                                         :id                          "m1"
                                                                         :position                    0
                                                                         :owner-id                    "p1"}]
                                                        :fatigue-level 0
-                                                       :hero          {:name         "Carl"
-                                                                       :id           "h1"
-                                                                       :owner-id     "p1"
-                                                                       :entity-type  :hero
-                                                                       :damage-taken 0
+                                                       :hero          {:name            "Carl"
+                                                                       :id              "h1"
+                                                                       :owner-id        "p1"
+                                                                       :entity-type     :hero
+                                                                       :damage-taken    0
                                                                        :hero-power-used false}}
                                                  "p2" {:id            "p2"
                                                        :mana          10
@@ -454,11 +485,11 @@
                                                        :hand          []
                                                        :minions       []
                                                        :fatigue-level 0
-                                                       :hero          {:name         "Carl"
-                                                                       :id           "h2"
-                                                                       :owner-id     "p2"
-                                                                       :entity-type  :hero
-                                                                       :damage-taken 0
+                                                       :hero          {:name            "Carl"
+                                                                       :id              "h2"
+                                                                       :owner-id        "p2"
+                                                                       :entity-type     :hero
+                                                                       :damage-taken    0
                                                                        :hero-power-used false}}}
                  :counter                       5
                  :seed                          0
@@ -947,11 +978,11 @@
            (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
                     (give-taunt "m")
                     (get-minion "m")
-                    (:properties)
+                    (get-in [:properties :permanent])
                     (contains? "Taunt"))
                 true))}
   [state id]
-  (update-minion state id :properties (fn [x] (conj x "Taunt"))))
+  (update-minion state id (get-in (get-minion state id) [:properties :permanent]) (fn [x] (conj x "Taunt"))))
 
 (defn remove-taunt
   "Removes taunt from a minion card"
@@ -959,51 +990,86 @@
            (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
                     (remove-taunt "e")
                     (get-minion "e")
-                    (:properties)
+                    (get-in [:properties :permanent])
                     (contains? "Taunt"))
                 false))}
   [state id]
-  (update-minion state id :properties (fn [x] (disj x "Taunt"))))
+  (update-minion state id [:properties :permanent] (fn [x] (disj x "Taunt"))))
+
+(defn player-has-active-aura-buff?
+  "Looks for an active minion of the current player that has a specific aura buff"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Tjorven" :id "t")
+                                             (create-minion "Madicken" :id "m")]}])
+                    (player-has-active-aura-buff? "p1" "Friendly-Windfury"))
+                true)
+           (is= (-> (create-game [{:minions [(create-minion "Astrid" :id "a")]}])
+                    (player-has-active-aura-buff? "p1" "Friendly-Windfury"))
+                nil)
+           )}
+  [state player-id aura-buff]
+  (some true?
+        (->> (get-minions state player-id)
+             (map (fn [m]
+                    (contains? (:aura (get-definition (:name m))) aura-buff))))))
+
+(defn has-windfury?
+  "Checks if minion has windfury, either permanent or received by aura"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Rasmus" :id "r")]}])
+                    (has-windfury? "r" "p1"))
+                true)
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (has-windfury? "e" "p1"))
+                nil))}
+  [state minion-id player-id]
+  (let [permanent-set (get-in (get-minion state minion-id) [:properties :permanent])]
+    (or (contains? permanent-set "Windfury")
+        (player-has-active-aura-buff? state player-id "Friendly-Windfury"))))
 
 (defn has-taunt?
   "Checks if minion has taunt"
   {:test (fn []
-           (is (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
-                   (has-taunt? "e"))))}
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (has-taunt? "e"))
+                true))}
   [state id]
-  (contains? (:properties (get-minion state id)) "Taunt"))
+  (let [permanent-set (get-in (get-minion state id) [:properties :permanent])]
+    (contains? permanent-set "Taunt")))
 
 ;Gives divine shield to a card
 (defn give-divine-shield
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                    ;(get-minion "k")
                     (give-divine-shield "k")
                     (get-minion "k")
+                    ;(get-in [:properties :permanent])
                     (:properties)
-                    (contains? "Divine Shield"))            ;using this might be better when we have a large set
+                    (:permanent)
+                    (contains? "Divine Shield"))
                 true))}
   [state minion-id]
-  (update-minion state minion-id :properties (fn [property-set]
-                                               (conj property-set "Divine Shield"))))
+  (update-minion state minion-id (get-in (get-minion state minion-id) [:properties :permanent]) (fn [x]
+                                                            (conj x "Divine Shield"))))
 
 ;Remove divine shield from a minion
 (defn remove-divine-shield
   {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k") {:properties #{"Divine Shield"}}]}])
-                    (remove-divine-shield "k")
-                    (get-minion "k")
-                    (:properties)
+           (is= (-> (create-game [{:minions [(create-minion "Uncle Melker" :id "um")]}])
+                    (remove-divine-shield "um")
+                    (get-minion "um")
+                    (get-in [:properties :permanent])
                     (contains? "Divine Shield"))
                 false))}
   [state minion-id]
-  (update-minion state minion-id :properties (fn [property-set]
+  (update-minion state minion-id (get-in (get-minion state minion-id) [:properties :permanent]) (fn [property-set]
                                                (disj property-set "Divine Shield"))))
 (defn has-divine-shield
   {:test (fn []
            ;return true when minion has divine shield
-           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
-                    (give-divine-shield "k")
-                    (has-divine-shield "k"))
+           (is= (-> (create-game [{:minions [(create-minion "Uncle Melker" :id "um")]}])
+                    (has-divine-shield "um"))
                 true)
            ;return false when minion has no divine shield
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
@@ -1011,10 +1077,8 @@
                 false))}
 
   [state minion-id]
-  (-> state
-      (get-minion minion-id)
-      (:properties)
-      (contains? "Divine Shield")))
+  (let [permanent-set (get-in (get-minion state minion-id) [:properties :permanent])]
+    (contains? permanent-set "Divine Shield")))
 
 (defn get-character
   "Returns the character with the given id from the state."

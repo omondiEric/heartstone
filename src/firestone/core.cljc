@@ -12,6 +12,8 @@
                                          get-heroes
                                          get-hero
                                          get-hand
+                                         get-mana
+                                         get-mana-cost
                                          get-minion
                                          get-minions
                                          get-other-player-id
@@ -20,6 +22,7 @@
                                          give-taunt
                                          has-divine-shield
                                          has-taunt?
+                                         has-windfury?
                                          ida-present?
                                          minion?
                                          replace-minion
@@ -28,6 +31,7 @@
                                          remove-minion
                                          remove-minions
                                          switch-minion-side
+                                         update-mana
                                          update-minion]]))
 
 (defn get-character
@@ -172,7 +176,8 @@
                        (valid-attack? "p1" "m" "r"))))}
   [state player-id attacker-id target-id]
   (let [attacker (get-minion state attacker-id)
-        target (get-character state target-id)]
+        target (get-character state target-id)
+        attacker-permanent-set (get-in attacker [:properties :permanent])]
     (and attacker
          target
          ; either the target has taunt
@@ -183,41 +188,45 @@
                               (map (fn [m]
                                      (has-taunt? state (:id m))))))))
          ; check for "NoAttack" property
-         (not (contains? (:properties attacker) "NoAttack"))
+         (not (contains? attacker-permanent-set "NoAttack"))
          (= (:player-id-in-turn state) player-id)
-         (< (:attacks-performed-this-turn attacker) 1)
+         ; should only be able to attack once, or twice if minion has windfury
+         (or (and (< (:attacks-performed-this-turn attacker) 1)
+                  (not (has-windfury? state attacker-id player-id)))
+             (and (< (:attacks-performed-this-turn attacker) 2)
+                  (has-windfury? state attacker-id player-id)))
          (not (sleepy? state attacker-id))
          (> (get-attack state attacker-id) 0)
          (not= (:owner-id attacker) (:owner-id target)))))
 
-(defn do-battlecry
-  "Returns the battlecry function of a minion or nil"
+(defn do-on-play
+  "Returns the on-play function of a minion or nil"
   {:test (fn []
            ;check that damage is taken for Kato
            (is= (-> (create-game [{:hand [(create-card "Kato" :id "k")]}])
-                    (do-battlecry "p1" (create-card "Kato"))
-                    (do-battlecry "p2" (create-card "Kato"))
-                    (do-battlecry "p2" (create-card "Kato"))
-                    (do-battlecry "p2" (create-card "Kato"))
+                    (do-on-play "p1" (create-card "Kato"))
+                    (do-on-play "p2" (create-card "Kato"))
+                    (do-on-play "p2" (create-card "Kato"))
+                    (do-on-play "p2" (create-card "Kato"))
                     (get-in [:players "p1" :hero :damage-taken]))
                 12)
            ;check that card is drawn for Emil
            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}])
-                    (do-battlecry "p1" (create-card "Emil"))
+                    (do-on-play "p1" (create-card "Emil"))
                     (get-hand "p1")
                     (count))
                 2)
            ;check that Ronja will cause no errors
            (is= (-> (create-game)
-                    (do-battlecry "p1" (create-card "Ronja"))
+                    (do-on-play "p1" (create-card "Ronja"))
                     (get-hand "p1")
                     (count))
                 0)
            )}
   [state player-id card]
-  (if (contains? (get-definition card) :battlecry)
-    (let [battlecry (:battlecry (get-definition card))]
-      (battlecry state player-id))
+  (if (contains? (get-definition card) :on-play)
+    (let [on-play-fn (:on-play (get-definition card))]
+      (on-play-fn state player-id))
     state))
 
 (defn has-deathrattle
@@ -234,9 +243,11 @@
                        (has-deathrattle "m")))
            )}
   ([card]
-   (contains? (get-definition card) :deathrattle))
+   (let [permanent-set (get-in (get-definition card) [:properties :permanent])]
+   (contains? permanent-set "Deathrattle")))
   ([state card-id]
-   (contains? (get-definition (get-minion state card-id)) :deathrattle)))
+   (let [permanent-set (get-in (get-definition (get-minion state card-id)) [:properties :permanent])]
+   (contains? permanent-set "Deathrattle"))))
 
 (defn get-minions-with-deathrattle
   {:test (fn []
@@ -349,6 +360,43 @@
               (remove-dead-minions $)
               )))))
 
+; call all the functions of active minions corresponding to a game event eg. end-of-turn, on-minion-damage
+(defn do-game-event-functions
+  {:test (fn []
+           ; testing end of turn function
+           (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
+                                             (create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e1")
+                                             (create-minion "Emil" :id "e2")]}])
+                    (do-game-event-functions "p1" :end-of-turn)
+                    (get-minion "e1")
+                    (:damage-taken))
+                1)
+           ; testing on minion damage function: Note for steve: this currently doesnt work because "give-taunt"
+           ; doesnt work  - but once that is fixed, this should work
+           (is= (-> (create-game [{:minions [(create-minion "Ida" :id "i")
+                                             (create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e1")
+                                             (create-minion "Emil" :id "e2")]}])
+                    (do-game-event-functions :on-minion-damage)
+                    (has-taunt? "i"))
+                true))}
+  ([state player-id game-event-key]
+  (reduce
+    (fn [state minion]
+      (if-not (game-event-key minion)
+        state
+        ((game-event-key minion) state (:id minion))))
+    state
+    (get-minions state player-id)))
+  ([state game-event-key]
+   (reduce
+     (fn [state minion]
+       (if-not (game-event-key minion)
+         state
+         ((game-event-key minion) state (:id minion))))
+     state
+     (get-minions state))))
 
 ;deal damage to a character and remove dead minions
 (defn deal-damage
@@ -490,3 +538,15 @@
 
 (-> (create-game)
     (get-random-minion))
+
+(defn pay-mana
+  {:test (fn []
+           ; mana should be updated
+           (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
+                                             (create-card "Emil" :id "e")]
+                                   :minions [(create-minion "Alfred" :id "a")]}])
+                    (pay-mana "p1" "r")
+                    (get-mana "p1"))
+                8))}
+  [state player-id card-id]
+  (update-mana state player-id (fn [old-value] (- old-value (get-mana-cost state card-id)))))
