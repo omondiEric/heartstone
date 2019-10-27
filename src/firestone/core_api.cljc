@@ -244,6 +244,13 @@
                     (get-hand "p1")
                     (count))
                 1)
+           ; mana should be updated
+           (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
+                                             (create-card "Emil" :id "e")]
+                                   :minions [(create-minion "Alfred" :id "a")]}])
+                    (play-spell-card "p1" "r" "a")
+                    (get-mana "p1"))
+                8)
            ; Testing Insect Swarm
            (is= (-> (create-game [{:hand [(create-card "Insect Swarm" :id "i")] :deck [(create-card "Mio" :id "m")]}
                                   {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}
@@ -261,9 +268,11 @@
                 3))}
   ([state player-id card-id character-id]
    (-> ((:spell-fn (get-definition (get-card state card-id))) state character-id)
+       (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
        (remove-card-from-hand player-id card-id)))
   ([state player-id card-id]
    (-> ((:spell-fn (get-definition (get-card state card-id))) state)
+       (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
        (remove-card-from-hand player-id card-id))))
 
 (defn do-hero-power
