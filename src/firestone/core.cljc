@@ -350,6 +350,43 @@
               (remove-dead-minions $)
               )))))
 
+; call all the functions of active minions corresponding to a game event eg. end-of-turn, on-minion-damage
+(defn do-game-event-functions
+  {:test (fn []
+           ; testing end of turn function
+           (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
+                                             (create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e1")
+                                             (create-minion "Emil" :id "e2")]}])
+                    (do-game-event-functions "p1" :end-of-turn)
+                    (get-minion "e1")
+                    (:damage-taken))
+                1)
+           ; testing on minion damage function: Note for steve: this currently doesnt work because "give-taunt"
+           ; doesnt work  - but once that is fixed, this should work
+           (is= (-> (create-game [{:minions [(create-minion "Ida" :id "i")
+                                             (create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e1")
+                                             (create-minion "Emil" :id "e2")]}])
+                    (do-game-event-functions :on-minion-damage)
+                    (has-taunt? "i"))
+                true))}
+  ([state player-id game-event-key]
+   (reduce
+     (fn [state minion]
+       (if-not (game-event-key minion)
+         state
+         ((game-event-key minion) state (:id minion))))
+     state
+     (get-minions state player-id)))
+  ([state game-event-key]
+   (reduce
+     (fn [state minion]
+       (if-not (game-event-key minion)
+         state
+         ((game-event-key minion) state (:id minion))))
+     state
+     (get-minions state))))
 
 ;deal damage to a character and remove dead minions
 (defn deal-damage
@@ -390,7 +427,7 @@
                                             (create-minion "Ida" :id "i")]}])
                    (deal-damage "p")
                    (get-minion "i")
-                   (:properties)
+                   (get-in [:properties :permanent])
                    (contains? "Taunt")))
 
            ;test to see that Ida does not get taunt when a minion with divine shield is attacked

@@ -27,8 +27,7 @@
     :health     2
     :mana-cost  1
     :properties {:permanent     #{}
-                 :temporary     #{}
-                 :received-aura #{}}
+                 :temporary     #{}}
     :type       :minion}
 
    "Ronja"
@@ -37,8 +36,7 @@
     :health     2
     :mana-cost  2
     :properties {:permanent     #{}
-                 :temporary     #{}
-                 :received-aura #{}}
+                 :temporary     #{}}
     :type       :minion}
 
    "Kato"
@@ -48,8 +46,7 @@
     :mana-cost   4
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :description "Battlecry: Deal 4 damage to the enemy hero."
     :battlecry   (fn [state player-id]
                    (let [target-hero-id (get-in state [:players (get-other-player-id player-id) :hero :id])]
@@ -62,8 +59,7 @@
     :mana-cost   4
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :description "Battlecry: Draw a card."
     :battlecry   (fn [state player-id]
                    (draw-card state player-id))}
@@ -75,8 +71,7 @@
     :mana-cost   4
     :type        :minion
     :properties  {:permanent     #{"Taunt"}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :set         :custom
     :description "Taunt."}
 
@@ -87,8 +82,7 @@
     :mana-cost   2
     :type        :minion
     :properties  {:permanent     #{"NoAttack"}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :set         :custom
     :description "Can't Attack."}
 
@@ -99,8 +93,7 @@
     :mana-cost   5
     :type        :minion
     :properties  {:permanent     #{"Divine Shield"}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :set         :custom
     :description "Divine Shield."}
 
@@ -111,8 +104,7 @@
     :mana-cost   3
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :end-of-turn (fn [state id]
                    (deal-damage-to-other-minions state id 1))
     :set         :custom
@@ -125,8 +117,7 @@
     :mana-cost   3
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :end-of-turn (fn [state id]
                    give-taunt state (:id (get-random-minion state)))
     :set         :custom
@@ -139,8 +130,7 @@
     :mana-cost   6
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :set         :custom
     :description "Deathrattle: Take control of a random enemy minion."
     :deathrattle (fn [state minion-id]
@@ -154,8 +144,7 @@
     :mana-cost   1
     :type        :minion
     :properties  {:permanent     #{"Taunt", "Divine Shield"}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :set         :custom
     :description "Taunt. Divine Shield."}
 
@@ -166,8 +155,7 @@
     :mana-cost   2
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :set         :custom
     :description "Deathrattle: Summon Elisabeth."
     :deathrattle (fn [state minion-id]
@@ -180,9 +168,8 @@
     :mana-cost     3
     :type          :minion
     :properties    {:permanent     #{}
-                    :temporary     #{}
-                    :received-aura #{}}
-    :custom-timing (fn [state id]
+                    :temporary     #{}}
+    :on-minion-damage (fn [state id]
                      (give-taunt state id))
     :set           :custom
     :description   "Whenever a minion takes damage, gain taunt."}
@@ -213,9 +200,8 @@
     :health      3
     :mana-cost   3
     :type        :minion
-    :properties  {:permanent     #{}
-                  :temporary     #{}
-                  :received-aura #{}}
+    :properties  {:permanent     #{"Poisonous"}
+                  :temporary     #{}}
     :set         :custom
     :description "Poisonous"}
 
@@ -226,8 +212,7 @@
     :mana-cost   5
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :set         :custom
     :description "Windfury"}
 
@@ -238,8 +223,7 @@
     :mana-cost   5
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :set         :custom
     :description "Your other minions has windfury."}
 
@@ -250,8 +234,7 @@
     :mana-cost   4
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :set         :custom
     :description "Battlecry: Copy another minions deathrattle."}
 
@@ -262,8 +245,7 @@
     :mana-cost   3
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :set         :custom
     :description "After a friendly minion loses Divine Shield, gain +2/+2."}
 
@@ -274,8 +256,7 @@
     :mana-cost   3
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}
-                  :received-aura #{}}
+                  :temporary     #{}}
     :set         :custom
     :description "Battlecry: Give a minion +2 Attack this turn."}
 

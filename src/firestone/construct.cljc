@@ -50,8 +50,7 @@
                  :end-of-turn                 nil
                  :entity-type                 :minion
                  :properties                  {:permanent     #{}
-                                               :temporary     #{}
-                                               :received-aura #{}}
+                                               :temporary     #{}}
                  :name                        "Mio"
                  :id                          "m"})
            (is= (create-minion "Elisabeth" :id "e")
@@ -61,8 +60,7 @@
                  :end-of-turn                 nil
                  :entity-type                 :minion
                  :properties                  {:permanent     #{"Divine Shield", "Taunt"}
-                                               :temporary     #{}
-                                               :received-aura #{}}
+                                               :temporary     #{}}
                  :name                        "Elisabeth"
                  :id                          "e"})
            )}
@@ -439,8 +437,7 @@
                                                                         :added-to-board-time-id      2
                                                                         :entity-type                 :minion
                                                                         :properties                  {:permanent     #{}
-                                                                                                      :temporary     #{}
-                                                                                                      :received-aura #{}}
+                                                                                                      :temporary     #{}}
                                                                         :name                        "Mio"
                                                                         :end-of-turn                 nil
                                                                         :id                          "m1"
@@ -956,8 +953,10 @@
                     (get-in [:properties :permanent])
                     (contains? "Taunt"))
                 true))}
-  [state id]
-  (update-minion state id (get-in (get-minion state id) [:properties :permanent]) (fn [x] (conj x "Taunt"))))
+  [state minion-id]
+  (update-minion state minion-id :properties (fn [properties-map]
+                                               (update-in properties-map [:permanent] (fn [permanent-set]
+                                                                                        (conj permanent-set "Taunt"))))))
 
 (defn remove-taunt
   "Removes taunt from a minion card"
@@ -968,15 +967,20 @@
                     (get-in [:properties :permanent])
                     (contains? "Taunt"))
                 false))}
-  [state id]
-  (update-minion state id [:properties :permanent] (fn [x] (disj x "Taunt"))))
+  [state minion-id]
+  (update-minion state minion-id :properties (fn [properties-map]
+                                               (update-in properties-map [:permanent] (fn [permanent-set]
+                                                                                        (disj permanent-set "Taunt"))))))
 
 (defn has-taunt?
   "Checks if minion has taunt"
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
                     (has-taunt? "e"))
-                true))}
+                true)
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                    (has-taunt? "k"))
+                false))}
   [state id]
   (let [permanent-set (get-in (get-minion state id) [:properties :permanent])]
     (contains? permanent-set "Taunt")))
@@ -985,17 +989,16 @@
 (defn give-divine-shield
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
-                    ;(get-minion "k")
+                    ;(get-minion "k"))
                     (give-divine-shield "k")
                     (get-minion "k")
-                    ;(get-in [:properties :permanent])
-                    (:properties)
-                    (:permanent)
+                    (get-in [:properties :permanent])
                     (contains? "Divine Shield"))
                 true))}
   [state minion-id]
-  (update-minion state minion-id (get-in (get-minion state minion-id) [:properties :permanent]) (fn [x]
-                                                            (conj x "Divine Shield"))))
+  (update-minion state minion-id :properties (fn [properties-map]
+                                               (update-in properties-map [:permanent] (fn [permanent-set]
+                                                                                        (conj permanent-set "Divine Shield"))))))
 
 ;Remove divine shield from a minion
 (defn remove-divine-shield
@@ -1007,8 +1010,9 @@
                     (contains? "Divine Shield"))
                 false))}
   [state minion-id]
-  (update-minion state minion-id (get-in (get-minion state minion-id) [:properties :permanent]) (fn [property-set]
-                                               (disj property-set "Divine Shield"))))
+  (update-minion state minion-id :properties (fn [properties-map]
+                                               (update-in properties-map [:permanent] (fn [permanent-set]
+                                                                                        (disj permanent-set "Divine Shield"))))))
 (defn has-divine-shield
   {:test (fn []
            ;return true when minion has divine shield
