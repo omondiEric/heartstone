@@ -12,6 +12,8 @@
                                          get-heroes
                                          get-hero
                                          get-hand
+                                         get-mana
+                                         get-mana-cost
                                          get-minion
                                          get-minions
                                          get-other-player-id
@@ -29,6 +31,7 @@
                                          remove-minion
                                          remove-minions
                                          switch-minion-side
+                                         update-mana
                                          update-minion]]))
 
 (defn get-character
@@ -189,9 +192,9 @@
          (= (:player-id-in-turn state) player-id)
          ; should only be able to attack once, or twice if minion has windfury
          (or (and (< (:attacks-performed-this-turn attacker) 1)
-                  (not (has-windfury? state attacker-id)))
+                  (not (has-windfury? state attacker-id player-id)))
              (and (< (:attacks-performed-this-turn attacker) 2)
-                  (has-windfury? state attacker-id)))
+                  (has-windfury? state attacker-id player-id)))
          (not (sleepy? state attacker-id))
          (> (get-attack state attacker-id) 0)
          (not= (:owner-id attacker) (:owner-id target)))))
@@ -535,3 +538,15 @@
 
 (-> (create-game)
     (get-random-minion))
+
+(defn pay-mana
+  {:test (fn []
+           ; mana should be updated
+           (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
+                                             (create-card "Emil" :id "e")]
+                                   :minions [(create-minion "Alfred" :id "a")]}])
+                    (pay-mana "p1" "r")
+                    (get-mana "p1"))
+                8))}
+  [state player-id card-id]
+  (update-mana state player-id (fn [old-value] (- old-value (get-mana-cost state card-id)))))

@@ -9,6 +9,7 @@
                                     deal-damage-to-all-minions
                                     get-attack
                                     get-health
+                                    pay-mana
                                     valid-attack?]]
             [firestone.construct :refer [add-card-to-hand
                                          add-minion-to-board
@@ -268,11 +269,11 @@
                 3))}
   ([state player-id card-id character-id]
    (-> ((:spell-fn (get-definition (get-card state card-id))) state character-id)
-       (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
+       (pay-mana player-id card-id)
        (remove-card-from-hand player-id card-id)))
   ([state player-id card-id]
    (-> ((:spell-fn (get-definition (get-card state card-id))) state)
-       (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
+       (pay-mana player-id card-id)
        (remove-card-from-hand player-id card-id))))
 
 (defn do-hero-power
