@@ -1044,6 +1044,19 @@
   (let [permanent-set (get-in (get-minion state minion-id) [:properties :permanent])]
     (contains? permanent-set "Taunt")))
 
+(defn is-poisonous?
+  "Checks if minion has taunt"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Herr Nilsson" :id "hn")]}])
+                    (is-poisonous? "hn"))
+                true)
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                    (is-poisonous? "k"))
+                false))}
+  [state minion-id]
+  (let [permanent-set (get-in (get-minion state minion-id) [:properties :permanent])]
+    (contains? permanent-set "Poisonous")))
+
 ;Gives divine shield to a card
 (defn give-divine-shield
   {:test (fn []

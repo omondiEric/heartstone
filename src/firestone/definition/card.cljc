@@ -119,7 +119,7 @@
     :type        :minion
     :properties  {:permanent #{}
                   :temporary #{}}
-    :end-of-turn (fn [state]
+    :end-of-turn (fn [state id]
                    give-taunt state (:id (get-random-minion state)))
     :set         :custom
     :description "At the end of your turn give a random minion taunt."}
@@ -170,7 +170,7 @@
     :type             :minion
     :properties       {:permanent #{}
                        :temporary #{}}
-    :on-minion-damage (fn [state]
+    :on-minion-damage (fn [state id]
                         (let [ida (ida-present? state)]
                           (if (nil? ida)
                             state

@@ -244,10 +244,10 @@
            )}
   ([card]
    (let [permanent-set (get-in (get-definition card) [:properties :permanent])]
-   (contains? permanent-set "Deathrattle")))
+     (contains? permanent-set "Deathrattle")))
   ([state card-id]
    (let [permanent-set (get-in (get-definition (get-minion state card-id)) [:properties :permanent])]
-   (contains? permanent-set "Deathrattle"))))
+     (contains? permanent-set "Deathrattle"))))
 
 (defn get-minions-with-deathrattle
   {:test (fn []
@@ -382,13 +382,13 @@
                     (has-taunt? "i"))
                 true))}
   ([state player-id game-event-key]
-  (reduce
-    (fn [state minion]
-      (if-not (game-event-key minion)
-        state
-        ((game-event-key minion) state (:id minion))))
-    state
-    (get-minions state player-id)))
+   (reduce
+     (fn [state minion]
+       (if-not (game-event-key minion)
+         state
+         ((game-event-key minion) state (:id minion))))
+     state
+     (get-minions state player-id)))
   ([state game-event-key]
    (reduce
      (fn [state minion]
@@ -434,16 +434,16 @@
                 0)
            ;test to see that Ida gets taunt when a minion is damaged
            (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
-                                            (create-minion "Ida" :id "i")]}])
-                   (deal-damage "p")
-                   (has-taunt? "i"))
+                                             (create-minion "Ida" :id "i")]}])
+                    (deal-damage "p")
+                    (has-taunt? "i"))
                 true)
 
            ;test to see that Ida does not get taunt when a minion with divine shield is attacked
            (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")
-                                                (create-minion "Ida" :id "i")]}])
-                       (deal-damage "e")
-                       (has-taunt? "i"))
+                                             (create-minion "Ida" :id "i")]}])
+                    (deal-damage "e")
+                    (has-taunt? "i"))
                 false)
 
            (is= (-> (create-game [{:hero (create-hero "Carl")}])

@@ -23,6 +23,7 @@
                                          draw-card-to-hand
                                          fatigue-hero
                                          inc-max-mana
+                                         is-poisonous?
                                          get-card
                                          get-deck
                                          get-hand
@@ -184,6 +185,15 @@
         (do-on-play player-id card)
         )))
 
+(defn kill-minion-fn
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Ronja" :id "r")]}])
+                    (kill-minion-fn "r")
+                    (get-minion "r"))
+                nil))}
+  [state minion-id]
+  (let [minion-health (get-health state minion-id)]
+    (deal-damage state minion-id minion-health)))
 
 (defn attack-minion
   "Attacks the enemy minion"
@@ -191,7 +201,7 @@
            ; Your minion's health should be updated
            (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}
                                   {:minions [(create-minion "Ronja" :id "r")]}])
-                    (attack-minion "p1" "e" "r")
+                    (attack-minion "p1" "e" "r")            ;)
                     (get-health "e"))
                 2)
            ; Target minion's health should be updated
@@ -200,6 +210,12 @@
                     (attack-minion "p1" "m" "r")
                     (get-health "r"))
                 1)
+           ; Attack from poisonous attacker should kill the target minion
+           (is= (-> (create-game [{:minions [(create-minion "Herr Nilsson" :id "hn")]}
+                                  {:minions [(create-minion "Ronja" :id "r")]}])
+                    (attack-minion "p1" "hn" "r")
+                    (get-minion "r"))
+                nil)
            ; Your minion's attacks for this turn should be updated
            (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}
                                   {:minions [(create-minion "Ronja" :id "r")]}])
@@ -210,9 +226,12 @@
   [state player-id attacker-id target-id]
   (let [attacker-attack-val (get-attack state attacker-id)
         target-attack-val (get-attack state target-id)]
-    (if (valid-attack? state player-id attacker-id target-id) (-> (update-minion state attacker-id :attacks-performed-this-turn inc)
-                                                                  (deal-damage attacker-id target-attack-val)
-                                                                  (deal-damage target-id attacker-attack-val)))))
+    (if (valid-attack? state player-id attacker-id target-id) (as-> (update-minion state attacker-id :attacks-performed-this-turn inc) $
+                                                                    ;if attacker is poisonous, kill target minion
+                                                                    (if (is-poisonous? $ attacker-id)
+                                                                      (kill-minion-fn $ target-id)
+                                                                      (deal-damage $ target-id attacker-attack-val))
+                                                                    (deal-damage $ attacker-id target-attack-val)))))
 
 (defn attack-hero
   "Attacks the enemy hero"
@@ -355,5 +374,5 @@
              (if (empty? target-id)
                (power-function $ player-id)
                (give-divine-shield $ target-id))
-               )))))
+             )))))
 
