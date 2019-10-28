@@ -48,8 +48,8 @@
            (is (nil? (get-additional-minion-field "Mio" :end-of-turn))))}
   [minion-name game-event-key]
   (let [game-event-from-defn (if (contains? (get-definition minion-name) game-event-key)
-                       (-> (get-definition minion-name) (game-event-key))
-                       nil)]
+                               (-> (get-definition minion-name) (game-event-key))
+                               nil)]
     (when game-event-from-defn {game-event-key game-event-from-defn})))
 
 (defn get-all-additional-minion-fields
@@ -70,8 +70,8 @@
                  :damage-taken                0
                  :attack                      1
                  :entity-type                 :minion
-                 :properties                  {:permanent     #{}
-                                               :temporary     #{}}
+                 :properties                  {:permanent #{}
+                                               :temporary #{}}
                  :name                        "Mio"
                  :id                          "m"})
            (is= (create-minion "Elisabeth" :id "e")
@@ -79,8 +79,8 @@
                  :damage-taken                0
                  :attack                      1
                  :entity-type                 :minion
-                 :properties                  {:permanent     #{"Divine Shield", "Taunt"}
-                                               :temporary     #{}}
+                 :properties                  {:permanent #{"Divine Shield", "Taunt"}
+                                               :temporary #{}}
                  :name                        "Elisabeth"
                  :id                          "e"})
            (is= (create-minion "Ida" :id "i")
@@ -88,8 +88,8 @@
                  :damage-taken                0
                  :attack                      2
                  :entity-type                 :minion
-                 :properties                  {:permanent     #{}
-                                               :temporary     #{}}
+                 :properties                  {:permanent #{}
+                                               :temporary #{}}
                  :name                        "Ida"
                  :id                          "i"
                  :on-minion-damage            (:on-minion-damage (get-definition "Ida"))})
@@ -97,15 +97,15 @@
   [name & kvs]
   (let [properties (-> (get-definition name) (:properties)) ; Will be used later
         attack (-> (get-definition name) (:attack))
-        minion  (merge
-                {:damage-taken                0
-                :attack                      attack
-                :properties                  properties
-                :entity-type                 :minion
-                :name                        name
-                :attacks-performed-this-turn 0}
-                (get-all-additional-minion-fields name)
-                )]
+        minion (merge
+                 {:damage-taken                0
+                  :attack                      attack
+                  :properties                  properties
+                  :entity-type                 :minion
+                  :name                        name
+                  :attacks-performed-this-turn 0}
+                 (get-all-additional-minion-fields name)
+                 )]
     (if (empty? kvs)
       minion
       (apply assoc minion kvs))))
@@ -465,8 +465,8 @@
                                                                         :attacks-performed-this-turn 0
                                                                         :added-to-board-time-id      2
                                                                         :entity-type                 :minion
-                                                                        :properties                  {:permanent     #{}
-                                                                                                      :temporary     #{}}
+                                                                        :properties                  {:permanent #{}
+                                                                                                      :temporary #{}}
                                                                         :name                        "Mio"
                                                                         :id                          "m1"
                                                                         :position                    0
@@ -564,9 +564,9 @@
 (defn get-characters
   {:test (fn []
            (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
-                                  {:minions [(create-minion "Emil" :id "e")]}]) $
-                    (get-characters $)
-                    (map :id $))
+                                    {:minions [(create-minion "Emil" :id "e")]}]) $
+                      (get-characters $)
+                      (map :id $))
                 ["h1", "h2", "m", "e"])
            )}
   [state]
@@ -983,8 +983,40 @@
    (let [minions-collection (last (shuffle-with-seed state (get-minions state player-id)))]
      (take number minions-collection))))
 
+
+(defn get-minion-properties
+  "Gets properties of minion"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (get-minion-properties "e"))
+                {:permanent #{"Taunt", "Divine Shield"} :temporary #{}})
+           )}
+  [state minion-id]
+  (:properties (get-minion state minion-id))
+  )
+
+
+(defn give-permanent-property
+  "Gives a permanent property to a minion"
+  {:test (fn []
+           (is (-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}])
+                     ;(let [old-temporary (:temporary (get-minion-properties $ "e"))
+                     ;      new-permanent (conj (:permanent (get-minion-properties $ "e")) "property")]
+                     ;  (update-minion $ "e" :properties {:permanent new-permanent, :temporary old-temporary})))
+                     (give-permanent-property "j" "Divine Shield")
+                     (get-minion "j")
+                     (:properties)
+                     (:permanent)
+                     (contains? "Divine Shield")))
+           )}
+  [state minion-id property]
+  (let [old-temporary (:temporary (get-minion-properties state minion-id))
+        new-permanent (conj (:permanent (get-minion-properties state minion-id)) property)]
+    (update-minion state minion-id :properties {:permanent new-permanent, :temporary old-temporary})))
+
+
 (defn give-taunt
-  "Gives taunt to a minion card"
+  "Gives taunt to a minion"
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
                     (give-taunt "m")
@@ -1062,7 +1094,7 @@
                 true))}
   [state minion-id]
   (update-minion state minion-id (get-in (get-minion state minion-id) [:properties :permanent]) (fn [x]
-                                                            (conj x "Divine Shield"))))
+                                                                                                  (conj x "Divine Shield"))))
 
 ;Remove divine shield from a minion
 (defn remove-divine-shield
@@ -1075,7 +1107,7 @@
                 false))}
   [state minion-id]
   (update-minion state minion-id (get-in (get-minion state minion-id) [:properties :permanent]) (fn [property-set]
-                                               (disj property-set "Divine Shield"))))
+                                                                                                  (disj property-set "Divine Shield"))))
 (defn has-divine-shield?
   {:test (fn []
            ;return true when minion has divine shield
@@ -1142,5 +1174,8 @@
                     (get-minion "e")
                     (:attack))
                 5))}
-  [state minion-id attack-amount]
+  [state minion-id change & {:keys [duration]}]
+  (if (empty? duration)
+
+    )
   (update-minion state minion-id :attack (fn [x] (+ x attack-amount))))
