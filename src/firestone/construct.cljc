@@ -1066,6 +1066,10 @@
   (some (fn [m] (when (= (:name m) "Ida") m))
         (get-minions state)))
 
+;TODO 1) remove attack field and instead put modified in properties
+;TODO 2) make get-attack function
+;TODO 3) use it when applicable
+;TODO 4) change health implementation as well
 (defn give-attack
   "Gives attack to a minion"
   {:test (fn []
