@@ -27,7 +27,7 @@
     :health     2
     :mana-cost  1
     :properties {:permanent     #{}
-                 :temporary     #{}}
+                 :temporary     {}}
     :type       :minion}
 
    "Ronja"
@@ -36,7 +36,7 @@
     :health     2
     :mana-cost  2
     :properties {:permanent     #{}
-                 :temporary     #{}}
+                 :temporary     {}}
     :type       :minion}
 
    "Kato"
@@ -46,7 +46,7 @@
     :mana-cost   4
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}}
+                  :temporary     {}}
     :description "Battlecry: Deal 4 damage to the enemy hero."
     :on-play   (fn [state player-id]
                    (let [target-hero-id (get-in state [:players (get-other-player-id player-id) :hero :id])]
@@ -59,7 +59,7 @@
     :mana-cost   4
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}}
+                  :temporary     {}}
     :description "Battlecry: Draw a card."
     :on-play   (fn [state player-id]
                    (draw-card state player-id))}
@@ -71,7 +71,7 @@
     :mana-cost   4
     :type        :minion
     :properties  {:permanent     #{"Taunt"}
-                  :temporary     #{}}
+                  :temporary     {}}
     :set         :custom
     :description "Taunt."}
 
@@ -82,7 +82,7 @@
     :mana-cost   2
     :type        :minion
     :properties  {:permanent     #{"NoAttack"}
-                  :temporary     #{}}
+                  :temporary     {}}
     :set         :custom
     :description "Can't Attack."}
 
@@ -93,7 +93,7 @@
     :mana-cost   5
     :type        :minion
     :properties  {:permanent     #{"Divine Shield"}
-                  :temporary     #{}}
+                  :temporary     {}}
     :set         :custom
     :description "Divine Shield."}
 
@@ -104,7 +104,7 @@
     :mana-cost   3
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}}
+                  :temporary     {}}
     :end-of-turn (fn [state minion-id]
                    (deal-damage-to-other-minions state minion-id 1))
     :set         :custom
@@ -118,7 +118,7 @@
     :type        :minion
 
     :properties  {:permanent     #{}
-                  :temporary     #{}}
+                  :temporary     {}}
     :end-of-turn (fn [state id]
                    (let [random-result (get-random-minion state)]
                      (let [state (first random-result)
@@ -134,7 +134,7 @@
     :mana-cost   6
     :type        :minion
     :properties  {:permanent     #{"Deathrattle"}
-                  :temporary     #{}}
+                  :temporary     {}}
     :set         :custom
     :description "Deathrattle: Take control of a random enemy minion."
     :deathrattle (fn [state minion-id]
@@ -148,7 +148,7 @@
     :mana-cost   1
     :type        :minion
     :properties  {:permanent     #{"Taunt", "Divine Shield"}
-                  :temporary     #{}}
+                  :temporary     {}}
     :set         :custom
     :description "Taunt. Divine Shield."}
 
@@ -159,7 +159,7 @@
     :mana-cost   2
     :type        :minion
     :properties  {:permanent     #{"Deathrattle"}
-                  :temporary     #{}}
+                  :temporary     {}}
     :set         :custom
     :description "Deathrattle: Summon Elisabeth."
     :deathrattle (fn [state minion-id]
@@ -172,7 +172,7 @@
     :mana-cost     3
     :type          :minion
     :properties    {:permanent     #{}
-                    :temporary     #{}}
+                    :temporary     {}}
     :on-minion-damage (fn [state id]
                      (give-taunt state id))
     :set           :custom
@@ -204,7 +204,7 @@
     :mana-cost   3
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}}
+                  :temporary     {}}
     :set         :custom
     :description "Poisonous"}
 
@@ -215,7 +215,7 @@
     :mana-cost   5
     :type        :minion
     :properties  {:permanent     #{"Windfury"}
-                  :temporary     #{}}
+                  :temporary     {}}
     :set         :custom
     :description "Windfury"}
 
@@ -226,7 +226,7 @@
     :mana-cost   5
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}}
+                  :temporary     {}}
     :set         :custom
     :description "Your other minions has windfury."
     :aura        #{"Friendly-Windfury"}}
@@ -238,7 +238,7 @@
     :mana-cost   4
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}}
+                  :temporary     {}}
     :set         :custom
     :description "Battlecry: Copy another minions deathrattle."}
 
@@ -249,7 +249,7 @@
     :mana-cost   3
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}}
+                  :temporary     {}}
     :set         :custom
     :description "After a friendly minion loses Divine Shield, gain +2/+2."}
 
@@ -260,7 +260,7 @@
     :mana-cost   3
     :type        :minion
     :properties  {:permanent     #{}
-                  :temporary     #{}}
+                  :temporary     {}}
     :set         :custom
     :description "Battlecry: Give a minion +2 Attack this turn."}
 
