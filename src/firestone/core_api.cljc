@@ -2,12 +2,14 @@
   (:require [ysera.test :refer [is is= error?]]
             [ysera.error :refer [error]]
             [firestone.definitions :refer [get-definition]]
-            [firestone.core :refer [do-battlecry
+            [firestone.core :refer [do-on-play
+                                    do-game-event-functions
                                     deal-damage
                                     deal-damage-to-all-heroes
                                     deal-damage-to-all-minions
                                     get-attack
                                     get-health
+                                    pay-mana
                                     valid-attack?]]
             [firestone.construct :refer [add-card-to-hand
                                          add-minion-to-board
@@ -42,27 +44,6 @@
                                          update-mana
                                          update-max-mana
                                          update-minion]]))
-
-; call all the corresponding functions of all your minions at the end of your turn
-(defn end-turn-card-functions
-  {:test (fn []
-           ; testing pippi function
-           (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
-                                             (create-minion "Mio" :id "m")
-                                             (create-minion "Emil" :id "e1")
-                                             (create-minion "Emil" :id "e2")]}])
-                    (end-turn-card-functions "p1")
-                    (get-minion "e1")
-                    (:damage-taken))
-                1))}
-  [state player-id]
-  (reduce
-    (fn [state minion]
-      (if (nil? (:end-of-turn minion))
-        state
-        ((:end-of-turn minion) state (:id minion))))
-    state
-    (get-minions state player-id)))
 
 (defn end-turn
   {:test (fn []
@@ -100,7 +81,7 @@
 
   (let [other-player (get-other-player-id player-id)]
     (-> state
-        (end-turn-card-functions player-id)
+        (do-game-event-functions player-id :end-of-turn)
         (assoc-in [:players player-id :hero :hero-power-used] false)
         (change-player-in-turn)
         (inc-max-mana other-player)
@@ -199,7 +180,7 @@
         (remove-card-from-hand player-id card-id)
         (add-minion-to-board player-id (create-minion (:name card)) position)
         (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
-        (do-battlecry player-id card)
+        (do-on-play player-id card)
         )))
 
 
@@ -265,6 +246,13 @@
                     (get-hand "p1")
                     (count))
                 1)
+           ; mana should be updated
+           (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
+                                             (create-card "Emil" :id "e")]
+                                   :minions [(create-minion "Alfred" :id "a")]}])
+                    (play-spell-card "p1" "r" "a")
+                    (get-mana "p1"))
+                8)
            ; Testing Insect Swarm
            (is= (-> (create-game [{:hand [(create-card "Insect Swarm" :id "i")] :deck [(create-card "Mio" :id "m")]}
                                   {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}
@@ -282,9 +270,11 @@
                 3))}
   ([state player-id card-id character-id]
    (-> ((:spell-fn (get-definition (get-card state card-id))) state character-id)
+       (pay-mana player-id card-id)
        (remove-card-from-hand player-id card-id)))
   ([state player-id card-id]
    (-> ((:spell-fn (get-definition (get-card state card-id))) state)
+       (pay-mana player-id card-id)
        (remove-card-from-hand player-id card-id))))
 
 (defn do-hero-power
@@ -294,7 +284,7 @@
                                    :hero    (create-hero "Carl")}])
                     (do-hero-power "p1" :target-id "k")
                     (get-minion "k")
-                    (:properties)
+                    (get-in [:properties :permanent])
                     (contains? "Divine Shield"))
                 true)
            ;check mana is decreased
