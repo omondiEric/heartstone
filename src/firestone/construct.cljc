@@ -48,8 +48,8 @@
            (is (nil? (get-additional-minion-field "Mio" :end-of-turn))))}
   [minion-name game-event-key]
   (let [game-event-from-defn (if (contains? (get-definition minion-name) game-event-key)
-                               (-> (get-definition minion-name) (game-event-key))
-                               nil)]
+                       (-> (get-definition minion-name) (game-event-key))
+                       nil)]
     (when game-event-from-defn {game-event-key game-event-from-defn})))
 
 (defn get-all-additional-minion-fields
@@ -83,7 +83,6 @@
                                                :temporary     #{}}
                  :name                        "Elisabeth"
                  :id                          "e"})
-
            (is= (create-minion "Ida" :id "i")
                 {:attacks-performed-this-turn 0
                  :damage-taken                0
@@ -99,14 +98,14 @@
   (let [properties (-> (get-definition name) (:properties)) ; Will be used later
         attack (-> (get-definition name) (:attack))
         minion  (merge
-                  {:damage-taken                0
-                   :attack                      attack
-                   :properties                  properties
-                   :entity-type                 :minion
-                   :name                        name
-                   :attacks-performed-this-turn 0}
-                  (get-all-additional-minion-fields name)
-                  )]
+                {:damage-taken                0
+                :attack                      attack
+                :properties                  properties
+                :entity-type                 :minion
+                :name                        name
+                :attacks-performed-this-turn 0}
+                (get-all-additional-minion-fields name)
+                )]
     (if (empty? kvs)
       minion
       (apply assoc minion kvs))))
@@ -1000,6 +999,37 @@
   (update-minion state minion-id :properties (fn [properties-map]
                                                (update-in properties-map [:permanent] (fn [permanent-set]
                                                                                         (disj permanent-set "Taunt"))))))
+
+(defn player-has-active-aura-buff?
+  "Looks for an active minion of the current player that has a specific aura buff"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Tjorven" :id "t")
+                                             (create-minion "Madicken" :id "m")]}])
+                    (player-has-active-aura-buff? "p1" "Friendly-Windfury"))
+                true)
+           (is= (-> (create-game [{:minions [(create-minion "Astrid" :id "a")]}])
+                    (player-has-active-aura-buff? "p1" "Friendly-Windfury"))
+                nil)
+           )}
+  [state player-id aura-buff]
+  (some true?
+        (->> (get-minions state player-id)
+             (map (fn [m]
+                    (contains? (:aura (get-definition (:name m))) aura-buff))))))
+
+(defn has-windfury?
+  "Checks if minion has windfury, either permanent or received by aura"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Rasmus" :id "r")]}])
+                    (has-windfury? "r" "p1"))
+                true)
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (has-windfury? "e" "p1"))
+                nil))}
+  [state minion-id player-id]
+  (let [permanent-set (get-in (get-minion state minion-id) [:properties :permanent])]
+    (or (contains? permanent-set "Windfury")
+        (player-has-active-aura-buff? state player-id "Friendly-Windfury"))))
 
 (defn has-taunt?
   "Checks if minion has taunt"
