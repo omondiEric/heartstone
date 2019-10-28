@@ -6,6 +6,7 @@
                                     deal-damage
                                     deal-damage-to-all-heroes
                                     deal-damage-to-all-minions
+                                    do-game-event-functions
                                     get-attack
                                     get-health
                                     valid-attack?]]

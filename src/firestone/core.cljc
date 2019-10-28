@@ -423,20 +423,18 @@
                     (:damage-taken))
                 0)
            ;test to see that Ida gets taunt when a minion is damaged
-           (is (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
+           (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
                                             (create-minion "Ida" :id "i")]}])
                    (deal-damage "p")
-                   (get-minion "i")
-                   (get-in [:properties :permanent])
-                   (contains? "Taunt")))
+                   (has-taunt? "i"))
+                true)
 
            ;test to see that Ida does not get taunt when a minion with divine shield is attacked
-           (is-not (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")
                                                 (create-minion "Ida" :id "i")]}])
                        (deal-damage "e")
-                       (get-minion "i")
-                       (:properties)
-                       (contains? "Taunt")))
+                       (has-taunt? "i"))
+                false)
 
            (is= (-> (create-game [{:hero (create-hero "Carl")}])
                     (deal-damage "h1")
@@ -451,22 +449,15 @@
    (as-> state $
          (let [character (get-character $ character-id)]
            (if (minion? character)
-             ;when character is minion and has no divine shield
+             ;character has no divine shield
              (if-not (has-divine-shield $ character-id)
-               (do
-                 ;ida not on board
-                 (if (= (ida-present? $) nil)
-                   (-> (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
-                       (remove-dead-minions))
-                   ;ida on board
-                   (-> (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
-                       (give-taunt (:id (ida-present? $))))))
-
+               (-> (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
+                   (do-game-event-functions :on-minion-damage)
+                   (remove-dead-minions))
                ;minion has divine shield
                (remove-divine-shield $ character-id))
              ;when character is hero
-             (do
-               (update-in $ [:players (:owner-id character) :hero :damage-taken] (fn [x] (+ x damage-amount)))))))))
+             (update-in $ [:players (:owner-id character) :hero :damage-taken] (fn [x] (+ x damage-amount))))))))
 
 (defn deal-damage-to-all-heroes
   "Deals damage to all heroes"
