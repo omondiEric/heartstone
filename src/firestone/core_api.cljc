@@ -30,6 +30,7 @@
                                          get-max-mana
                                          get-minion
                                          get-minions
+                                         get-minion-stats
                                          get-mana
                                          get-mana-cost
                                          get-random-minions-distinct
@@ -301,8 +302,9 @@
                  (do (is= (->> (get-minions $ "p1")
                                (map :damage-taken))
                           [1, 1])
-                     (is= (->> (get-minions $ "p1")
-                               (map :attack))
+                     (is= (get-minion-stats $ "e1")
+                          [4, 4])
+                     (is= (get-minion-stats $ "e2")
                           [4, 4])))
            ;<2 minions available
            (as-> (create-game [{:minions [(create-minion "Emil" :id "e1")]
@@ -311,9 +313,8 @@
                  (do (is= (->> (get-minions $ "p1")
                                (map :damage-taken))
                           [1])
-                     (is= (->> (get-minions $ "p1")
-                               (map :attack))
-                          [4])))
+                     (is= (get-minion-stats $ "e1")
+                          [4, 4])))
            ;>2 minions available
            (as-> (create-game [{:minions [(create-minion "Emil" :id "e1")
                                           (create-minion "Emil" :id "e2")
@@ -324,9 +325,14 @@
                  (do (is= (->> (get-minions $ "p1")
                                (map :damage-taken))
                           [1, 0, 1, 0])
-                     (is= (->> (get-minions $ "p1")
-                               (map :attack))
-                          [4, 2, 4, 2])))
+                     (is= (get-minion-stats $ "e1")
+                          [4,4])
+                     (is= (get-minion-stats $ "e2")
+                          [2,5])
+                     (is= (get-minion-stats $ "e3")
+                          [4,4])
+                     (is= (get-minion-stats $ "e4")
+                          [2,5])))
            ;can't perform twice in a turn
            (error? (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
                                       :hero    (create-hero "Carl")}])

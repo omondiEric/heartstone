@@ -17,7 +17,9 @@
                                          get-mana-cost
                                          get-minion
                                          get-minions
+                                         get-minion-stats
                                          get-other-player-id
+                                         get-properties
                                          get-random-minion
                                          give-divine-shield
                                          give-taunt
@@ -25,6 +27,7 @@
                                          has-taunt?
                                          has-windfury?
                                          ida-present?
+                                         modify-minion-attack
                                          minion?
                                          replace-minion
                                          remove-card-from-deck
@@ -68,12 +71,30 @@
 (defn get-attack
   "Returns the attack of the minion with the given id."
   {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
-                    (get-attack "m"))
-                1))}
-  [state id]
-  (let [minion (get-minion state id)]
-    (:attack minion)))
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (get-attack "e"))
+                2)
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (modify-minion-attack "e" 3)
+                    (get-attack "e"))
+                5)
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (modify-minion-attack "e" 3 2)
+                    (get-attack "e"))
+                5)
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (modify-minion-attack "e" 3 2)
+                    (modify-minion-attack "e" 1 1)
+                    (get-attack "e"))
+                6)
+           )}
+  [state minion-id]
+  (first (get-minion-stats state minion-id)))
+  ;(let [minion (get-minion state minion-id)
+  ;      temporary-buffs (select-keys (:temporary (get-properties state minion-id)) [:attack])]
+  ;  (if (empty? temporary-buffs)
+  ;    (:attack minion)
+  ;    (+ (:attack minion) (:buff (:attack temporary-buffs))))))
 
 (defn sleepy?
   "Checks if the minion with given id is sleepy."

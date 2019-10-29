@@ -68,38 +68,36 @@
            (is= (create-minion "Mio" :id "m" :attacks-performed-this-turn 1)
                 {:attacks-performed-this-turn 1
                  :damage-taken                0
-                 :attack                      1
                  :entity-type                 :minion
                  :properties                  {:permanent #{}
-                                               :temporary {}}
+                                               :temporary {}
+                                               :stats     {}}
                  :name                        "Mio"
                  :id                          "m"})
            (is= (create-minion "Elisabeth" :id "e")
                 {:attacks-performed-this-turn 0
                  :damage-taken                0
-                 :attack                      1
                  :entity-type                 :minion
                  :properties                  {:permanent #{"Divine Shield", "Taunt"}
-                                               :temporary {}}
+                                               :temporary {}
+                                               :stats     {}}
                  :name                        "Elisabeth"
                  :id                          "e"})
            (is= (create-minion "Ida" :id "i")
                 {:attacks-performed-this-turn 0
                  :damage-taken                0
-                 :attack                      2
                  :entity-type                 :minion
                  :properties                  {:permanent #{}
-                                               :temporary {}}
+                                               :temporary {}
+                                               :stats     {}}
                  :name                        "Ida"
                  :id                          "i"
                  :on-minion-damage            (:on-minion-damage (get-definition "Ida"))})
            )}
   [name & kvs]
   (let [properties (-> (get-definition name) (:properties)) ; Will be used later
-        attack (-> (get-definition name) (:attack))
         minion (merge
                  {:damage-taken                0
-                  :attack                      attack
                   :properties                  properties
                   :entity-type                 :minion
                   :name                        name
@@ -461,12 +459,12 @@
                                                                         :name        "Emil"
                                                                         :owner-id    "p1"}]
                                                        :minions       [{:damage-taken                0
-                                                                        :attack                      1
                                                                         :attacks-performed-this-turn 0
                                                                         :added-to-board-time-id      2
                                                                         :entity-type                 :minion
                                                                         :properties                  {:permanent #{}
-                                                                                                      :temporary {}}
+                                                                                                      :temporary {}
+                                                                                                      :stats     {}}
                                                                         :name                        "Mio"
                                                                         :id                          "m1"
                                                                         :position                    0
@@ -989,15 +987,15 @@
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
                     (get-minion-properties "e"))
-                {:permanent #{"Taunt", "Divine Shield"} :temporary {}})
+                {:permanent #{"Taunt", "Divine Shield"} :temporary {} :stats {}})
            )}
   [state minion-id]
   (:properties (get-minion state minion-id))
   )
 
-
 (defn give-property
   "Gives a property (temporary or permanent) to a minion"
+  ;TODO make sure that if temporary buff is overwritten, it keeps the higher duration
   {:test (fn []
            (is (-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}])
                    (give-property "j" "Divine Shield")
@@ -1013,15 +1011,33 @@
                    (contains? "Divine Shield")))
            )}
   ([state minion-id property]
-  (let [old-temporary (:temporary (get-minion-properties state minion-id))
-        new-permanent (conj (:permanent (get-minion-properties state minion-id)) property)]
-    (update-minion state minion-id :properties {:permanent new-permanent, :temporary old-temporary})))
+   (let [old-temporary (:temporary (get-minion-properties state minion-id))
+         new-permanent (conj (:permanent (get-minion-properties state minion-id)) property)]
+     (update-minion state minion-id :properties {:permanent new-permanent, :temporary old-temporary})))
 
   ([state minion-id property duration]
-  (let [old-permanent (:permanent (get-minion-properties state minion-id))
-        new-temporary (assoc (:temporary (get-minion-properties state minion-id)) property duration)]
-    (update-minion state minion-id :properties {:permanent old-permanent, :temporary new-temporary})))
+   (let [old-permanent (:permanent (get-minion-properties state minion-id))
+         new-temporary (assoc (:temporary (get-minion-properties state minion-id)) property duration)]
+     (update-minion state minion-id :properties {:permanent old-permanent, :temporary new-temporary})))
   )
+
+(defn get-properties
+  "Gets properties of a minion"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (get-properties "e"))
+                {:permanent #{"Taunt" "Divine Shield"}, :temporary {}, :stats {}})
+           (is= (-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}])
+                    (give-property "j" "Divine Shield")
+                    (get-properties "j"))
+                {:permanent #{"Taunt" "Divine Shield"}, :temporary {}})
+           (is= (-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}])
+                    (give-property "j" "Divine Shield" 1)
+                    (get-properties "j"))
+                {:permanent #{"Taunt"}, :temporary {"Divine Shield" 1}})
+           )}
+  [state minion-id]
+  (:properties (get-minion state minion-id)))
 
 (defn give-taunt
   "Gives taunt to a minion"
@@ -1033,7 +1049,6 @@
                     (contains? "Taunt"))
                 true))}
   [state id]
-  ;(update-minion state id (get-in (get-minion state id) [:properties :permanent]) (fn [x] (conj x "Taunt"))))
   (give-property state id "Taunt"))
 
 (defn remove-taunt
@@ -1171,23 +1186,152 @@
   (some (fn [m] (when (= (:name m) "Ida") m))
         (get-minions state)))
 
-;TODO 1) remove attack field and instead put modified in properties
-;TODO 2) make get-attack function
-;TODO 3) use it when applicable
-;TODO 4) change health implementation as well
-(defn update-attack
-  "Gives attack to a minion"
+(defn get-minion-stats
+  "Gets the stats of a minion"
   {:test (fn []
+           (is= (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
+                      (get-minion-stats $ "e"))
+                [2 5])
+           )}
+  [state minion-id]
+  (let [minion-def (get-definition (get-minion state minion-id))
+        minion-stat-properties (:stats (get-properties state minion-id))]
+    (let [base-attack (:attack minion-def)
+          base-health (:health minion-def)
+          attack-modifiers (reduce + (map :buff (:attack minion-stat-properties)))
+          health-modifiers (reduce + (map :buff (:health minion-stat-properties)))
+          damage-taken (:damage-taken (get-minion state minion-id) state)]
+      [(+ base-attack attack-modifiers), (-(+ base-health, health-modifiers) damage-taken)])))
+
+(defn modify-minion-attack
+  "Modifies the attack stat property of a minion"
+  {:test (fn []
+           ;one buff
+           (is= (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
+                      (modify-minion-attack $ "e" 3)
+                      (get-minion-stats $ "e"))
+                [5 5])
+           ;two buffs stack
+           (is= (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
+                      (modify-minion-attack $ "e" 1)
+                      (modify-minion-attack $ "e" 3)
+                      (get-minion-stats $ "e"))
+                [6 5])
+           ;one permanent and one temporary buff
+           (is= (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
+                      (modify-minion-attack $ "e" 1)
+                      (modify-minion-attack $ "e" 3 2)
+                      (get-minion-stats $ "e"))
+                [6 5])
+           )}
+  ([state minion-id value]
+   (if (> value 0)
+     (let [temporary (:temporary (get-minion-properties state minion-id))
+           permanent (:permanent (get-minion-properties state minion-id))
+           minion-stats (:stats (get-minion-properties state minion-id))]
+       (if (empty? minion-stats)
+         (update-minion state minion-id :properties
+                        {:permanent permanent, :temporary temporary,
+                         :stats     {:attack [{:buff value}]}})
+         (update-minion state minion-id :properties
+                        {:permanent permanent, :temporary temporary,
+                         :stats     (conj minion-stats {:attack (conj (:attack minion-stats) {:buff value})})})))
+     state))
+
+  ([state minion-id value duration]
+   (if (> value 0)
+     (let [temporary (:temporary (get-minion-properties state minion-id))
+           permanent (:permanent (get-minion-properties state minion-id))
+           minion-stats (:stats (get-minion-properties state minion-id))]
+       (if (empty? minion-stats)
+         (update-minion state minion-id :properties
+                        {:permanent permanent, :temporary temporary,
+                         :stats     {:attack [{:buff value :duration duration}]}})
+         (update-minion state minion-id :properties
+                        {:permanent permanent, :temporary temporary,
+                         :stats     (conj minion-stats
+                                          {:attack (conj (:attack minion-stats) {:buff value :duration duration})})})))
+     state)))
+
+(defn modify-minion-max-health
+  "Modifies the max health stat property of a minion"
+  {:test (fn []
+           ;one buff
+           (is= (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
+                      (modify-minion-max-health $ "e" 3)
+                      (get-minion-stats $ "e"))
+                [2 8])
+           ;two buffs stack
+           (is= (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
+                      (modify-minion-max-health $ "e" 1)
+                      (modify-minion-max-health $ "e" 3)
+                      (get-minion-stats $ "e"))
+                [2 9])
+           ;one permanent and one temporary
+           (is= (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
+                      (modify-minion-max-health $ "e" 1)
+                      (modify-minion-max-health $ "e" 3, 2)
+                      (get-minion-stats $ "e"))
+                [2 9])
+           )}
+  ([state minion-id value]
+   (if (> value 0)
+     (let [temporary (:temporary (get-minion-properties state minion-id))
+           permanent (:permanent (get-minion-properties state minion-id))
+           minion-stats (:stats (get-minion-properties state minion-id))]
+       (if (empty? minion-stats)
+         (update-minion state minion-id :properties
+                        {:permanent permanent, :temporary temporary,
+                         :stats     {:health [{:buff value}]}})
+         (update-minion state minion-id :properties
+                        {:permanent permanent, :temporary temporary,
+                         :stats     (conj minion-stats {:health (conj (:health minion-stats) {:buff value})})})))
+     state))
+  ([state minion-id value duration]
+   (if (> value 0)
+     (let [temporary (:temporary (get-minion-properties state minion-id))
+           permanent (:permanent (get-minion-properties state minion-id))
+           minion-stats (:stats (get-minion-properties state minion-id))]
+       (if (empty? minion-stats)
+         (update-minion state minion-id :properties
+                        {:permanent permanent, :temporary temporary,
+                         :stats     {:health [{:buff value :duration duration}]}})
+         (update-minion state minion-id :properties
+                        {:permanent permanent, :temporary temporary,
+                         :stats     (conj minion-stats
+                                          {:health (conj (:health minion-stats) {:buff value :duration duration})})})))
+     state)))
+
+
+(defn modify-minion-stats
+  "Modifies the stat property of a minion"
+  {:test (fn []
+           ;give permanent attack buff
            (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
-                    (update-attack "e" 3)
-                    (get-minion "e")
-                    (:attack))
-                4))}
-  [state minion-id change & {:keys [duration]}]
-  (if (empty? duration)
-    (update-minion state minion-id :attack (fn [x] (+ x change)))
-    (give-property state minion-id [])
-    )
-  )
-
-
+                    (modify-minion-stats "e" 3 0)
+                    (get-minion-stats "e"))
+                [4, 1])
+           ;give permanent health buff
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (modify-minion-stats "e" 0 1)
+                    (get-minion-stats "e"))
+                [1, 2])
+           ;give permanent attack and health buff
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (modify-minion-stats "e" 2 2)
+                    (get-minion-stats "e"))
+                [3, 3])
+           ;give temporary attack and health buff
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (modify-minion-stats "e" 2 2 4)
+                    (get-minion-stats "e"))
+                [3, 3])
+           )}
+  ([state minion-id attack health]
+   (-> state
+       (modify-minion-attack minion-id attack)
+       (modify-minion-max-health minion-id health)))
+  ([state minion-id attack health duration]
+   (-> state
+       (modify-minion-attack minion-id attack duration)
+       (modify-minion-max-health minion-id health duration))))
