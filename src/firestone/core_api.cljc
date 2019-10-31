@@ -47,48 +47,6 @@
                                          update-max-mana
                                          update-minion]]))
 
-(defn end-turn
-  {:test (fn []
-           (is= (-> (create-game)
-                    (end-turn "p1")
-                    (get-player-id-in-turn))
-                "p2")
-           (is= (-> (create-game)
-                    (end-turn "p1")
-                    (end-turn "p2")
-                    (get-player-id-in-turn))
-                "p1")
-           (error? (-> (create-game)
-                       (end-turn "p2")))
-
-           (is= (-> (create-game)
-                    (end-turn "p1")
-                    (get-max-mana "p2"))
-                10)
-           (is= (-> (create-game)
-                    (update-max-mana "p2" 5)
-                    (end-turn "p1")
-                    (get-max-mana "p2"))
-                6)
-           (is= (-> (create-game)
-                    (update-max-mana "p2" 5)
-                    (update-mana "p2" 0)
-                    (end-turn "p1")
-                    (get-mana "p2"))
-                6))}
-
-  [state player-id]
-  (when-not (= (get-player-id-in-turn state) player-id)
-    (error "The player with id " player-id " is not in turn."))
-
-  (let [other-player (get-other-player-id player-id)]
-    (-> state
-        (do-game-event-functions player-id :end-of-turn)
-        (assoc-in [:players player-id :hero :hero-power-used] false)
-        (change-player-in-turn)
-        (inc-max-mana other-player)
-        (restore-mana other-player))))
-
 (defn draw-card
   {:test (fn []
            ;a card should appear in the hand
@@ -152,6 +110,50 @@
   (-> state
       (fatigue-hero player-id)
       (draw-card-to-hand player-id)))
+
+(defn end-turn
+  {:test (fn []
+           (is= (-> (create-game)
+                    (end-turn "p1")
+                    (get-player-id-in-turn))
+                "p2")
+           (is= (-> (create-game)
+                    (end-turn "p1")
+                    (end-turn "p2")
+                    (get-player-id-in-turn))
+                "p1")
+           (error? (-> (create-game)
+                       (end-turn "p2")))
+
+           (is= (-> (create-game)
+                    (end-turn "p1")
+                    (get-max-mana "p2"))
+                10)
+           (is= (-> (create-game)
+                    (update-max-mana "p2" 5)
+                    (end-turn "p1")
+                    (get-max-mana "p2"))
+                6)
+           (is= (-> (create-game)
+                    (update-max-mana "p2" 5)
+                    (update-mana "p2" 0)
+                    (end-turn "p1")
+                    (get-mana "p2"))
+                6))}
+
+  [state player-id]
+  (when-not (= (get-player-id-in-turn state) player-id)
+    (error "The player with id " player-id " is not in turn."))
+
+  (let [other-player-id (get-other-player-id player-id)]
+    (-> state
+        (do-game-event-functions player-id :end-of-turn)
+        (assoc-in [:players player-id :hero :hero-power-used] false)
+        (change-player-in-turn)
+        (inc-max-mana other-player-id)
+        (restore-mana other-player-id)
+        (draw-card other-player-id))))
+
 
 (defn play-minion-card
   {:test (fn []
