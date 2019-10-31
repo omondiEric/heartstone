@@ -79,7 +79,7 @@
                 {:attacks-performed-this-turn 0
                  :damage-taken                0
                  :entity-type                 :minion
-                 :properties                  {:permanent #{"Divine Shield", "Taunt"}
+                 :properties                  {:permanent #{"DivineShield", "Taunt"}
                                                :temporary {}
                                                :stats     {}}
                  :name                        "Elisabeth"
@@ -1041,11 +1041,11 @@
   ;TODO make sure that if temporary buff is overwritten, it keeps the higher duration
   {:test (fn []
            (is (-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}])
-                   (give-property "j" "Divine Shield")
+                   (give-property "j" "DivineShield")
                    (get-minion "j")
                    (:properties)
                    (:permanent)
-                   (contains? "Divine Shield")))
+                   (contains? "DivineShield")))
            (is= (-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}])
                     (give-property "j" "DivineShield" 1)
                     (get-minion "j")
@@ -1063,7 +1063,6 @@
    (update-minion state minion-id :properties (fn [properties-map]
                                                 (assoc-in properties-map [:temporary (keyword property)] duration)))))
 
-
 ;TODO remove property
 ;TODO remove-property-all? remove-property-permanent? remove-property-temporary?
 
@@ -1072,11 +1071,11 @@
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
                     (get-minion-properties "e"))
-                {:permanent #{"Taunt" "Divine Shield"}, :temporary {}, :stats {}})
+                {:permanent #{"Taunt" "DivineShield"}, :temporary {}, :stats {}})
            (is= (-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}])
-                    (give-property "j" "Divine Shield")
+                    (give-property "j" "DivineShield")
                     (get-minion-properties "j"))
-                {:permanent #{"Taunt" "Divine Shield"}, :temporary {} :stats {}})
+                {:permanent #{"Taunt" "DivineShield"}, :temporary {} :stats {}})
            (is= (-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}])
                     (give-property "j" "DivineShield" 1)
                     (get-minion-properties "j"))
@@ -1084,6 +1083,42 @@
            )}
   [state minion-id]
   (:properties (get-minion state minion-id)))
+
+
+(defn has-property?
+  "Check if minion has (temporary or permanent property"
+  {:test (fn []
+           (is (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}]) $
+                     (has-property? $ "j" "Taunt")))
+           (is (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
+                     (give-property $ "e" "Taunt" 1)
+                     (has-property? $ "e" "Taunt")))
+           )}
+
+  [state minion-id property]
+  (let [permanent-set (:permanent (get-minion-properties state minion-id))
+        temporary-set (:temporary (get-minion-properties state minion-id))]
+    (or (contains? permanent-set property) (contains? temporary-set (keyword property)))))
+
+(defn remove-property
+  "Removes all instances of property from a minion (both temporary and permanent"
+  {:test (fn []
+           (is-not (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}]) $
+                         (remove-property $ "j" "Taunt")
+                         (has-property? $ "j" "Taunt")))
+           (is-not (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}]) $
+                         (give-property $ "j" "Windfury" 1)
+                         (remove-property $ "j" "Windfury")
+                         (has-property? $ "j" "Windfury")))
+           )}
+  [state minion-id property]
+  (-> state
+      (update-minion minion-id :properties (fn [properties-map]
+                                             (update-in properties-map [:permanent] (fn [permanent-set]
+                                                                                      (disj permanent-set property)))))
+      (update-minion minion-id :properties (fn [properties-map]
+                                             (update-in properties-map [:temporary] (fn [temporary-set]
+                                                                                      (dissoc temporary-set (keyword property))))))))
 
 (defn give-taunt
   "Gives taunt to a minion"
@@ -1106,8 +1141,8 @@
                     (get-in [:properties :permanent])
                     (contains? "Taunt"))
                 false))}
-  [state id]
-  (update-minion state id [:properties :permanent] (fn [x] (disj x "Taunt"))))
+  [state minion-id]
+  (remove-property state minion-id "Taunt"))
 
 (defn player-has-active-aura-buff?
   "Looks for an active minion of the current player that has a specific aura buff"
@@ -1132,13 +1167,12 @@
            (is= (-> (create-game [{:minions [(create-minion "Rasmus" :id "r")]}])
                     (has-windfury? "r" "p1"))
                 true)
-           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
-                    (has-windfury? "e" "p1"))
-                nil))}
+           (is-not (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                       (has-windfury? "e" "p1")))
+           )}
   [state minion-id player-id]
-  (let [permanent-set (get-in (get-minion state minion-id) [:properties :permanent])]
-    (or (contains? permanent-set "Windfury")
-        (player-has-active-aura-buff? state player-id "Friendly-Windfury"))))
+  (or (has-property? state minion-id "Windfury")
+      (player-has-active-aura-buff? state player-id "Friendly-Windfury")))
 
 (defn has-taunt?
   "Checks if minion has taunt"
@@ -1148,60 +1182,76 @@
                 true)
            ;
            (is= (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
-                    (give-property $ "e" "Taunt" 1)
-                    (has-taunt? $ "e"))
+                      (give-property $ "e" "Taunt" 1)
+                      (has-taunt? $ "e"))
                 true)
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                    (has-taunt? "k"))
+                false)
            )}
-  [state id]
-  (let [permanent-set (get-in (get-minion state id) [:properties :permanent])
-        temporary-set (get-in (get-minion state id) [:properties :temporary])]
-    (or (contains? permanent-set "Taunt") (some? (:Taunt temporary-set)))))
+  [state minion-id]
+  (has-property? state minion-id "Taunt"))
+
+(defn has-poisonous
+  "Checks if minion has taunt"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Herr Nilsson" :id "hn")]}])
+                    (has-poisonous "hn"))
+                true)
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                    (has-poisonous "k"))
+                false))}
+  [state minion-id]
+  (has-property? state minion-id "Poisonous"))
 
 ;Gives divine shield to a card
 (defn give-divine-shield
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
-                    ;(get-minion "k")
                     (give-divine-shield "k")
-                    (get-minion "k")
-                    ;(get-in [:properties :permanent])
-                    (:properties)
+                    (get-minion-properties "k")
                     (:permanent)
-                    (contains? "Divine Shield"))
+                    (contains? "DivineShield"))
                 true))}
   [state minion-id]
-  (update-minion state minion-id (get-in (get-minion state minion-id) [:properties :permanent]) (fn [x]
-                                                                                                  (conj x "Divine Shield"))))
-
-;Remove divine shield from a minion
-(defn remove-divine-shield
-  {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Uncle Melker" :id "um")]}])
-                    (remove-divine-shield "um")
-                    (get-minion "um")
-                    (get-in [:properties :permanent])
-                    (contains? "Divine Shield"))
-                false))}
-  [state minion-id]
-  (-> state
-      (update-minion minion-id (get-in (get-minion state minion-id) [:properties :permanent]) (fn [property-set]
-                                                                                                (disj property-set "Divine Shield")))
-      (do-game-event-functions :on-divine-shield-removal :target-id (:owner-id (get-minion state minion-id)))))
+  (give-property state minion-id "DivineShield"))
 
 (defn has-divine-shield?
   {:test (fn []
            ;return true when minion has divine shield
-           (is= (-> (create-game [{:minions [(create-minion "Uncle Melker" :id "um")]}])
-                    (has-divine-shield? "um"))
-                true)
+           (is (-> (create-game [{:minions [(create-minion "Uncle Melker" :id "um")]}])
+                   (has-divine-shield? "um")))
            ;return false when minion has no divine shield
-           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
-                    (has-divine-shield? "k"))
-                false))}
+           (is-not (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                       (has-divine-shield? "k")))
+           ;return true when minion has temporary divine shield
+           (is (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
+                   (give-property "k" "DivineShield" 2)
+                   (has-divine-shield? "k")))
+           )}
 
   [state minion-id]
-  (let [permanent-set (get-in (get-minion state minion-id) [:properties :permanent])]
-    (contains? permanent-set "Divine Shield")))
+  (has-property? state minion-id "DivineShield"))
+
+;Remove divine shield from a minion
+(defn remove-divine-shield
+  {:test (fn []
+           (is-not (-> (create-game [{:minions [(create-minion "Uncle Melker" :id "um")]}])
+                       (remove-divine-shield "um")
+                       (get-minion "um")
+                       (get-in [:properties :permanent])
+                       (contains? "DivineShield")))
+           (error? (-> (create-game [{:minions [(create-minion "Uncle Melker" :id "um")]}])
+                       (remove-divine-shield "um")
+                       (remove-divine-shield "um")))
+           )}
+  [state minion-id]
+  (if (has-divine-shield? state minion-id)
+    (-> state
+        (remove-property minion-id "DivineShield")
+        (do-game-event-functions :on-divine-shield-removal :target-id minion-id))
+    (error "No divine shield to be removed")))
+
 
 (defn get-character
   "Returns the character with the given id from the state."

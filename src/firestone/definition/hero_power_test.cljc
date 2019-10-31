@@ -33,7 +33,7 @@
                   (do-hero-power "p1" :target-id "k")
                   (get-minion "k")
                   (get-in [:properties :permanent])
-                  (contains? "Divine Shield"))
+                  (contains? "DivineShield"))
               true))
 
 (deftest Strengthen

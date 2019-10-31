@@ -12,6 +12,7 @@
                                          give-taunt
                                          modify-minion-stats
                                          replace-minion
+                                         ida-present?
                                          switch-minion-side
                                          update-minion
                                          update-seed]]
@@ -101,7 +102,7 @@
     :health      5
     :mana-cost   5
     :type        :minion
-    :properties  {:permanent     #{"Divine Shield"}
+    :properties  {:permanent     #{"DivineShield"}
                   :temporary     {}
                   :stats         {}}
     :set         :custom
@@ -127,7 +128,6 @@
     :health      4
     :mana-cost   3
     :type        :minion
-
     :properties  {:permanent     #{}
                   :temporary     {}
                   :stats         {}}
@@ -160,7 +160,7 @@
     :health      1
     :mana-cost   1
     :type        :minion
-    :properties  {:permanent     #{"Taunt", "Divine Shield"}
+    :properties  {:permanent     #{"Taunt", "DivineShield"}
                   :temporary     {}
                   :stats         {}}
     :set         :custom
@@ -190,9 +190,12 @@
                     :temporary     {}
                     :stats         {}}
     :on-minion-damage (fn [state id]
-                     (give-taunt state id))
-    :set           :custom
-    :description   "Whenever a minion takes damage, gain taunt."}
+                        (let [ida (ida-present? state)]
+                          (if (nil? ida)
+                            state
+                            (give-taunt state (:id ida)))))
+    :set              :custom
+    :description      "Whenever a minion takes damage, gain taunt."}
 
    "Insect Swarm"
    {:name        "Insect Swarm"
@@ -219,7 +222,7 @@
     :health      3
     :mana-cost   3
     :type        :minion
-    :properties  {:permanent     #{}
+    :properties  {:permanent     #{"Poisonous"}
                   :temporary     {}
                  :stats         {}}
     :set         :custom

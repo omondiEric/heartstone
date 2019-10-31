@@ -5,6 +5,7 @@
             [firestone.construct :refer [create-game
                                          create-card
                                          create-minion
+                                         do-game-event-functions
                                          get-card
                                          get-characters
                                          get-hand
@@ -164,5 +165,6 @@
          (is= (as-> (create-game [{:minions [(create-minion "Skrallan" :id "s")
                                              (create-minion "Elisabeth" :id "e")]}]) $
                     (deal-damage $ "e")
-                    (get-minion-stats $"s"))
-              [4,4]))
+                    (get-minion-stats $ "s"))
+                    [4 4]))
+

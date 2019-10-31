@@ -8,6 +8,7 @@
                                          create-hero
                                          create-minion
                                          draw-card-to-hand
+                                         do-game-event-functions
                                          get-card
                                          get-character
                                          get-heroes
@@ -411,20 +412,18 @@
                     (:damage-taken))
                 0)
            ;test to see that Ida gets taunt when a minion is damaged
-           (is (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
-                                            (create-minion "Ida" :id "i")]}])
-                   (deal-damage "p")
-                   (get-minion "i")
-                   (:properties)
-                   (contains? "Taunt")))
+           (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
+                                             (create-minion "Ida" :id "i")]}])
+                    (deal-damage "p")
+                    (has-taunt? "i"))
+                true)
 
            ;test to see that Ida does not get taunt when a minion with divine shield is attacked
-           (is-not (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")
-                                                (create-minion "Ida" :id "i")]}])
-                       (deal-damage "e")
-                       (get-minion "i")
-                       (:properties)
-                       (contains? "Taunt")))
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")
+                                             (create-minion "Ida" :id "i")]}])
+                    (deal-damage "e")
+                    (has-taunt? "i"))
+                false)
 
            (is= (-> (create-game [{:hero (create-hero "Carl")}])
                     (deal-damage "h1")
@@ -439,22 +438,15 @@
    (as-> state $
          (let [character (get-character $ character-id)]
            (if (minion? character)
-             ;when character is minion and has no divine shield
+             ;character has no divine shield
              (if-not (has-divine-shield? $ character-id)
-               (do
-                 ;ida not on board
-                 (if (= (ida-present? $) nil)
-                   (-> (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
-                       (remove-dead-minions))
-                   ;ida on board
-                   (-> (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
-                       (give-taunt (:id (ida-present? $))))))
-
+               (-> (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
+                   (do-game-event-functions :on-minion-damage)
+                   (remove-dead-minions))
                ;minion has divine shield
                (remove-divine-shield $ character-id))
              ;when character is hero
-             (do
-               (update-in $ [:players (:owner-id character) :hero :damage-taken] (fn [x] (+ x damage-amount)))))))))
+             (update-in $ [:players (:owner-id character) :hero :damage-taken] (fn [x] (+ x damage-amount))))))))
 
 (defn deal-damage-to-all-heroes
   "Deals damage to all heroes"
@@ -532,7 +524,7 @@
            ;duration != 0 after decrement, so property should stay
            (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
                       (give-property $ "m" "Taunt" 2)
-                      (give-property $ "m" "Divine Shield" 2)
+                      (give-property $ "m" "DivineShield" 2)
                       (decrement-minion-temporary-property-durations $ "m")
                       (get-minion-properties $ "m")
                       (:temporary $)
@@ -541,19 +533,24 @@
            ;duration = 0 after decrement, so property should be removed
            (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
                       (give-property $ "m" "Taunt" 1)
-                      (give-property $ "m" "Divine Shield" 1)
+                      (give-property $ "m" "DivineShield" 1)
+                      ;(:temporary (get-minion-properties $ "m"))
+                      ;(reduce (fn [property-list property]
+                      ;          (update property-list property dec))
+                      ;        $ (map first $))
+                      ;(select-keys $ (map first (filter #(> (last %) 0) $))))
+                      ;(filter #(> (last %) 0) $)
                       (decrement-minion-temporary-property-durations $ "m")
                       (get-minion-properties $ "m")
-                      (:temporary $)
-                      (map last $))
-                [])
+                      (:temporary $))
+                {})
            )}
   [state minion-id]
   (let [minion-temporary-properties (:temporary (get-minion-properties state minion-id))]
     (let [new-properties (reduce (fn [property-list property]
                                    (update property-list property dec))
                                  minion-temporary-properties (map first minion-temporary-properties))]
-      (let [filtered-new-properties (filter #(> (last %) 0) new-properties)]
+      (let [filtered-new-properties (select-keys new-properties (map first (filter #(> (last %) 0) new-properties)))]
         (update-minion state minion-id :properties
                        (fn [properties-map]
                          (assoc properties-map :temporary filtered-new-properties)))))))
@@ -597,7 +594,6 @@
                       (get-minion-stats $ "m"))
                 [3, 4])
            )}
-  ;TODO dec only those with duration
   [state minion-id]
   (let [minion-stats (:stats (get-minion-properties state minion-id))]
     (let [attack-stats (:attack minion-stats)
@@ -633,7 +629,7 @@
                       (decrement-minion-temporary-durations $ "m")
                       (get-minion-properties $ "m")
                       (:temporary $))
-                [])
+                {})
            )}
   [state minion-id]
   (-> state
