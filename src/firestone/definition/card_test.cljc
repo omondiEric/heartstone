@@ -5,15 +5,20 @@
             [firestone.construct :refer [create-game
                                          create-card
                                          create-minion
+                                         get-card
                                          get-characters
                                          get-hand
                                          get-hero
                                          get-minion
                                          get-minions
+                                         get-minion-stats
                                          get-other-player-id
+                                         give-deathrattle
                                          has-divine-shield?
-                                         has-taunt?]]
+                                         has-taunt?
+                                         update-minion]]
             [firestone.core :refer [deal-damage
+                                    do-on-play
                                     do-deathrattle
                                     get-health]]
             [firestone.core-api :refer [attack-minion
@@ -120,19 +125,44 @@
 (deftest Insect-swarm
          "Deal 2 damage to all characters"
          (is= (as-> (create-game [{:minions [(create-minion "Alfred" :id "a")
-                                            (create-minion "Jonatan" :id "j")]
-                                  :hand [(create-card "Insect Swarm" :id "is")]}]) $
-                   (play-spell-card $ "p1" "is")
-                   (get-characters $)
-                   (map :damage-taken $))
-              [2,2,2,2]))
+                                             (create-minion "Jonatan" :id "j")]
+                                   :hand    [(create-card "Insect Swarm" :id "is")]}]) $
+                    (play-spell-card $ "p1" "is")
+                    (get-characters $)
+                    (map :damage-taken $))
+              [2, 2, 2, 2]))
 
 (deftest Radar-Raid
          "Deal 3 damage to a character"
          (is= (as-> (create-game [{:minions [(create-minion "Alfred" :id "a")
                                              (create-minion "Jonatan" :id "j")]
-                                   :hand [(create-card "Radar Raid" :id "rr")]}]) $
+                                   :hand    [(create-card "Radar Raid" :id "rr")]}]) $
                     (play-spell-card $ "p1" "rr" "a")
                     (get-minion $ "a")
                     (:damage-taken $))
-           3))
+              3))
+
+(deftest Annika
+         "Give a minion +2 attack this turn"
+         (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]
+                                   :hand    [(create-card "Annika" :id "a")]}]) $
+                    (play-minion-card $ "p1" "a" 1 "j")
+                    (get-minion-stats $ "j"))
+              [5 6]))
+
+(deftest Astrid
+         "Battlecry: copy another minion's deathrattle"
+         (is= (as-> (create-game [{:minions [(create-minion "Madicken" :id "m")]
+                                   :hand    [(create-card "Astrid" :id "a")]}]) $
+                    (play-minion-card $ "p1" "a" 0 "m")
+                    (get-minion $ "a")
+                    (:deathrattle $))
+              "Madicken"))
+
+(deftest Skrallan
+         "Gets +2/+2 whenever a friendly minion loses divine shield"
+         (is= (as-> (create-game [{:minions [(create-minion "Skrallan" :id "s")
+                                             (create-minion "Elisabeth" :id "e")]}]) $
+                    (deal-damage $ "e")
+                    (get-minion-stats $"s"))
+              [4,4]))

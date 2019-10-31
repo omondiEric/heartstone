@@ -3,10 +3,10 @@
             [ysera.error :refer [error]]
             [firestone.definitions :refer [get-definition]]
             [firestone.core :refer [do-on-play
-                                    do-game-event-functions
                                     deal-damage
                                     deal-damage-to-all-heroes
                                     deal-damage-to-all-minions
+                                    decrement-all-player-minion-temporary-durations
                                     get-attack
                                     get-health
                                     pay-mana
@@ -19,6 +19,7 @@
                                          create-game
                                          create-hero
                                          create-minion
+                                         do-game-event-functions
                                          draw-card-to-hand
                                          fatigue-hero
                                          inc-max-mana
@@ -38,7 +39,6 @@
                                          get-players
                                          get-other-player-id
                                          give-divine-shield
-
                                          remove-card-from-deck
                                          remove-card-from-hand
                                          restore-mana
@@ -82,8 +82,9 @@
 
   (let [other-player (get-other-player-id player-id)]
     (-> state
-        (do-game-event-functions player-id :end-of-turn)
+        (do-game-event-functions :end-of-turn :player-id player-id)
         (assoc-in [:players player-id :hero :hero-power-used] false)
+        (decrement-all-player-minion-temporary-durations player-id)
         (change-player-in-turn)
         (inc-max-mana other-player)
         (restore-mana other-player))))
@@ -166,23 +167,51 @@
                    (play-minion-card "p1" "e" 0)
                    (get-hand "p1")
                    (empty?)))
-           ;
+           ; Mana is decreased
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                   (play-minion-card "p1" "e" 0)
+                   (get-mana "p1"))
+                   6)
+           ;battlecry without target is triggered
            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio")]}])
                     (play-minion-card "p1" "e" 0)
                     (get-hand "p1")
                     (count))
-                1))}
-  [state player-id card-id position]
+                1)
+           ;battlecry with target is triggered
+           (is= (-> (create-game [{:hand [(create-card "Annika" :id "a")] :minions [(create-minion "Mio" :id "m")]}])
+                    (play-minion-card "p1" "a" 0 "m")
+                    (get-minion-stats "m"))
+                [3,2])
+
+           ;(is= (as-> (create-game [{:minions [(create-minion "Madicken" :id "m")
+           ;                                    (create-minion "Astrid" :id "a2")]
+           ;                          :hand    [(create-card "Astrid" :id "a1")]}]) $
+           ;           (play-minion-card "p1" "a1" 0 "m"))
+           ;           ;(do-on-play $ "p1" "a2" (get-definition (get-minion $ "a2")) "m"))
+           )}
+  ([state player-id card-id position]
   ;check if player has less than 7 minions on the board
   (when-not (< (count (get-minions state player-id)) 7)
     (error "The board is full."))
   (let [card (get-card state card-id)]
     (-> state
+        (pay-mana player-id card-id)
         (remove-card-from-hand player-id card-id)
-        (add-minion-to-board player-id (create-minion (:name card)) position)
-        (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
-        (do-on-play player-id card)
-        )))
+        (add-minion-to-board player-id (create-minion (:name card) :id card-id) position)
+        (do-on-play player-id card-id (get-definition (get-card state card-id))))))
+
+  ([state player-id card-id position target-id]
+   ;check if player has less than 7 minions on the board
+   (when-not (< (count (get-minions state player-id)) 7)
+     (error "The board is full."))
+   (let [card (get-card state card-id)]
+     (-> state
+         (pay-mana player-id card-id)
+         (remove-card-from-hand player-id card-id)
+         (add-minion-to-board player-id (create-minion (:name card) :id card-id) position)
+         (do-on-play player-id card-id (get-definition (get-card state card-id)) target-id)))))
+
 
 
 (defn attack-minion
@@ -280,7 +309,7 @@
 
 (defn do-hero-power
   {:test (fn []
-           ;check Carl's blessing
+           ;Carl's Blessing gives target minion divine shield
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
                                    :hero    (create-hero "Carl")}])
                     (do-hero-power "p1" :target-id "k")
@@ -294,45 +323,6 @@
                     (do-hero-power "p1" :target-id "k")
                     (get-mana "p1"))
                 8)
-           ;check Gustaf's strengthen
-           (as-> (create-game [{:minions [(create-minion "Emil" :id "e1")
-                                          (create-minion "Emil" :id "e2")]
-                                :hero    (create-hero "Gustaf")}]) $
-                 (do-hero-power $ "p1")
-                 (do (is= (->> (get-minions $ "p1")
-                               (map :damage-taken))
-                          [1, 1])
-                     (is= (get-minion-stats $ "e1")
-                          [4, 4])
-                     (is= (get-minion-stats $ "e2")
-                          [4, 4])))
-           ;<2 minions available
-           (as-> (create-game [{:minions [(create-minion "Emil" :id "e1")]
-                                :hero    (create-hero "Gustaf")}]) $
-                 (do-hero-power $ "p1")
-                 (do (is= (->> (get-minions $ "p1")
-                               (map :damage-taken))
-                          [1])
-                     (is= (get-minion-stats $ "e1")
-                          [4, 4])))
-           ;>2 minions available
-           (as-> (create-game [{:minions [(create-minion "Emil" :id "e1")
-                                          (create-minion "Emil" :id "e2")
-                                          (create-minion "Emil" :id "e3")
-                                          (create-minion "Emil" :id "e4")]
-                                :hero    (create-hero "Gustaf")}]) $
-                 (do-hero-power $ "p1")
-                 (do (is= (->> (get-minions $ "p1")
-                               (map :damage-taken))
-                          [1, 0, 1, 0])
-                     (is= (get-minion-stats $ "e1")
-                          [4,4])
-                     (is= (get-minion-stats $ "e2")
-                          [2,5])
-                     (is= (get-minion-stats $ "e3")
-                          [4,4])
-                     (is= (get-minion-stats $ "e4")
-                          [2,5])))
            ;can't perform twice in a turn
            (error? (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
                                       :hero    (create-hero "Carl")}])
@@ -349,17 +339,17 @@
                     (:damage-taken))
                 2)
            )}
-  ;target-id is needed for Carl's blessing but not Gustaf's strengthen
+  ;target-id is needed for some (maybe think about overloading instead)
   ([state player-id & {:keys [target-id]}]
    (if (get-in state [:players player-id :hero :hero-power-used])
      (error "Hero power already used this turn")
      (let [hero-power (:hero-power (get-definition (get-in state [:players player-id :hero])))
            power-function (:power-fn (get-definition hero-power))]
        (as-> state $
+             ;TODO update pay mana to also take an integer
              (update-mana $ player-id (fn [old-value] (- old-value (get-mana-cost state (get-in state [:players player-id :hero :id])))))
              (assoc-in $ [:players player-id :hero :hero-power-used] true)
              (if (empty? target-id)
                (power-function $ player-id)
-               (power-function $ target-id))
-               )))))
+               (power-function $ target-id)))))))
 

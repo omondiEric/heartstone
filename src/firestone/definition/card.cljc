@@ -4,11 +4,14 @@
             [firestone.construct :refer [create-game
                                          create-card
                                          create-minion
-                                         replace-minion
+                                         friendly-minions?
                                          get-minion
                                          get-random-minion
                                          get-other-player-id
+                                         give-deathrattle
                                          give-taunt
+                                         modify-minion-stats
+                                         replace-minion
                                          switch-minion-side
                                          update-minion
                                          update-seed]]
@@ -51,7 +54,7 @@
                   :temporary     {}
                   :stats         {}}
     :description "Battlecry: Deal 4 damage to the enemy hero."
-    :on-play   (fn [state player-id]
+    :on-play   (fn [state player-id minion-id]
                    (let [target-hero-id (get-in state [:players (get-other-player-id player-id) :hero :id])]
                      (deal-damage state target-hero-id 4)))}
 
@@ -65,7 +68,7 @@
                   :temporary     {}
                   :stats         {}}
     :description "Battlecry: Draw a card."
-    :on-play   (fn [state player-id]
+    :on-play   (fn [state player-id minion-id]
                    (draw-card state player-id))}
 
    "Jonatan"
@@ -257,7 +260,8 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "Battlecry: Copy another minions deathrattle."}
+    :description "Battlecry: Copy another minions deathrattle."
+    :on-play      (fn [state player-id minion-id target-id] (give-deathrattle state minion-id (:name (get-minion state target-id))))}
 
    "Skrallan"
    {:name        "Skrallan"
@@ -269,7 +273,11 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "After a friendly minion loses Divine Shield, gain +2/+2."}
+    :description "After a friendly minion loses Divine Shield, gain +2/+2."
+    :on-divine-shield-removal (fn [state minion-id other-minion-id]
+                                (if (friendly-minions? state minion-id other-minion-id)
+                                  (modify-minion-stats state minion-id 2 2)
+                                  state))}
 
    "Annika"
    {:name        "Annika"
@@ -281,7 +289,8 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "Battlecry: Give a minion +2 Attack this turn."}
+    :description "Battlecry: Give a minion +2 Attack this turn."
+    :on-play      (fn [state player-id minion-id target-id] (modify-minion-stats state target-id 2 0 1))}
 
    })
 
