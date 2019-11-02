@@ -8,7 +8,9 @@
                                          create-hero
                                          create-minion
                                          draw-card-to-hand
+                                         do-game-event-functions
                                          get-card
+                                         get-character
                                          get-heroes
                                          get-hero
                                          get-hand
@@ -16,14 +18,20 @@
                                          get-mana-cost
                                          get-minion
                                          get-minions
+                                         get-minion-properties
+                                         get-minion-stats
                                          get-other-player-id
+                                         get-minion-properties
                                          get-random-minion
                                          give-divine-shield
+                                         give-property
                                          give-taunt
-                                         has-divine-shield
+                                         has-divine-shield?
                                          has-taunt?
                                          has-windfury?
                                          ida-present?
+                                         modify-minion-attack
+                                         modify-minion-stats
                                          minion?
                                          replace-minion
                                          remove-card-from-deck
@@ -33,24 +41,6 @@
                                          switch-minion-side
                                          update-mana
                                          update-minion]]))
-
-(defn get-character
-  "Returns the character with the given id from the state."
-  {:test (fn []
-           (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
-                    (get-character "h1")
-                    (:name))
-                "Carl")
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
-                    (get-character "m")
-                    (:name))
-                "Mio"))}
-  [state id]
-  (or (some (fn [m] (when (= (:id m) id) m))
-            (get-minions state))
-      (some (fn [h] (when (= (:id h) id) h))
-            (get-heroes state))))
-
 
 (defn get-health
   "Returns the health of the character."
@@ -85,12 +75,25 @@
 (defn get-attack
   "Returns the attack of the minion with the given id."
   {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
-                    (get-attack "m"))
-                1))}
-  [state id]
-  (let [minion (get-minion state id)]
-    (:attack minion)))
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (get-attack "e"))
+                2)
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (modify-minion-attack "e" 3)
+                    (get-attack "e"))
+                5)
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (modify-minion-attack "e" 3 2)
+                    (get-attack "e"))
+                5)
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (modify-minion-attack "e" 3 2)
+                    (modify-minion-attack "e" 1 1)
+                    (get-attack "e"))
+                6)
+           )}
+  [state minion-id]
+  (first (get-minion-stats state minion-id)))
 
 (defn sleepy?
   "Checks if the minion with given id is sleepy."
@@ -203,31 +206,44 @@
   "Returns the on-play function of a minion or nil"
   {:test (fn []
            ;check that damage is taken for Kato
-           (is= (-> (create-game [{:hand [(create-card "Kato" :id "k")]}])
-                    (do-on-play "p1" (create-card "Kato"))
-                    (do-on-play "p2" (create-card "Kato"))
-                    (do-on-play "p2" (create-card "Kato"))
-                    (do-on-play "p2" (create-card "Kato"))
-                    (get-in [:players "p1" :hero :damage-taken]))
+           (is= (as-> (create-game [{:hand [(create-card "Kato" :id "k")]}]) $
+                      (do-on-play $ "p1" "k" (get-definition (get-card $ "k")))
+                      (do-on-play $ "p2" "k" (get-definition (get-card $ "k")))
+                      (do-on-play $ "p2" "k" (get-definition (get-card $ "k")))
+                      (do-on-play $ "p2" "k" (get-definition (get-card $ "k")))
+                      (get-in $ [:players "p1" :hero :damage-taken]))
                 12)
            ;check that card is drawn for Emil
-           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}])
-                    (do-on-play "p1" (create-card "Emil"))
-                    (get-hand "p1")
-                    (count))
+           (is= (as-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}]) $
+                      (do-on-play $ "p1" "e" (get-definition (get-card $ "e")))
+                      (get-hand $ "p1")
+                      (count $))
                 2)
+           ;check that Annika can target a minion
+           (is= (as-> (create-game [{:hand    [(create-card "Annika" :id "a")]
+                                     :minions [(create-minion "Emil" :id "e")]}]) $
+                      (do-on-play $ "p1" "a" (get-definition (get-card $ "a")) "e")
+                      (get-minion-stats $ "e"))
+                [4, 5])
            ;check that Ronja will cause no errors
-           (is= (-> (create-game)
-                    (do-on-play "p1" (create-card "Ronja"))
-                    (get-hand "p1")
-                    (count))
-                0)
+           (is= (as-> (create-game [{:hand [(create-card "Ronja" :id "r")]}]) $
+                      (do-on-play $ "p1" "r" (get-definition (get-card $ "r")))
+                      (get-hand $ "p1")
+                      (count $))
+                1)
            )}
-  [state player-id card]
-  (if (contains? (get-definition card) :on-play)
-    (let [on-play-fn (:on-play (get-definition card))]
-      (on-play-fn state player-id))
-    state))
+  ;definition is required because it gets around the problem of here card-id is for a card, but in play-minion-card
+  ;the card will be played and becomes a minion
+  ([state player-id card-id minion-def]
+   (if (contains? minion-def :on-play)
+     (let [on-play-fn (:on-play minion-def)]
+       (on-play-fn state player-id card-id))
+     state))
+  ([state player-id card-id minion-def target-id]
+   (if (contains? minion-def :on-play)
+     (let [on-play-fn (:on-play minion-def)]
+       (on-play-fn state player-id card-id target-id))
+     state)))
 
 (defn has-deathrattle
   {:test (fn []
@@ -292,15 +308,15 @@
 (defn do-deathrattle
   {:test (fn []
            ;check madicken summons elisabeth
-           (is= (-> (create-game [{:minions [(create-card "Madicken" :id "m")]}])
+           (is= (-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}])
                     (do-deathrattle "m")
                     (get-minions "p1")
                     (first)
                     (:name))
                 "Elisabeth")
            ;check Uncle Nilsson
-           (is= (-> (create-game [{:minions [(create-card "Uncle Nilsson" :id "n")]}
-                                  {:minions [(create-card "Mio" :id "m")]}])
+           (is= (-> (create-game [{:minions [(create-minion "Uncle Nilsson" :id "n")]}
+                                  {:minions [(create-minion "Mio" :id "m")]}])
                     (do-deathrattle "n")
                     (get-minions "p2")
                     (count))
@@ -357,46 +373,9 @@
         (reduce remove-minions state dead-minions)
         (as-> state $
               (reduce do-deathrattles $ dead-deathrattle-minions)
+              (reduce remove-minions $ dead-minions)
               (remove-dead-minions $)
               )))))
-
-; call all the functions of active minions corresponding to a game event eg. end-of-turn, on-minion-damage
-(defn do-game-event-functions
-  {:test (fn []
-           ; testing end of turn function
-           (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
-                                             (create-minion "Mio" :id "m")
-                                             (create-minion "Emil" :id "e1")
-                                             (create-minion "Emil" :id "e2")]}])
-                    (do-game-event-functions "p1" :end-of-turn)
-                    (get-minion "e1")
-                    (:damage-taken))
-                1)
-           ; testing on minion damage function: Note for steve: this currently doesnt work because "give-taunt"
-           ; doesnt work  - but once that is fixed, this should work
-           (is= (-> (create-game [{:minions [(create-minion "Ida" :id "i")
-                                             (create-minion "Mio" :id "m")
-                                             (create-minion "Emil" :id "e1")
-                                             (create-minion "Emil" :id "e2")]}])
-                    (do-game-event-functions :on-minion-damage)
-                    (has-taunt? "i"))
-                true))}
-  ([state player-id game-event-key]
-   (reduce
-     (fn [state minion]
-       (if-not (game-event-key minion)
-         state
-         ((game-event-key minion) state (:id minion))))
-     state
-     (get-minions state player-id)))
-  ([state game-event-key]
-   (reduce
-     (fn [state minion]
-       (if-not (game-event-key minion)
-         state
-         ((game-event-key minion) state (:id minion))))
-     state
-     (get-minions state))))
 
 ;deal damage to a character and remove dead minions
 (defn deal-damage
@@ -460,7 +439,7 @@
          (let [character (get-character $ character-id)]
            (if (minion? character)
              ;character has no divine shield
-             (if-not (has-divine-shield $ character-id)
+             (if-not (has-divine-shield? $ character-id)
                (-> (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
                    (do-game-event-functions :on-minion-damage)
                    (remove-dead-minions))
@@ -527,9 +506,6 @@
           state
           (get-minions state)))
 
-(-> (create-game)
-    (get-random-minion))
-
 (defn pay-mana
   {:test (fn []
            ; mana should be updated
@@ -541,3 +517,158 @@
                 8))}
   [state player-id card-id]
   (update-mana state player-id (fn [old-value] (- old-value (get-mana-cost state card-id)))))
+
+(defn decrement-minion-temporary-property-durations
+  "Decrements the duration of all temporary properties of a minion and removes if = 0"
+  {:test (fn []
+           ;duration != 0 after decrement, so property should stay
+           (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
+                      (give-property $ "m" "Taunt" 2)
+                      (give-property $ "m" "DivineShield" 2)
+                      (decrement-minion-temporary-property-durations $ "m")
+                      (get-minion-properties $ "m")
+                      (:temporary $)
+                      (map last $))
+                [1, 1])
+           ;duration = 0 after decrement, so property should be removed
+           (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
+                      (give-property $ "m" "Taunt" 1)
+                      (give-property $ "m" "DivineShield" 1)
+                      ;(:temporary (get-minion-properties $ "m"))
+                      ;(reduce (fn [property-list property]
+                      ;          (update property-list property dec))
+                      ;        $ (map first $))
+                      ;(select-keys $ (map first (filter #(> (last %) 0) $))))
+                      ;(filter #(> (last %) 0) $)
+                      (decrement-minion-temporary-property-durations $ "m")
+                      (get-minion-properties $ "m")
+                      (:temporary $))
+                {})
+           )}
+  [state minion-id]
+  (let [minion-temporary-properties (:temporary (get-minion-properties state minion-id))]
+    (let [new-properties (reduce (fn [property-list property]
+                                   (update property-list property dec))
+                                 minion-temporary-properties (map first minion-temporary-properties))]
+      (let [filtered-new-properties (select-keys new-properties (map first (filter #(> (last %) 0) new-properties)))]
+        (update-minion state minion-id :properties
+                       (fn [properties-map]
+                         (assoc properties-map :temporary filtered-new-properties)))))))
+
+(defn decrement-minion-temporary-stat-durations
+  "Decrements the duration of all temporary stats of a minion and removes if = 0"
+  {:test (fn []
+           ;duration != 0 after decrement, so property should stay
+           (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
+                      (modify-minion-stats $ "m" 2 2 2)
+                      (modify-minion-stats $ "m" 2 2)
+                      ;(map :duration (:attack(:stats (get-properties $ "m")))))
+                      ;(get-minion-properties $ "m")
+                      ;(:stats $)
+                      ;(:attack $)
+                      ;(first $)
+                      ; (update-in (first (:attack (:stats (get-minion-properties $ "m")))) [:duration] dec))
+                      ;(:attack (:stats (get-minion-properties $ "m")))
+                      ;(first $)
+                      ;(:duration $))
+                      ;(map (fn [buff] (if (:duration buff)(update-in buff [:duration] dec) buff)) (:attack (:stats (get-minion-properties $ "m")))))
+                      ;(filter #(> (last (last %)) 0) $))
+
+                      ;(reduce (fn [property-list property]
+                      ;          (update-in property [:duration property] dec))
+                      ;  (:attack (:stats (get-minion-properties $ "m"))) (:attack(:stats (get-minion-properties $ "m")))))
+                      ;;(get-properties $ "m")
+                      ;;(:stats $)
+                      ;;(:attack $)
+                      ;;(first $)
+                      ;;(:duration $))
+
+                      (decrement-minion-temporary-stat-durations $ "m")
+                      (get-minion-stats $ "m"))
+                [5, 6])
+           ;duration = 0 after decrement, so property should be removed
+           (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
+                      (modify-minion-stats $ "m" 2 2 1)
+                      (modify-minion-stats $ "m" 2 2)
+                      (decrement-minion-temporary-stat-durations $ "m")
+                      (get-minion-stats $ "m"))
+                [3, 4])
+           )}
+  [state minion-id]
+  (let [minion-stats (:stats (get-minion-properties state minion-id))]
+    (let [attack-stats (:attack minion-stats)
+          health-stats (:health minion-stats)]
+      (let [new-attack (map (fn [buff] (if (:duration buff) (update-in buff [:duration] dec) buff))
+                            attack-stats)
+            new-health (map (fn [buff] (if (:duration buff) (update-in buff [:duration] dec) buff))
+                            health-stats)]
+        (let [filtered-new-attack (filter #(> (last (last %)) 0) new-attack)
+              filtered-new-health (filter #(> (last (last %)) 0) new-health)]
+          (update-minion state minion-id :properties
+                         (fn [properties-map]
+                           (assoc properties-map :stats
+                                                 {:attack filtered-new-attack :health filtered-new-health}))))))))
+
+(defn decrement-minion-temporary-durations
+  "Decrements all minion temporary properties"
+  {:test (fn []
+           (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
+                      (modify-minion-stats $ "m" 2 2 2)
+                      (decrement-minion-temporary-durations $ "m")
+                      (get-minion-stats $ "m"))
+                [3, 4])
+           (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
+                      (give-property $ "m" "Taunt" 2)
+                      (decrement-minion-temporary-durations $ "m")
+                      (get-minion-properties $ "m")
+                      (:temporary $)
+                      (first $))
+                [:Taunt 1])
+           (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
+                      (give-property $ "m" "Taunt" 1)
+                      (decrement-minion-temporary-durations $ "m")
+                      (get-minion-properties $ "m")
+                      (:temporary $))
+                {})
+           )}
+  [state minion-id]
+  (-> state
+      (decrement-minion-temporary-property-durations minion-id)
+      (decrement-minion-temporary-stat-durations minion-id)))
+
+(defn decrement-all-player-minion-temporary-durations
+  "Decrements the temporary properties of all minions belonging to a player"
+  {:test (fn []
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m")
+                                          (create-minion "Emil" :id "e")]}
+                               {:minions [(create-minion "Ronja" :id "r")]}]) $
+                 (modify-minion-stats $ "m" 2 2 2)
+                 (modify-minion-stats $ "r" 2 2 1)
+                 (decrement-all-player-minion-temporary-durations $ "p1")
+                 (do (is= (get-minion-stats $ "m") [3 4])
+                     (is= (get-minion-stats $ "e") [2 5])
+                     (is= (get-minion-stats $ "r") [5, 4])))
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m")
+                                          (create-minion "Emil" :id "e")]}
+                               {:minions [(create-minion "Ronja" :id "r")]}]) $
+                 (modify-minion-stats $ "m" 2 2 1)
+                 (modify-minion-stats $ "e" 2 2 1)
+                 (modify-minion-stats $ "r" 2 2 1)
+                 (decrement-all-player-minion-temporary-durations $ "p1")
+                 (do (is= (get-minion-stats $ "m") [1 2])
+                     (is= (get-minion-stats $ "e") [2 5])
+                     (is= (get-minion-stats $ "r") [5, 4])))
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m")
+                                          (create-minion "Emil" :id "e")]}
+                               {:minions [(create-minion "Ronja" :id "r")]}]) $
+                 (give-property $ "m" "Taunt" 1)
+                 (give-property $ "e" "Taunt" 1)
+                 (give-property $ "r" "Taunt" 1)
+                 (decrement-all-player-minion-temporary-durations $ "p1")
+                 (do (is-not (has-taunt? $ "m"))
+                     (is-not (has-taunt? $ "e"))
+                     (is (has-taunt? $ "r"))))
+           )}
+  [state player-id]
+  (let [minion-ids (map :id (get-minions state player-id))]
+    (reduce (fn [state-map minion-id] (decrement-minion-temporary-durations state-map minion-id)) state minion-ids)))
