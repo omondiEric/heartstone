@@ -7,8 +7,11 @@
                                          get-card
                                          get-player
                                          get-players
-                                         get-mana-cost]]
-            [firestone.core :refer [get-health]]
+                                         get-mana-cost
+                                         get-minion]]
+            [firestone.core :refer [get-health
+                                    get-attack
+                                    sleepy?]]
             [firestone.definitions :refer [get-definition]]
             [clojure.spec.alpha :as spec]
             [firestone.definitions-loader]))
@@ -70,6 +73,37 @@
        (map (fn [c]
               (get-client-card state c)))))
 
+(defn get-minion-states
+  [state minion]
+  )
+
+(defn get-client-minion
+  {:test (fn []
+           (is (check-spec :firestone.client.spec/minion
+                           (let [game (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                                 minion (get-minion game "e")]
+                             (get-client-minion game minion)))))}
+  [state minion]
+  (let [minion-defn (get-definition (:name minion))
+        minion-permanent-set (get-in minion [:properties :permanent])]
+    {:attack      (get-attack state (:id minion))
+     :can-attack  (not (contains? minion-permanent-set "NoAttack"))
+     :entity-type  "minion"
+     :health    (get-health minion)
+     :id        (:id minion)
+     :name      (:name minion)
+     :mana-cost  (:mana-cost minion-defn)
+     :max-health  30   ; is this true?
+     :original-attack  (:attack minion-defn)
+     :original-health  (:health minion-defn)
+     :owner-id         (:owner-id minion)
+     :position         (:position minion)
+     :sleepy           (sleepy? state (:id minion))
+     :states
+     :valid-attack-ids}))
+
+(defn get-client-minions
+  [state player])
 
 
 (defn get-client-player
@@ -78,7 +112,7 @@
                            (as-> (create-game) $
                                  (get-client-player $ (get-player $ "p1"))))))}
   [state player]
-  {:board-entities []
+  {:board-entities (get-client-minions state player)
    :active-secrets []
    :deck-size      16
    :hand           (get-client-hand state player)
