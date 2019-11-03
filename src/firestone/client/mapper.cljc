@@ -8,7 +8,8 @@
                                          get-player
                                          get-players
                                          get-mana-cost
-                                         get-minion]]
+                                         get-minion
+                                         get-minion-properties]]
             [firestone.core :refer [get-health
                                     get-attack
                                     sleepy?]]
@@ -54,56 +55,73 @@
                              (get-client-card game card)))))}
   [state card]
   (let [card-definition (get-definition card)] ;lets us get mana-cost
-  {:entity-type "card"
-   :name (:name card)
-   :mana-cost (get-mana-cost state (:id card))
-   :original-mana-cost (:mana-cost card-definition)
-   :firestone.client.card.spec/type (name (:type card-definition))}))
+    {:entity-type "card"
+     :name (:name card)
+     :mana-cost (get-mana-cost state (:id card))
+     :original-mana-cost (:mana-cost card-definition)
+     :playable true
+     :type (name (:type card-definition))}))
 
 (defn get-client-hand
   {:test (fn []
            (is (check-spec :firestone.client.spec/hand
                            (as-> (create-game [{:hand ["Emil"]}]) $
                                  ;(let [hand (get-hand $ "p1")]
-                                   (get-client-hand $ (get-player $ "p1"))))))}
+                                 (get-client-hand $ (get-player $ "p1"))))))}
   [state player]
-  ;(get-hand state (:id player)))
-
   (->> (get-hand state (:id player))
        (map (fn [c]
               (get-client-card state c)))))
 
 (defn get-minion-states
-  [state minion]
-  )
-
-(defn get-client-minion
   {:test (fn []
-           (is (check-spec :firestone.client.spec/minion
-                           (let [game (create-game [{:deck [(create-card "Emil" :id "e")]}])
-                                 minion (get-minion game "e")]
-                             (get-client-minion game minion)))))}
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (get-minion "m")
+                    ())))}
   [state minion]
-  (let [minion-defn (get-definition (:name minion))
-        minion-permanent-set (get-in minion [:properties :permanent])]
-    {:attack      (get-attack state (:id minion))
-     :can-attack  (not (contains? minion-permanent-set "NoAttack"))
-     :entity-type  "minion"
-     :health    (get-health minion)
-     :id        (:id minion)
-     :name      (:name minion)
-     :mana-cost  (:mana-cost minion-defn)
-     :max-health  30   ; is this true?
-     :original-attack  (:attack minion-defn)
-     :original-health  (:health minion-defn)
-     :owner-id         (:owner-id minion)
-     :position         (:position minion)
-     :sleepy           (sleepy? state (:id minion))
-     :states
-     :valid-attack-ids}))
+  (let [minion-properties (get-minion-properties state (:id minion))
+        permanent-properties (:permanent minion-properties)
+        temp-keywords (reduce conj #{} (clojure.core/keys (:temporary minion-properties)))
+        temp-properties (reduce (fn[curr-set key]
+                                  (conj curr-set (name key)))
+                                #{}
+                                temp-keywords)]))
 
-(defn get-client-minions
-  [state player])
+;(def moo {:divine-shield 1
+;          :windfury 1})
+;(def key-set (reduce conj #{} (clojure.core/keys moo)))
+;(reduce (fn[curr-set key]
+;          (conj curr-set (name key)))
+;        #{}
+;        key-set)
+
+;(defn get-client-minion
+;  {:test (fn []
+;           (is (check-spec :firestone.client.spec/minion
+;                           (let [game (create-game [{:deck [(create-card "Emil" :id "e")]}])
+;                                 minion (get-minion game "e")]
+;                             (get-client-minion game minion)))))}
+;  [state minion]
+;  (let [minion-defn (get-definition (:name minion))
+;        minion-permanent-set (get-in minion [:properties :permanent])]
+;    {:attack      (get-attack state (:id minion))
+;     :can-attack  (not (contains? minion-permanent-set "NoAttack"))
+;     :entity-type  "minion"
+;     :health    (get-health minion)
+;     :id        (:id minion)
+;     :name      (:name minion)
+;     :mana-cost  (:mana-cost minion-defn)
+;     :max-health  30   ; is this true?
+;     :original-attack  (:attack minion-defn)
+;     :original-health  (:health minion-defn)
+;     :owner-id         (:owner-id minion)
+;     :position         (:position minion)
+;     :sleepy           (sleepy? state (:id minion))
+;     :states
+;     :valid-attack-ids}))
+
+;(defn get-client-minions
+;  [state player])
 
 
 (defn get-client-player
@@ -112,7 +130,7 @@
                            (as-> (create-game) $
                                  (get-client-player $ (get-player $ "p1"))))))}
   [state player]
-  {:board-entities (get-client-minions state player)
+  {:board-entities []   ;(get-client-minions state player)
    :active-secrets []
    :deck-size      16
    :hand           (get-client-hand state player)

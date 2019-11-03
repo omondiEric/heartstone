@@ -524,7 +524,7 @@
            ;duration != 0 after decrement, so property should stay
            (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
                       (give-property $ "m" "taunt" 2)
-                      (give-property $ "m" "DivineShield" 2)
+                      (give-property $ "m" "divine-shield" 2)
                       (decrement-minion-temporary-property-durations $ "m")
                       (get-minion-properties $ "m")
                       (:temporary $)
@@ -533,7 +533,7 @@
            ;duration = 0 after decrement, so property should be removed
            (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
                       (give-property $ "m" "taunt" 1)
-                      (give-property $ "m" "DivineShield" 1)
+                      (give-property $ "m" "divine-shield" 1)
                       ;(:temporary (get-minion-properties $ "m"))
                       ;(reduce (fn [property-list property]
                       ;          (update property-list property dec))

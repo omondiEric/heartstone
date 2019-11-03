@@ -102,7 +102,7 @@
     :health      5
     :mana-cost   5
     :type        :minion
-    :properties  {:permanent     #{"DivineShield"}
+    :properties  {:permanent     #{"divine-shield"}
                   :temporary     {}
                   :stats         {}}
     :set         :custom
@@ -160,7 +160,7 @@
     :health      1
     :mana-cost   1
     :type        :minion
-    :properties  {:permanent     #{"taunt", "DivineShield"}
+    :properties  {:permanent     #{"taunt", "divine-shield"}
                   :temporary     {}
                   :stats         {}}
     :set         :custom
