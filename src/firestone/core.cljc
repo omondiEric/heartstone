@@ -260,10 +260,10 @@
            )}
   ([card]
    (let [permanent-set (get-in (get-definition card) [:properties :permanent])]
-     (contains? permanent-set "Deathrattle")))
+     (contains? permanent-set "deathrattle")))
   ([state card-id]
    (let [permanent-set (get-in (get-definition (get-minion state card-id)) [:properties :permanent])]
-     (contains? permanent-set "Deathrattle"))))
+     (contains? permanent-set "deathrattle"))))
 
 (defn get-minions-with-deathrattle
   {:test (fn []
@@ -523,8 +523,8 @@
   {:test (fn []
            ;duration != 0 after decrement, so property should stay
            (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
-                      (give-property $ "m" "Taunt" 2)
-                      (give-property $ "m" "DivineShield" 2)
+                      (give-property $ "m" "taunt" 2)
+                      (give-property $ "m" "divine-shield" 2)
                       (decrement-minion-temporary-property-durations $ "m")
                       (get-minion-properties $ "m")
                       (:temporary $)
@@ -532,8 +532,8 @@
                 [1, 1])
            ;duration = 0 after decrement, so property should be removed
            (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
-                      (give-property $ "m" "Taunt" 1)
-                      (give-property $ "m" "DivineShield" 1)
+                      (give-property $ "m" "taunt" 1)
+                      (give-property $ "m" "divine-shield" 1)
                       ;(:temporary (get-minion-properties $ "m"))
                       ;(reduce (fn [property-list property]
                       ;          (update property-list property dec))
@@ -618,14 +618,14 @@
                       (get-minion-stats $ "m"))
                 [3, 4])
            (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
-                      (give-property $ "m" "Taunt" 2)
+                      (give-property $ "m" "taunt" 2)
                       (decrement-minion-temporary-durations $ "m")
                       (get-minion-properties $ "m")
                       (:temporary $)
                       (first $))
-                [:Taunt 1])
+                [:taunt 1])
            (is= (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
-                      (give-property $ "m" "Taunt" 1)
+                      (give-property $ "m" "taunt" 1)
                       (decrement-minion-temporary-durations $ "m")
                       (get-minion-properties $ "m")
                       (:temporary $))
@@ -661,9 +661,9 @@
            (as-> (create-game [{:minions [(create-minion "Mio" :id "m")
                                           (create-minion "Emil" :id "e")]}
                                {:minions [(create-minion "Ronja" :id "r")]}]) $
-                 (give-property $ "m" "Taunt" 1)
-                 (give-property $ "e" "Taunt" 1)
-                 (give-property $ "r" "Taunt" 1)
+                 (give-property $ "m" "taunt" 1)
+                 (give-property $ "e" "taunt" 1)
+                 (give-property $ "r" "taunt" 1)
                  (decrement-all-player-minion-temporary-durations $ "p1")
                  (do (is-not (has-taunt? $ "m"))
                      (is-not (has-taunt? $ "e"))

@@ -352,13 +352,26 @@
 ; plays either spell card or minion card
 (defn play-card
   {:test (fn []
+<<<<<<< HEAD
            ;can play minion card
+=======
+           ; Testing Insect Swarm
+           (is= (-> (create-game [{:hand [(create-card "Insect Swarm" :id "i")] :deck [(create-card "Mio" :id "m")]}
+                                  {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}
+                                  {:hero (create-hero "Carl" :id "h1")}])
+                    (play-card "p1" "i" 0)
+                    (get-hero "h1")
+                    (:damage-taken))
+                2)
+           ; minion card
+>>>>>>> origin/tiffany
            (is= (-> (create-game [{:hand [(create-card "Ronja" :id "r")]}])
                     (play-card "p1" "r" 0)
                     (get-minions "p1")
                     (first)
                     (:name))
                 "Ronja")
+<<<<<<< HEAD
            ;can play spell card
            (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
                                              (create-card "Emil" :id "e")]
@@ -367,13 +380,15 @@
                     (get-hand "p1")
                     (count))
                 1)
+=======
+>>>>>>> origin/tiffany
            )}
   ([state player-id card-id position target-id]
-   (if (is= (:type (get-definition (get-card state card-id))) :minion)
+   (if (= (:type (get-definition (get-card state card-id))) :minion)
      (play-minion-card state player-id card-id position target-id)
      (play-spell-card state player-id card-id target-id)))
   ([state player-id card-id position]
-   (if (is= (:type (get-definition (get-card state card-id))) :minion)
+   (if (= (:type (get-definition (get-card state card-id))) :minion)
      (play-minion-card state player-id card-id position)
      (play-spell-card state player-id card-id))))
 
@@ -385,7 +400,7 @@
                     (do-hero-power "p1" :target-id "k")
                     (get-minion "k")
                     (get-in [:properties :permanent])
-                    (contains? "DivineShield"))
+                    (contains? "divine-shield"))
                 true)
            ;check mana is decreased
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
