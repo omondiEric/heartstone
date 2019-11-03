@@ -47,6 +47,7 @@
    :max-mana         (:max-mana player)
    :name             (:name hero)
    :states           []
+   ;;:hero-power       (get-client-hero-power )
    :valid-attack-ids []})
 
 (defn get-client-card
@@ -57,19 +58,19 @@
                              (get-client-card game card)))))}
   [state card]
   (let [card-definition (get-definition card)] ;lets us get mana-cost
-    {:entity-type "card"
-     :name (:name card)
-     :mana-cost (get-mana-cost state (:id card))
-     :original-mana-cost (:mana-cost card-definition)
-     :playable true
-     :type (name (:type card-definition))}))
+  {:entity-type "card"
+   :name (:name card)
+   :mana-cost (get-mana-cost state (:id card))
+   :original-mana-cost (:mana-cost card-definition)
+   :playable true
+   :description (:description card-definition)
+   :type (name (:type card-definition))}))
 
 (defn get-client-hand
   {:test (fn []
            (is (check-spec :firestone.client.spec/hand
-                           (as-> (create-game [{:hand ["Emil", "Mio"]}]) $
-                                 ;(let [hand (get-hand $ "p1")]
-                                 (get-client-hand $ (get-player $ "p1"))))))}
+                           (as-> (create-game [{:hand ["Emil"]}]) $
+                                   (get-client-hand $ (get-player $ "p1"))))))}
   [state player]
   (->> (get-hand state (:id player))
        (map (fn [c]
