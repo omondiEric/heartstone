@@ -40,6 +40,7 @@
                                          get-players
                                          get-other-player-id
                                          give-divine-shield
+                                         minion?
                                          remove-card-from-deck
                                          remove-card-from-hand
                                          restore-mana
@@ -170,9 +171,9 @@
                    (empty?)))
            ; Mana is decreased
            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
-                   (play-minion-card "p1" "e" 0)
-                   (get-mana "p1"))
-                   6)
+                    (play-minion-card "p1" "e" 0)
+                    (get-mana "p1"))
+                6)
            ;battlecry without target is triggered
            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio")]}])
                     (play-minion-card "p1" "e" 0)
@@ -183,7 +184,7 @@
            (is= (-> (create-game [{:hand [(create-card "Annika" :id "a")] :minions [(create-minion "Mio" :id "m")]}])
                     (play-minion-card "p1" "a" 0 "m")
                     (get-minion-stats "m"))
-                [3,2])
+                [3, 2])
 
            ;(is= (as-> (create-game [{:minions [(create-minion "Madicken" :id "m")
            ;                                    (create-minion "Astrid" :id "a2")]
@@ -192,15 +193,15 @@
            ;           ;(do-on-play $ "p1" "a2" (get-definition (get-minion $ "a2")) "m"))
            )}
   ([state player-id card-id position]
-  ;check if player has less than 7 minions on the board
-  (when-not (< (count (get-minions state player-id)) 7)
-    (error "The board is full."))
-  (let [card (get-card state card-id)]
-    (-> state
-        (pay-mana player-id card-id)
-        (remove-card-from-hand player-id card-id)
-        (add-minion-to-board player-id (create-minion (:name card) :id card-id) position)
-        (do-on-play player-id card-id (get-definition (get-card state card-id))))))
+   ;check if player has less than 7 minions on the board
+   (when-not (< (count (get-minions state player-id)) 7)
+     (error "The board is full."))
+   (let [card (get-card state card-id)]
+     (-> state
+         (pay-mana player-id card-id)
+         (remove-card-from-hand player-id card-id)
+         (add-minion-to-board player-id (create-minion (:name card) :id card-id) position)
+         (do-on-play player-id card-id (get-definition (get-card state card-id))))))
 
   ([state player-id card-id position target-id]
    ;check if player has less than 7 minions on the board
@@ -247,10 +248,10 @@
                 nil)
            ; Attack from poisonous attacker should not kill the target minion when it has divine shield
            (is (-> (create-game [{:minions [(create-minion "Herr Nilsson" :id "hn")]}
-                                  {:minions [(create-minion "Elisabeth" :id "e")]}])
-                    (attack-minion "p1" "hn" "e")
-                    (get-minion "e")
-                    (some?)))
+                                 {:minions [(create-minion "Elisabeth" :id "e")]}])
+                   (attack-minion "p1" "hn" "e")
+                   (get-minion "e")
+                   (some?)))
            ; Your minion's attacks for this turn should be updated
            (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}
                                   {:minions [(create-minion "Ronja" :id "r")]}])
@@ -289,6 +290,22 @@
       (-> (deal-damage state target-hero-id attacker-attack-val)
           (update-minion attacker-id :attacks-performed-this-turn inc)))))
 
+(defn attack-hero-or-minion
+  {:test (fn []
+           ; The enemy hero's health should be updated
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (attack-hero-or-minion "p1" "m" "h2")
+                    (get-health "h2"))
+                29)
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                  {:minions [(create-minion "Ronja" :id "r")]}])
+                    (attack-hero-or-minion "p1" "m" "r")
+                    (get-health "r"))
+                1))}
+  [state player-id attacker-id target-id]
+  (if (minion? target-id)
+    (attack-minion state player-id attacker-id target-id)
+    (attack-hero state player-id attacker-id target-id)))
 
 (defn play-spell-card
   "Plays a spell card, removes it from hand"
@@ -334,6 +351,23 @@
 
 ; plays either spell card or minion card
 (defn play-card
+  {:test (fn []
+           ;can play minion card
+           (is= (-> (create-game [{:hand [(create-card "Ronja" :id "r")]}])
+                    (play-card "p1" "r" 0)
+                    (get-minions "p1")
+                    (first)
+                    (:name))
+                "Ronja")
+           ;can play spell card
+           (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
+                                             (create-card "Emil" :id "e")]
+                                   :minions [(create-minion "Alfred" :id "a")]}])
+                    (play-card "p1" "r" "a")
+                    (get-hand "p1")
+                    (count))
+                1)
+           )}
   ([state player-id card-id position target-id]
    (if (is= (:type (get-definition (get-card state card-id))) :minion)
      (play-minion-card state player-id card-id position target-id)
