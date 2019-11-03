@@ -7,7 +7,11 @@
 
 (defn create-game!
   []
-  (get-client-state (reset! state-atom (create-game))))
+  (get-client-state (reset! state-atom (create-game [{:deck    ["Ronja"]
+                                                      :hand    ["Emil"]
+                                                      :mana    3}
+                                                     {:hero "Carl"}]
+                                                    :player-id-in-turn "p1"))))
 
 (defn end-turn!
   [player-id]

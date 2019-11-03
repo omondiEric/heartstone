@@ -332,6 +332,17 @@
        (pay-mana player-id card-id)
        (remove-card-from-hand player-id card-id))))
 
+; plays either spell card or minion card
+(defn play-card
+  ([state player-id card-id position target-id]
+   (if (is= (:type (get-definition (get-card state card-id))) :minion)
+     (play-minion-card state player-id card-id position target-id)
+     (play-spell-card state player-id card-id target-id)))
+  ([state player-id card-id position]
+   (if (is= (:type (get-definition (get-card state card-id))) :minion)
+     (play-minion-card state player-id card-id position)
+     (play-spell-card state player-id card-id))))
+
 (defn do-hero-power
   {:test (fn []
            ;Carl's Blessing gives target minion divine shield
