@@ -3,11 +3,10 @@
             [ysera.error :refer [error]]
             [firestone.definitions :refer [get-definition]]
             [firestone.core :refer [do-on-play
-                                    do-game-event-functions
                                     deal-damage
                                     deal-damage-to-all-heroes
                                     deal-damage-to-all-minions
-                                    do-game-event-functions
+                                    decrement-all-player-minion-temporary-durations
                                     get-attack
                                     get-health
                                     pay-mana
@@ -20,10 +19,11 @@
                                          create-game
                                          create-hero
                                          create-minion
+                                         do-game-event-functions
                                          draw-card-to-hand
                                          fatigue-hero
                                          inc-max-mana
-                                         is-poisonous?
+                                         has-poisonous
                                          get-card
                                          get-deck
                                          get-hand
@@ -32,6 +32,7 @@
                                          get-max-mana
                                          get-minion
                                          get-minions
+                                         get-minion-stats
                                          get-mana
                                          get-mana-cost
                                          get-random-minions-distinct
@@ -39,13 +40,13 @@
                                          get-players
                                          get-other-player-id
                                          give-divine-shield
-
                                          remove-card-from-deck
                                          remove-card-from-hand
                                          restore-mana
                                          update-mana
                                          update-max-mana
                                          update-minion]]))
+
 (defn draw-card
   {:test (fn []
            ;a card should appear in the hand
@@ -146,14 +147,12 @@
 
   (let [other-player-id (get-other-player-id player-id)]
     (-> state
-        (do-game-event-functions player-id :end-of-turn)
+        (do-game-event-functions :end-of-turn :player-id player-id)
         (assoc-in [:players player-id :hero :hero-power-used] false)
         (change-player-in-turn)
         (inc-max-mana other-player-id)
         (restore-mana other-player-id)
         (draw-card other-player-id))))
-
-
 
 (defn play-minion-card
   {:test (fn []
@@ -169,24 +168,52 @@
                    (play-minion-card "p1" "e" 0)
                    (get-hand "p1")
                    (empty?)))
-           ;
+           ; Mana is decreased
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                   (play-minion-card "p1" "e" 0)
+                   (get-mana "p1"))
+                   6)
+           ;battlecry without target is triggered
            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio")]}])
                     (play-minion-card "p1" "e" 0)
                     (get-hand "p1")
                     (count))
-                1))}
-  [state player-id card-id position]
+                1)
+           ;battlecry with target is triggered
+           (is= (-> (create-game [{:hand [(create-card "Annika" :id "a")] :minions [(create-minion "Mio" :id "m")]}])
+                    (play-minion-card "p1" "a" 0 "m")
+                    (get-minion-stats "m"))
+                [3,2])
+
+           ;(is= (as-> (create-game [{:minions [(create-minion "Madicken" :id "m")
+           ;                                    (create-minion "Astrid" :id "a2")]
+           ;                          :hand    [(create-card "Astrid" :id "a1")]}]) $
+           ;           (play-minion-card "p1" "a1" 0 "m"))
+           ;           ;(do-on-play $ "p1" "a2" (get-definition (get-minion $ "a2")) "m"))
+           )}
+  ([state player-id card-id position]
   ;check if player has less than 7 minions on the board
   (when-not (< (count (get-minions state player-id)) 7)
     (error "The board is full."))
   (let [card (get-card state card-id)]
     (-> state
+        (pay-mana player-id card-id)
         (remove-card-from-hand player-id card-id)
-        (add-minion-to-board player-id (create-minion (:name card)) position)
-        (update-mana player-id (fn [old-value] (- old-value (get-mana-cost state card-id))))
-        (do-on-play player-id card)
-        )))
+        (add-minion-to-board player-id (create-minion (:name card) :id card-id) position)
+        (do-on-play player-id card-id (get-definition (get-card state card-id))))))
 
+  ([state player-id card-id position target-id]
+   ;check if player has less than 7 minions on the board
+   (when-not (< (count (get-minions state player-id)) 7)
+     (error "The board is full."))
+   (let [card (get-card state card-id)]
+     (-> state
+         (pay-mana player-id card-id)
+         (remove-card-from-hand player-id card-id)
+         (add-minion-to-board player-id (create-minion (:name card) :id card-id) position)
+         (do-on-play player-id card-id (get-definition (get-card state card-id)) target-id)))))
+
+;TODO Maybe rename
 (defn kill-minion-fn
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Ronja" :id "r")]}])
@@ -218,6 +245,12 @@
                     (attack-minion "p1" "hn" "r")
                     (get-minion "r"))
                 nil)
+           ; Attack from poisonous attacker should not kill the target minion when it has divine shield
+           (is (-> (create-game [{:minions [(create-minion "Herr Nilsson" :id "hn")]}
+                                  {:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (attack-minion "p1" "hn" "e")
+                    (get-minion "e")
+                    (some?)))
            ; Your minion's attacks for this turn should be updated
            (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}
                                   {:minions [(create-minion "Ronja" :id "r")]}])
@@ -230,10 +263,11 @@
         target-attack-val (get-attack state target-id)]
     (if (valid-attack? state player-id attacker-id target-id) (as-> (update-minion state attacker-id :attacks-performed-this-turn inc) $
                                                                     ;if attacker is poisonous, kill target minion
-                                                                    (if (is-poisonous? $ attacker-id)
+                                                                    (if (has-poisonous $ attacker-id)
                                                                       (kill-minion-fn $ target-id)
                                                                       (deal-damage $ target-id attacker-attack-val))
-                                                                    (deal-damage $ attacker-id target-attack-val)))))
+                                                                    (deal-damage $ attacker-id target-attack-val))
+                                                              (error "Invalid attack"))))
 
 (defn attack-hero
   "Attacks the enemy hero"
@@ -300,13 +334,13 @@
 
 (defn do-hero-power
   {:test (fn []
-           ;check Carl's blessing
+           ;Carl's Blessing gives target minion divine shield
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
                                    :hero    (create-hero "Carl")}])
                     (do-hero-power "p1" :target-id "k")
                     (get-minion "k")
                     (get-in [:properties :permanent])
-                    (contains? "Divine Shield"))
+                    (contains? "DivineShield"))
                 true)
            ;check mana is decreased
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
@@ -314,40 +348,6 @@
                     (do-hero-power "p1" :target-id "k")
                     (get-mana "p1"))
                 8)
-           ;check Gustaf's strengthen
-           (as-> (create-game [{:minions [(create-minion "Emil" :id "e1")
-                                          (create-minion "Emil" :id "e2")]
-                                :hero    (create-hero "Gustaf")}]) $
-                 (do-hero-power $ "p1")
-                 (do (is= (->> (get-minions $ "p1")
-                               (map :damage-taken))
-                          [1, 1])
-                     (is= (->> (get-minions $ "p1")
-                               (map :attack))
-                          [4, 4])))
-           ;<2 minions available
-           (as-> (create-game [{:minions [(create-minion "Emil" :id "e1")]
-                                :hero    (create-hero "Gustaf")}]) $
-                 (do-hero-power $ "p1")
-                 (do (is= (->> (get-minions $ "p1")
-                               (map :damage-taken))
-                          [1])
-                     (is= (->> (get-minions $ "p1")
-                               (map :attack))
-                          [4])))
-           ;>2 minions available
-           (as-> (create-game [{:minions [(create-minion "Emil" :id "e1")
-                                          (create-minion "Emil" :id "e2")
-                                          (create-minion "Emil" :id "e3")
-                                          (create-minion "Emil" :id "e4")]
-                                :hero    (create-hero "Gustaf")}]) $
-                 (do-hero-power $ "p1")
-                 (do (is= (->> (get-minions $ "p1")
-                               (map :damage-taken))
-                          [1, 0, 1, 0])
-                     (is= (->> (get-minions $ "p1")
-                               (map :attack))
-                          [4, 2, 4, 2])))
            ;can't perform twice in a turn
            (error? (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
                                       :hero    (create-hero "Carl")}])
@@ -364,17 +364,17 @@
                     (:damage-taken))
                 2)
            )}
-  ;target-id is needed for Carl's blessing but not Gustaf's strengthen
+  ;target-id is needed for some (maybe think about overloading instead)
   ([state player-id & {:keys [target-id]}]
    (if (get-in state [:players player-id :hero :hero-power-used])
      (error "Hero power already used this turn")
      (let [hero-power (:hero-power (get-definition (get-in state [:players player-id :hero])))
            power-function (:power-fn (get-definition hero-power))]
        (as-> state $
+             ;TODO update pay mana to also take an integer
              (update-mana $ player-id (fn [old-value] (- old-value (get-mana-cost state (get-in state [:players player-id :hero :id])))))
              (assoc-in $ [:players player-id :hero :hero-power-used] true)
              (if (empty? target-id)
                (power-function $ player-id)
-               (give-divine-shield $ target-id))
-             )))))
+               (power-function $ target-id)))))))
 

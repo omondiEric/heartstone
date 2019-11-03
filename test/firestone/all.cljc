@@ -5,7 +5,8 @@
             [firestone.construct]
             [firestone.core-api]
             [firestone.definitions-loader]
-            [firestone.definitions]))
+            [firestone.definitions]
+            [firestone.definition.card_test]))
 
 (deftest test-all
          "Bootstrapping with the required namespaces, finds all the firestone.* namespaces (except this one),

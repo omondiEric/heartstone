@@ -1,11 +1,11 @@
 (ns firestone.definition.hero-power
   (:require [firestone.definitions :as definitions]
             [firestone.construct :refer [get-minions
-                                         give-attack
                                          get-random-minion
                                          get-random-minions-distinct
                                          give-divine-shield
-                                         remove-minion]]
+                                         remove-minion
+                                         modify-minion-attack]]
             [firestone.core :refer [deal-damage]]))
 
 (def hero-definitions
@@ -25,7 +25,7 @@
     :mana-cost   3
     :power-fn    (fn [state player-id]
                    (let [minion-collection (map :id (take 2 (get-random-minions-distinct state 2 player-id)))
-                         give-2-attack (fn [state minion] (give-attack state minion 2))]
+                         give-2-attack (fn [state minion] (modify-minion-attack state minion 2))]
                      (as-> state $
                            (reduce give-2-attack $ minion-collection)
                            (reduce deal-damage $ minion-collection))))

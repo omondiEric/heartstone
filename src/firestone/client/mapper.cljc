@@ -2,6 +2,9 @@
   (:require [ysera.test :refer [is is-not is=]]
             [firestone.client.spec]
             [firestone.construct :refer [create-game
+                                         create-card
+                                         get-hand
+                                         get-card
                                          get-player
                                          get-players]]
             [firestone.core :refer [get-health]]
@@ -39,6 +42,23 @@
    :valid-attack-ids []})
 
 
+(defn get-client-hand
+  {:test (fn []
+           (is (check-spec :firestone.client.spec/hand
+                           (let [game (create-game)
+                                 hand (get-hand game "p1")]
+                             (get-client-hand game hand)))))}
+  [state player hand])
+
+(defn get-client-card
+  {:test (fn []
+           (is (check-spec :firestone.client.spec/card
+                           (let [game (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                                 card (get-card game "e")]
+                             (get-client-hand game card)))))}
+  [state player card]
+  )
+
 (defn get-client-player
   {:test (fn []
            (is (check-spec :firestone.client.spec/player
@@ -47,8 +67,8 @@
   [state player]
   {:board-entities []
    :active-secrets []
-   :deck-size      0
-   :hand           []
+   :deck-size      16
+   :hand           (get-client-hand state (get-hand state player))
    :hero           (get-client-hero state player (:hero player))
    :id             (:id player)})
 
