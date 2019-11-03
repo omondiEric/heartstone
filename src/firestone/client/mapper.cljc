@@ -6,7 +6,8 @@
                                          get-hand
                                          get-card
                                          get-player
-                                         get-players]]
+                                         get-players
+                                         get-mana-cost]]
             [firestone.core :refer [get-health]]
             [firestone.definitions :refer [get-definition]]
             [clojure.spec.alpha :as spec]
@@ -47,13 +48,14 @@
            (is (check-spec :firestone.client.spec/card
                            (let [game (create-game [{:deck [(create-card "Emil" :id "e")]}])
                                  card (get-card game "e")]
-                             (get-client-card game (get-player game "p1") card)))))}
-  [state player card]
+                             (get-client-card game card)))))}
+  [state card]
   (let [card-definition (get-definition card)] ;lets us get mana-cost
-  {:entity-type (:entity-type card)
+  {:entity-type "card"
    :name (:name card)
-   :mana-cost (:mana-cost card-definition)
-   :original-mana-cost 0})) ;not sure what the difference btwn mana-cost and original mana cost is
+   :mana-cost (get-mana-cost state (:id card))
+   :original-mana-cost (:mana-cost card-definition)
+   :firestone.client.card.spec/type (name (:type card-definition))}))
 
 (defn get-client-hand
   {:test (fn []
@@ -66,7 +68,7 @@
 
   (->> (get-hand state (:id player))
        (map (fn [c]
-              (get-client-card state player c)))))
+              (get-client-card state c)))))
 
 
 

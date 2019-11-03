@@ -28,6 +28,11 @@
                                           "minion"
                                           "spell"
                                           "weapon"})
+(contains? #{"hero"
+             "hero-power"
+             "minion"
+             "spell"
+             "weapon"} "minion")
 
 ;; Minions
 (s/def ::position (s/and int? (fn [x] (<= 0 x 6))))
