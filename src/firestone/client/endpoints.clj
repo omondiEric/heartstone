@@ -1,7 +1,8 @@
 (ns firestone.client.endpoints
   (:require [clojure.string :refer [starts-with?]]
             [clojure.data.json :refer [read-json write-str]]
-            [firestone.client.edn-api :refer [create-game!]]))
+            [firestone.client.edn-api :refer [create-game!
+                                              end-turn!]]))
 
 
 
@@ -21,6 +22,7 @@
           (time (create-response (create-game!)))
 
           (starts-with? uri "/endTurn")
-          (let [params (read-json (slurp (:body request)))]
-            (create-response (clojure.string/upper-case (:uri request)))))))
+          (let [params (read-json (slurp (:body request)))
+                player-id (:playerId params)]
+            (create-response (end-turn! player-id))))))
 
