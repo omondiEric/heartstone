@@ -269,6 +269,9 @@
 (defn add-minion-to-board
   "Adds a minion with a given position to a player's minions and updates the other minions' positions."
   {:test (fn []
+           (is= (as-> (create-empty-state) $
+                      (:minion-ids-summoned-this-turn $))
+                [])
            ; Adding a minion to an empty board
            (is= (as-> (create-empty-state) $
                       (add-minion-to-board $ "p1" (create-minion "Mio" :id "m") 0)
@@ -312,6 +315,7 @@
                                       (update m :position inc)))))
                        ready-minion)))
         (update-in [:minion-ids-summoned-this-turn] (fn [list] (conj list (:id minion)))))))
+
 
 (defn add-minions-to-board
   {:test (fn []
@@ -520,7 +524,8 @@
                                      state)
                                    (add-minions-to-board player-id minions)
                                    (add-cards-to-deck player-id deck)
-                                   (add-cards-to-hand player-id hand)))
+                                   (add-cards-to-hand player-id hand)
+                                   (assoc-in [:minion-ids-summoned-this-turn] [])))
                              $
                              players-data))]
      (if (empty? kvs)

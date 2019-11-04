@@ -13,7 +13,8 @@
                                          get-mana-cost
                                          get-minion
                                          get-minions
-                                         get-minion-properties]]
+                                         get-minion-properties
+                                         minion?]]
             [firestone.core :refer [get-health
                                     get-attack
                                     sleepy?
@@ -88,6 +89,43 @@
    :hero-power       (get-client-hero-power state player hero (:hero-power (get-definition (:name hero))))
    :valid-attack-ids []})
 
+
+(defn get-valid-target-ids-for-card
+  {:test (fn []
+           (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]
+                                     :hand    [(create-card "Radar Raid" :id "rr")
+                                               (create-card "Insect Swarm" :id "is")]}
+                                    {:minions [(create-minion "Emil" :id "e")
+                                               (create-minion "Ronja" :id "r")]}]) $
+                      (get-valid-target-ids-for-card $ (get-card $ "rr") "p1"))
+                ["h1" "h2" "j" "e" "r"])
+           (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]
+                                     :hand    [(create-card "Annika" :id "a")]}
+                                    {:minions [(create-minion "Emil" :id "e")
+                                               (create-minion "Ronja" :id "r")]}]) $
+                      (get-valid-target-ids-for-card $ (get-card $ "a") "p1"))
+                ["j" "e" "r"])
+           )}
+  [state card player-id]
+  (if (= (:type (get-definition card)) :spell)
+    ;TODO generalize this
+    (when (= (:name (get-definition card)) "Radar Raid")
+      (let [spell-function (:spell-fn (get-definition card))
+            valid-targets
+              (filter (fn [c]
+                        (spell-function state (:id c)))
+                      (get-characters state))]
+          (map :id valid-targets)))
+    ;TODO generalize this too
+    (when (or (= (:name (get-definition card)) "Annika") (= (:name (get-definition card)) "Astrid"))
+      (let [on-play-function (:on-play (get-definition card))
+            valid-targets
+            (when on-play-function
+              (filter (fn [c]
+                        (on-play-function state player-id (:id card) (:id c)))
+                      (get-characters state)))]
+            (map :id valid-targets)))))
+
 (defn get-client-card
   {:test (fn []
            (is (check-spec :firestone.client.spec/card
@@ -103,7 +141,8 @@
      :id                 (:id card)
      :playable           true
      :description        (:description card-definition)
-     :type               (name (:type card-definition))}))
+     :type               (name (:type card-definition))
+     ::valid-target-ids  (first (conj [] (get-valid-target-ids-for-card state card (:owner-id card))))}))
 
 (defn get-client-hand
   {:test (fn []
@@ -136,23 +175,14 @@
                                                (create-minion "Ronja" :id "r")]}]) $
                       (get-valid-target-ids-for-minion $ (get-minion $ "j") "p1"))
                 ["h2" "e" "r"])
-           (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}
-                                    {:minions [(create-minion "Emil" :id "e")
-                                               (create-minion "Ronja" :id "r")]}]) $
+           (is= (as-> (create-game [{:hand [(create-card "Kato" :id "k1")]}
+                                    {:hand [(create-card "Kato" :id "k2")]}]) $
+                      (play-card $ "p1" "k1" 0)
                       (end-turn $ "p1")
+                      (play-card $ "p2" "k2" 0)
                       (end-turn $ "p2")
-                      (get-valid-target-ids-for-minion $ (get-minion $ "j") "p1"))
-                ["h2" "e" "r"])
-           (is= (as-> (create-game [{:hand [(create-card "Jonatan" :id "j")]}
-                                    {:hand [(create-card "Emil" :id "e")
-                                            (create-card "Ronja" :id "r")]}]) $
-                      (play-card $ "p1" "j" 0)
-                      (end-turn $ "p1")
-                      (play-card $ "p2" "e" 0)
-                      (play-card $ "p2" "r" 1)
-                      (end-turn $ "p2")
-                      (get-valid-target-ids-for-minion $ (get-minion $ "j") "p1"))
-                ["h2" "e" "r"])
+                      (get-valid-target-ids-for-minion $ (get-minion $ "k1") "p1"))
+                ["h2" "k2"])
            )}
   [state minion player-id]
   (let [valid-targets
@@ -164,9 +194,12 @@
 (defn get-client-minion
   {:test (fn []
            (is (check-spec :firestone.client.spec/minion
-                           (let [game (create-game [{:minions [(create-minion "Mio" :id "m")]}])
-                                 minion (get-minion game "m")]
-                             (get-client-minion game minion)))))}
+                           (let [game (create-game [{:minions [(create-minion "Mio" :id "m1")]}
+                                                    {:minions [(create-minion "Mio" :id "m2")]}])
+                                 minion (get-minion game "m1")]
+                             (-> game (end-turn "p1")
+                                 (end-turn "p2")
+                                 (get-client-minion minion))))))}
   [state minion]
   (let [minion-defn (get-definition (:name minion))
         minion-permanent-set (get-in minion [:properties :permanent])]
@@ -184,7 +217,7 @@
      :position         (:position minion)
      :sleepy           (sleepy? state (:id minion))
      :states           (get-minion-states state minion)
-     :valid-attack-ids [(first (get-valid-target-ids-for-minion state minion (:owner-id minion)))]}))
+     :valid-attack-ids (first (conj [] (get-valid-target-ids-for-minion state minion (:owner-id minion))))}))
 
 (defn get-client-minions
   {:test (fn []

@@ -172,6 +172,8 @@
          "Has poisonous"
          (is (as-> (create-game [{:minions [(create-minion "Herr Nilsson" :id "h")]}
                                  {:minions [(create-minion "Jonatan" :id "j")]}]) $
+                   (end-turn $ "p1")
+                   (end-turn $ "p2")
                    (attack-minion $ "p1" "h" "j")
                    (get-minions $)
                    (empty? $))))
@@ -180,6 +182,8 @@
          "Has windfury"
          (is (as-> (create-game [{:minions [(create-minion "Rasmus" :id "r")]}
                                  {:minions [(create-minion "Jonatan" :id "j")]}]) $
+                   (end-turn $ "p1")
+                   (end-turn $ "p2")
                    (attack-minion $ "p1" "r" "j")
                    (attack-minion $ "p1" "r" "j")
                    (get-minions $)
@@ -188,11 +192,13 @@
 (deftest Tjorven
          "Your other minions have windfury"
          (is= (as-> (create-game [{:minions [(create-minion "Tjorven" :id "t")
-                                            (create-minion "Emil" :id "e")]}
-                                 {:minions [(create-minion "Karlsson" :id "k")]}]) $
-                   (attack-minion $ "p1" "e" "k")
-                   (attack-minion $ "p1" "e" "k")
-                   (get-minions $)
-                   (map :id $))
-             ["t" "e"]))
+                                             (create-minion "Emil" :id "e")]}
+                                  {:minions [(create-minion "Karlsson" :id "k")]}]) $
+                    (end-turn $ "p1")
+                    (end-turn $ "p2")
+                    (attack-minion $ "p1" "e" "k")
+                    (attack-minion $ "p1" "e" "k")
+                    (get-minions $)
+                    (map :id $))
+              ["t" "e"]))
 

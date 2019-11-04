@@ -24,8 +24,8 @@
                                          draw-card-to-hand
                                          fatigue-hero
                                          inc-max-mana
-                                         has-poisonous
                                          get-card
+                                         get-character
                                          get-deck
                                          get-hand
                                          get-hero
@@ -41,6 +41,7 @@
                                          get-players
                                          get-other-player-id
                                          give-divine-shield
+                                         has-poisonous
                                          minion?
                                          remove-card-from-deck
                                          remove-card-from-hand
@@ -151,6 +152,7 @@
     (-> state
         (do-game-event-functions :end-of-turn :player-id player-id)
         (assoc-in [:players player-id :hero :hero-power-used] false)
+        (decrement-all-player-minion-temporary-durations player-id)
         (change-player-in-turn)
         (refresh-minion-attacks other-player-id)
         (assoc-in [:minion-ids-summoned-this-turn] [])
@@ -209,8 +211,11 @@
 
   ([state player-id card-id position target-id]
    ;check if player has less than 7 minions on the board
-   (when-not (< (count (get-minions state player-id)) 7)
-     (error "The board is full."))
+   (when (or (>= (count (get-minions state player-id)) 7)
+             (> (get-mana-cost state card-id) (get-mana state player-id)))
+     (error "Cannot play card: the board is full or insufficient mana"))
+   (if-not (= (:owner-id (get-card state card-id)) player-id)
+     (error "Card does not belong to player"))
    (let [card (get-card state card-id)]
      (-> state
          (pay-mana player-id card-id)
@@ -235,8 +240,6 @@
            ; Your minion's health should be updated
            (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}
                                   {:minions [(create-minion "Ronja" :id "r")]}])
-                    (end-turn "p1")
-                    (end-turn "p2")
                     (attack-minion "p1" "e" "r")
                     (get-health "e"))
                 2)
@@ -280,7 +283,8 @@
   "Attacks the enemy hero"
   {:test (fn []
            ; The enemy hero's health should be updated
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                  {:deck [(create-card "Mio" :id "m2")]}])
                     (attack-hero "p1" "m" "h2")
                     (get-health "h2"))
                 29)
@@ -299,7 +303,8 @@
 (defn attack-hero-or-minion
   {:test (fn []
            ; The enemy hero's health should be updated
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                  {:deck [(create-card "Mio" :id "m2")]}])
                     (attack-hero-or-minion "p1" "m" "h2")
                     (get-health "h2"))
                 29)
@@ -309,7 +314,7 @@
                     (get-health "r"))
                 1))}
   [state player-id attacker-id target-id]
-  (if (minion? target-id)
+  (if (minion? (get-character state target-id))
     (attack-minion state player-id attacker-id target-id)
     (attack-hero state player-id attacker-id target-id)))
 
