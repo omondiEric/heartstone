@@ -27,6 +27,18 @@
       (do (spec/explain spec value)
           false))))
 
+(defn get-client-hero-power-target-ids
+  {:test (fn []
+           (is (check-spec :firestone.client.spec/valid-target-ids
+                           (let [game (create-game)
+                                 player (get-player game "p1")
+                                 player-id (:id player)]
+                             (get-client-hero-power-target-ids game player-id))))
+           )}
+  [state player-id]
+  (->> (get-minions state player-id)
+       (map :id)))
+
 (defn get-client-hero-power
   {:test (fn []
            (is (check-spec :firestone.client.spec/hero-power
@@ -34,8 +46,8 @@
                                  player (get-player game "p1")
                                  hero (:hero player)
                                  hero-power (:hero-power (get-definition (:name hero)))]
-                             (get-client-hero-power game hero hero-power)))))}
-  [state hero hero-power]
+                             (get-client-hero-power game player hero hero-power)))))}
+  [state player hero hero-power]
   (let [hero-power-def (get-definition hero-power)]
   {:can-use true
    :owner-id (:id hero)
@@ -43,6 +55,8 @@
    :has-used-your-turn (:hero-power-used hero)
    :name (:name hero-power-def)
    :description (:description hero-power-def)
+   :valid-target-ids (when (= (:name hero-power-def) "Blessing")
+                       (get-client-hero-power-target-ids state (:id player)))
    :type (name (:type hero-power-def))}))
 
 (defn get-client-hero
@@ -65,7 +79,7 @@
    :max-mana         (:max-mana player)
    :name             (:name hero)
    :states           []
-   :hero-power       (get-client-hero-power state hero (:hero-power (get-definition (:name hero))))
+   :hero-power       (get-client-hero-power state player hero (:hero-power (get-definition (:name hero))))
    :valid-attack-ids []})
 
 (defn get-client-card
@@ -143,7 +157,7 @@
   [state player]
   (->> (get-minions state (:id player))
        (map (fn [m]
-              (get-client-card state m)))))
+              (get-client-minion state m)))))
 
 
 (defn get-client-player

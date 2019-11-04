@@ -3,7 +3,8 @@
             [clojure.data.json :refer [read-json write-str]]
             [firestone.client.edn-api :refer [create-game!
                                               end-turn!
-                                              play-minion-card!]]))
+                                              play-minion-card!
+                                              use-hero-power!]]))
 
 
 
@@ -34,6 +35,12 @@
                 target-id (:targetId params)
                 position (:position params)]
             (create-response (play-minion-card! player-id card-id position target-id)))
+
+          (starts-with? uri "/useHeroPower")
+          (let [params (read-json (slurp (:body request)))
+                player-id (:playerId params)
+                target-id (:targetId params)]
+            (create-response (use-hero-power! player-id target-id)))
 
           :else (create-response (clojure.string/lower-case (:uri request))))))
 
