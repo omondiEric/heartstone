@@ -9,7 +9,7 @@
 
 (defn create-game!
   []
-  (get-client-state (reset! state-atom (create-game [{:deck    ["Radar Raid", "Mio", "Jonatan"]
+  (get-client-state (reset! state-atom (create-game [{:deck    ["Insect Swarm", "Mio", "Jonatan"]
                                                       :hand    ["Emil", "Kato", "Alfred"]
                                                       :mana    10
                                                       :hero "Carl"}
