@@ -529,8 +529,8 @@
                     (pay-mana "p1" "h2")
                     (get-mana "p1"))
                 8))}
-  [state player-id card-id]
-  (update-mana state player-id (fn [old-value] (- old-value (get-mana-cost state card-id)))))
+  [state player-id id]
+  (update-mana state player-id (fn [old-value] (- old-value (get-mana-cost state id)))))
 
 (defn decrement-minion-temporary-property-durations
   "Decrements the duration of all temporary properties of a minion and removes if = 0"
