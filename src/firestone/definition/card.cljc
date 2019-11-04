@@ -10,6 +10,7 @@
                                          get-other-player-id
                                          give-deathrattle
                                          give-taunt
+                                         minion?
                                          modify-minion-stats
                                          replace-minion
                                          ida-present?
@@ -78,11 +79,11 @@
     :health      6
     :mana-cost   4
     :type        :minion
-    :properties  {:permanent     #{"Taunt"}
+    :properties  {:permanent     #{"taunt"}
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "Taunt."}
+    :description "taunt."}
 
    "Alfred"
    {:name        "Alfred"
@@ -102,7 +103,7 @@
     :health      5
     :mana-cost   5
     :type        :minion
-    :properties  {:permanent     #{"DivineShield"}
+    :properties  {:permanent     #{"divine-shield"}
                   :temporary     {}
                   :stats         {}}
     :set         :custom
@@ -145,11 +146,11 @@
     :health      5
     :mana-cost   6
     :type        :minion
-    :properties  {:permanent     #{"Deathrattle"}
+    :properties  {:permanent     #{"deathrattle"}
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "Deathrattle: Take control of a random enemy minion."
+    :description "deathrattle: Take control of a random enemy minion."
     :deathrattle (fn [state minion-id]
                    (let [random-result (get-random-minion state (get-other-player-id (:owner-id (get-minion state minion-id))))]
                      (switch-minion-side state (:id (last random-result)))))}
@@ -160,11 +161,11 @@
     :health      1
     :mana-cost   1
     :type        :minion
-    :properties  {:permanent     #{"Taunt", "DivineShield"}
+    :properties  {:permanent     #{"taunt", "divine-shield"}
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "Taunt. Divine Shield."}
+    :description "taunt. Divine Shield."}
 
    "Madicken"
    {:name        "Madicken"
@@ -172,11 +173,11 @@
     :health      2
     :mana-cost   2
     :type        :minion
-    :properties  {:permanent     #{"Deathrattle"}
+    :properties  {:permanent     #{"deathrattle"}
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "Deathrattle: Summon Elisabeth."
+    :description "deathrattle: Summon Elisabeth."
     :deathrattle (fn [state minion-id]
                    (replace-minion state (create-minion "Elisabeth" :id minion-id)))}
 
@@ -234,11 +235,11 @@
     :health      5
     :mana-cost   5
     :type        :minion
-    :properties  {:permanent     #{"Windfury"}
+    :properties  {:permanent     #{"windfury"}
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "Windfury"}
+    :description "windfury"}
 
    "Tjorven"
    {:name        "Tjorven"
@@ -251,7 +252,7 @@
                   :stats         {}}
     :set         :custom
     :description "Your other minions has windfury."
-    :aura        #{"Friendly-Windfury"}}
+    :aura        #{"Friendly-windfury"}}
 
    "Astrid"
    {:name        "Astrid"
@@ -293,7 +294,8 @@
                   :stats         {}}
     :set         :custom
     :description "Battlecry: Give a minion +2 Attack this turn."
-    :on-play      (fn [state player-id minion-id target-id] (modify-minion-stats state target-id 2 0 1))}
+    :on-play      (fn [state player-id minion-id target-id] (when (minion? (get-minion state target-id))
+                                                              (modify-minion-stats state target-id 2 0 1)))}
 
    })
 
