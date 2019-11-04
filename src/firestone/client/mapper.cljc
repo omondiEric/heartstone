@@ -60,8 +60,9 @@
   (let [card-definition (get-definition card)] ;lets us get mana-cost
   {:entity-type "card"
    :name (:name card)
-   :mana-cost (get-mana-cost state (:id card))
+   :mana-cost (:mana-cost card-definition)     ;(get-mana-cost state (:id card))
    :original-mana-cost (:mana-cost card-definition)
+   :id  (:id card)
    :playable true
    :description (:description card-definition)
    :type (name (:type card-definition))}))
