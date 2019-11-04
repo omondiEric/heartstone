@@ -352,9 +352,6 @@
 ; plays either spell card or minion card
 (defn play-card
   {:test (fn []
-<<<<<<< HEAD
-           ;can play minion card
-=======
            ; Testing Insect Swarm
            (is= (-> (create-game [{:hand [(create-card "Insect Swarm" :id "i")] :deck [(create-card "Mio" :id "m")]}
                                   {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}
@@ -364,24 +361,12 @@
                     (:damage-taken))
                 2)
            ; minion card
->>>>>>> origin/tiffany
            (is= (-> (create-game [{:hand [(create-card "Ronja" :id "r")]}])
                     (play-card "p1" "r" 0)
                     (get-minions "p1")
                     (first)
                     (:name))
                 "Ronja")
-<<<<<<< HEAD
-           ;can play spell card
-           (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
-                                             (create-card "Emil" :id "e")]
-                                   :minions [(create-minion "Alfred" :id "a")]}])
-                    (play-card "p1" "r" "a")
-                    (get-hand "p1")
-                    (count))
-                1)
-=======
->>>>>>> origin/tiffany
            )}
   ([state player-id card-id position target-id]
    (if (= (:type (get-definition (get-card state card-id))) :minion)

@@ -27,6 +27,24 @@
       (do (spec/explain spec value)
           false))))
 
+(defn get-client-hero-power
+  {:test (fn []
+           (is (check-spec :firestone.client.spec/hero-power
+                           (let [game (create-game)
+                                 player (get-player game "p1")
+                                 hero (:hero player)
+                                 hero-power (:hero-power (get-definition (:name hero)))]
+                             (get-client-hero-power game hero hero-power)))))}
+  [state hero hero-power]
+  (let [hero-power-def (get-definition hero-power)]
+  {:can-use true
+   :owner-id (:id hero)
+   :entity-type (name (:type hero-power-def))
+   :has-used-your-turn (:hero-power-used hero)
+   :name (:name hero-power-def)
+   :description (:description hero-power-def)
+   :type (name (:type hero-power-def))}))
+
 (defn get-client-hero
   {:test (fn []
            (is (check-spec :firestone.client.spec/hero
@@ -47,7 +65,7 @@
    :max-mana         (:max-mana player)
    :name             (:name hero)
    :states           []
-   ;;:hero-power       (get-client-hero-power )
+   :hero-power       (get-client-hero-power state hero (:hero-power (get-definition (:name hero))))
    :valid-attack-ids []})
 
 (defn get-client-card
@@ -60,7 +78,8 @@
   (let [card-definition (get-definition card)] ;lets us get mana-cost
   {:entity-type "card"
    :name (:name card)
-   :mana-cost (get-mana-cost state (:id card))
+   :id (:id card)
+   :mana-cost (:mana-cost card-definition) ;;(get-mana-cost state (:id card))
    :original-mana-cost (:mana-cost card-definition)
    :playable true
    :description (:description card-definition)

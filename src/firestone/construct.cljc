@@ -436,6 +436,11 @@
            (is= (create-game) (create-empty-state))
 
            (is= (create-game [{:hero (create-hero "Carl")}])
+
+                (get-definition "Carl")
+                (get-definition "Blessing")
+
+
                 (create-game [{:hero "Carl"}]))
 
            (is= (create-game [{:minions [(create-minion "Mio")]}])
