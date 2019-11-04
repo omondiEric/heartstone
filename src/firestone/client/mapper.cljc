@@ -6,6 +6,7 @@
                                          create-minion
                                          get-hand
                                          get-card
+                                         get-characters
                                          get-player
                                          get-players
                                          get-mana-cost
@@ -14,7 +15,8 @@
                                          get-minion-properties]]
             [firestone.core :refer [get-health
                                     get-attack
-                                    sleepy?]]
+                                    sleepy?
+                                    valid-attack?]]
             [firestone.definitions :refer [get-definition]]
             [clojure.spec.alpha :as spec]
             [firestone.definitions-loader]))
@@ -68,13 +70,26 @@
    :hero-power       (get-client-hero-power state hero (:hero-power (get-definition (:name hero))))
    :valid-attack-ids []})
 
+(defn get-valid-target-ids-for-minion
+  {:test (fn []
+           (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}]) $
+                      (get-valid-target-ids-for-minion $ (get-minion $ "j") "p1"))
+                ["h2"]))}
+  [state minion player-id]
+  (let [valid-targets
+        (filter (fn [c]
+                 (valid-attack? state player-id (:id minion) (:id c)))
+        (get-characters state))]
+    (map :id valid-targets)))
+
 (defn get-client-card
   {:test (fn []
            (is (check-spec :firestone.client.spec/card
-                           (let [game (create-game [{:deck [(create-card "Emil" :id "e")]}])
-                                 card (get-card game "e")]
-                             (get-client-card game card)))))}
-  [state card]
+                           (let [game (create-game [{:deck [(create-card "Radar Raid" :id "r")]}])
+                                 card (get-card game "r")]
+                             ;(get-valid-target-ids-for-minion game (get-minion game (:id card)) (:id "p1"))
+                             (get-client-card game card "p1")))))}
+  [state card player]
   (let [card-definition (get-definition card)] ;lets us get mana-cost
   {:entity-type "card"
    :name (:name card)
@@ -83,7 +98,8 @@
    :id  (:id card)
    :playable true
    :description (:description card-definition)
-   :type (name (:type card-definition))}))
+   :type (name (:type card-definition))
+   :valid-target-ids (get-valid-target-ids-for-minion state (get-minion state (:id card)) (:id player))}))
 
 (defn get-client-hand
   {:test (fn []
@@ -93,7 +109,7 @@
   [state player]
   (->> (get-hand state (:id player))
        (map (fn [c]
-              (get-client-card state c)))))
+              (get-client-card state c player)))))
 
 (defn get-minion-states
   {:test (fn []
@@ -143,7 +159,7 @@
   [state player]
   (->> (get-minions state (:id player))
        (map (fn [m]
-              (get-client-card state m)))))
+              (get-client-minion state m)))))
 
 
 (defn get-client-player

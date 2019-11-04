@@ -14,7 +14,7 @@
                                                       :mana    10
                                                       :hero "Carl"}
                                                      {:deck    ["Emil", "Alfred", "Jonatan"]
-                                                      :hand    ["Ronja", "Kato", "Mio"]
+                                                      :hand    ["Radar Raid", "Kato", "Mio"]
                                                       :mana    10
                                                       :hero "Gustaf"}]))))
 
