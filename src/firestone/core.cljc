@@ -106,6 +106,22 @@
   [state id]
   (seq-contains? (:minion-ids-summoned-this-turn state) id))
 
+(defn refresh-minion-attacks
+  "Changes attacks-performed-this-turn for all friendly minions to 0"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m1" :attacks-performed-this-turn 1)
+                                            (create-minion "Mio" :id "m2" :attacks-performed-this-turn 1)]}])
+                   (refresh-minion-attacks "p1")
+                   (get-minion "m1")
+                   (:attacks-performed-this-turn))
+               0)
+           )}
+  [state player-id]
+  (reduce (fn [state minion]
+            (update-minion state (:id minion) :attacks-performed-this-turn 0))
+          state
+          (get-minions state player-id)))
+
 (defn filter-dead-minions
   "Filters dead minions at a given state and returns all living minions"
   {:test (fn []

@@ -9,6 +9,7 @@
                                     decrement-all-player-minion-temporary-durations
                                     get-attack
                                     get-health
+                                    refresh-minion-attacks
                                     pay-mana
                                     valid-attack?]]
             [firestone.construct :refer [add-card-to-hand
@@ -151,6 +152,8 @@
         (do-game-event-functions :end-of-turn :player-id player-id)
         (assoc-in [:players player-id :hero :hero-power-used] false)
         (change-player-in-turn)
+        (refresh-minion-attacks other-player-id)
+        (assoc-in [:minion-ids-summoned-this-turn] [])
         (inc-max-mana other-player-id)
         (restore-mana other-player-id)
         (draw-card other-player-id))))
@@ -184,12 +187,19 @@
            (is= (-> (create-game [{:hand [(create-card "Annika" :id "a")] :minions [(create-minion "Mio" :id "m")]}])
                     (play-minion-card "p1" "a" 0 "m")
                     (get-minion-stats "m"))
-                [3, 2]))}
+                [3, 2])
+           ;can only play your own cards
+           (error? (-> (create-game [{:hand [(create-card "Emil" :id "e1")]}
+                                     {:hand [(create-card "Emil" :id "e2")]}])
+                       (play-minion-card "p1" "e2" 0)))
+           )}
   ([state player-id card-id position]
    ;check if player has less than 7 minions on the board
    (when (or (>= (count (get-minions state player-id)) 7)
              (> (get-mana-cost state card-id) (get-mana state player-id)))
      (error "Cannot play card: the board is full or insufficient mana"))
+   (if-not (= (:owner-id (get-card state card-id)) player-id)
+     (error "Card does not belong to player"))
    (let [card (get-card state card-id)]
      (-> state
          (pay-mana player-id card-id)
@@ -225,7 +235,9 @@
            ; Your minion's health should be updated
            (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}
                                   {:minions [(create-minion "Ronja" :id "r")]}])
-                    (attack-minion "p1" "e" "r")            ;)
+                    (end-turn "p1")
+                    (end-turn "p2")
+                    (attack-minion "p1" "e" "r")
                     (get-health "e"))
                 2)
            ; Target minion's health should be updated
@@ -416,4 +428,3 @@
              (if (empty? target-id)
                (power-function $ player-id)
                (power-function $ target-id)))))))
-

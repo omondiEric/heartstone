@@ -302,7 +302,7 @@
                                    :owner-id player-id
                                    :id id
                                    :added-to-board-time-id time-id)]
-    (update-in state
+    (-> (update-in state
                [:players player-id :minions]
                (fn [minions]
                  (conj (->> minions
@@ -310,7 +310,8 @@
                                     (if (< (:position m) position)
                                       m
                                       (update m :position inc)))))
-                       ready-minion)))))
+                       ready-minion)))
+        (update-in [:minion-ids-summoned-this-turn] (fn [list] (conj list (:id minion)))))))
 
 (defn add-minions-to-board
   {:test (fn []
@@ -570,6 +571,24 @@
            )}
   [state]
   (concat (get-heroes state) (get-minions state)))
+
+(defn get-deck-size
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                  {:minions [(create-minion "Emil" :id "e")]}])
+                    (get-deck-size "p1"))
+                0)
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m1")]
+                                   :deck    [(create-minion "Emil" :id "e1")
+                                             (create-minion "Emil" :id "e2")]}
+                                  {:minions [(create-minion "Emil" :id "e3")]
+                                   :deck    [(create-minion "Emil" :id "e4")
+                                            (create-minion "Emil" :id "e5")]}])
+                    (get-deck-size "p1"))
+                2)
+           )}
+  [state player-id]
+  (count (get-in state [:players player-id :deck])))
 
 (defn replace-minion
   "Replaces a minion with the same id as the given new-minion."
