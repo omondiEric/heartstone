@@ -1085,9 +1085,6 @@
    (update-minion state minion-id :properties (fn [properties-map]
                                                 (assoc-in properties-map [:temporary (keyword property)] duration)))))
 
-;TODO remove property
-;TODO remove-property-all? remove-property-permanent? remove-property-temporary?
-
 (defn get-minion-properties
   "Gets properties of a minion"
   {:test (fn []

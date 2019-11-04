@@ -524,11 +524,25 @@
 
 (defn pay-mana
   {:test (fn []
-           ; mana should be updated
+           ; minion card
+           (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
+                                             (create-card "Emil" :id "e")]
+                                   :minions [(create-minion "Alfred" :id "a")]}])
+                    (pay-mana "p1" "e")
+                    (get-mana "p1"))
+                6)
+           ; spell card
            (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
                                              (create-card "Emil" :id "e")]
                                    :minions [(create-minion "Alfred" :id "a")]}])
                     (pay-mana "p1" "r")
+                    (get-mana "p1"))
+                8)
+           ;hero power
+           (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
+                                             (create-card "Emil" :id "e")]
+                                   :minions [(create-minion "Alfred" :id "a")]}])
+                    (pay-mana "p1" "h2")
                     (get-mana "p1"))
                 8))}
   [state player-id id]

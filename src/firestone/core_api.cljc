@@ -422,8 +422,7 @@
      (let [hero-power (:hero-power (get-definition (get-in state [:players player-id :hero])))
            power-function (:power-fn (get-definition hero-power))]
        (as-> state $
-             ;TODO update pay mana to also take an integer
-             (update-mana $ player-id (fn [old-value] (- old-value (get-mana-cost state (get-in state [:players player-id :hero :id])))))
+             (pay-mana $ player-id (get-in $ [:players player-id :hero :id]))
              (assoc-in $ [:players player-id :hero :hero-power-used] true)
              (if (empty? target-id)
                (power-function $ player-id)
