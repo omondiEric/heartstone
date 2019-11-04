@@ -33,7 +33,7 @@
                 card-id (:cardId params)
                 target-id (:targetId params)
                 position (:position params)]
-            (create-response (play-minion-card! player-id card-id target-id position)))
+            (create-response (play-minion-card! player-id card-id position target-id)))
 
           :else (create-response (clojure.string/lower-case (:uri request))))))
 

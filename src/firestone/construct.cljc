@@ -436,11 +436,6 @@
            (is= (create-game) (create-empty-state))
 
            (is= (create-game [{:hero (create-hero "Carl")}])
-
-                (get-definition "Carl")
-                (get-definition "Blessing")
-
-
                 (create-game [{:hero "Carl"}]))
 
            (is= (create-game [{:minions [(create-minion "Mio")]}])
@@ -756,17 +751,20 @@
            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
                     (get-mana-cost "e"))
                 4)
+           (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
+                    (get-mana-cost "h1"))
+                2)
            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
                     (get-mana-cost "h1"))
                 2))}
   [state id]
-  (if (card? state id)
-    (let [card (get-card state id)
-          definition (get-definition card)]
-      (:mana-cost definition))
+  (if-not (card? state id)
     (let [hero (get-hero state id)
           definition (get-definition hero)]
-      (:mana-cost (get-definition (:hero-power definition))))))
+      (:mana-cost (get-definition (:hero-power definition))))
+    (let [card (get-card state id)
+          definition (get-definition card)]
+      (:mana-cost definition))))
 
 (defn remove-card-from-deck
   {:test (fn []

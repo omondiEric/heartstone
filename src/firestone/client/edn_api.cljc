@@ -8,7 +8,7 @@
 
 (defn create-game!
   []
-  (get-client-state (reset! state-atom (create-game [{:deck    ["Ronja", "Mio", "Jonathan"]
+  (get-client-state (reset! state-atom (create-game [{:deck    ["Ronja", "Mio", "Jonatan"]
                                                       :hand    ["Emil", "Kato", "Alfred"]
                                                       :mana    10}
                                                      {:hero "Carl"}]
@@ -19,5 +19,7 @@
   (get-client-state (swap! state-atom end-turn player-id)))
 
 (defn play-minion-card!
-  [player-id card-id target-id position]
-  (get-client-state (swap! state-atom play-minion-card player-id card-id position target-id)))
+  [player-id card-id position target-id]
+  (if-not target-id
+    (get-client-state (swap! state-atom play-minion-card player-id card-id position))
+    (get-client-state (swap! state-atom play-minion-card player-id card-id position target-id))))

@@ -184,18 +184,12 @@
            (is= (-> (create-game [{:hand [(create-card "Annika" :id "a")] :minions [(create-minion "Mio" :id "m")]}])
                     (play-minion-card "p1" "a" 0 "m")
                     (get-minion-stats "m"))
-                [3, 2])
-
-           ;(is= (as-> (create-game [{:minions [(create-minion "Madicken" :id "m")
-           ;                                    (create-minion "Astrid" :id "a2")]
-           ;                          :hand    [(create-card "Astrid" :id "a1")]}]) $
-           ;           (play-minion-card "p1" "a1" 0 "m"))
-           ;           ;(do-on-play $ "p1" "a2" (get-definition (get-minion $ "a2")) "m"))
-           )}
+                [3, 2]))}
   ([state player-id card-id position]
    ;check if player has less than 7 minions on the board
-   (when-not (< (count (get-minions state player-id)) 7)
-     (error "The board is full."))
+   (when (or (>= (count (get-minions state player-id)) 7)
+             (> (get-mana-cost state card-id) (get-mana state player-id)))
+     (error "Cannot play card: the board is full or insufficient mana"))
    (let [card (get-card state card-id)]
      (-> state
          (pay-mana player-id card-id)
