@@ -10,6 +10,7 @@
                                          get-other-player-id
                                          give-deathrattle
                                          give-taunt
+                                         minion?
                                          modify-minion-stats
                                          replace-minion
                                          ida-present?
@@ -293,7 +294,8 @@
                   :stats         {}}
     :set         :custom
     :description "Battlecry: Give a minion +2 Attack this turn."
-    :on-play      (fn [state player-id minion-id target-id] (modify-minion-stats state target-id 2 0 1))}
+    :on-play      (fn [state player-id minion-id target-id] (when (minion? (get-minion state target-id))
+                                                              (modify-minion-stats state target-id 2 0 1)))}
 
    })
 

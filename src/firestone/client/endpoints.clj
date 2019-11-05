@@ -1,9 +1,11 @@
 (ns firestone.client.endpoints
   (:require [clojure.string :refer [starts-with?]]
             [clojure.data.json :refer [read-json write-str]]
-            [firestone.client.edn-api :refer [create-game!
+            [firestone.client.edn-api :refer [attack-with-minion!
+                                              create-game!
                                               end-turn!
                                               play-minion-card!
+                                              play-spell-card!
                                               use-hero-power!]]))
 
 
@@ -35,6 +37,25 @@
                 target-id (:targetId params)
                 position (:position params)]
             (create-response (play-minion-card! player-id card-id position target-id)))
+          (starts-with? uri "/playSpellCard")
+          (let [params (read-json (slurp (:body request)))
+                player-id (:playerId params)
+                card-id (:cardId params)
+                target-id (:targetId params)]
+            (create-response (play-spell-card! player-id card-id target-id)))
+
+          (starts-with? uri "/useHeroPower")
+          (let [params (read-json (slurp (:body request)))
+                player-id (:playerId params)
+                target-id (:targetId params)]
+            (create-response (use-hero-power! player-id target-id)))
+
+          (starts-with? uri "/attack")
+          (let [params (read-json (slurp (:body request)))
+                player-id (:playerId params)
+                attacker-id (:attackerId params)
+                target-id (:targetId params)]
+            (create-response (attack-with-minion! player-id attacker-id target-id)))
 
           (starts-with? uri "/useHeroPower")
           (let [params (read-json (slurp (:body request)))

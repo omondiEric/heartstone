@@ -269,6 +269,9 @@
 (defn add-minion-to-board
   "Adds a minion with a given position to a player's minions and updates the other minions' positions."
   {:test (fn []
+           (is= (as-> (create-empty-state) $
+                      (:minion-ids-summoned-this-turn $))
+                [])
            ; Adding a minion to an empty board
            (is= (as-> (create-empty-state) $
                       (add-minion-to-board $ "p1" (create-minion "Mio" :id "m") 0)
@@ -302,7 +305,7 @@
                                    :owner-id player-id
                                    :id id
                                    :added-to-board-time-id time-id)]
-    (update-in state
+    (-> (update-in state
                [:players player-id :minions]
                (fn [minions]
                  (conj (->> minions
@@ -310,7 +313,9 @@
                                     (if (< (:position m) position)
                                       m
                                       (update m :position inc)))))
-                       ready-minion)))))
+                       ready-minion)))
+        (update-in [:minion-ids-summoned-this-turn] (fn [list] (conj list (:id minion)))))))
+
 
 (defn add-minions-to-board
   {:test (fn []
@@ -519,7 +524,8 @@
                                      state)
                                    (add-minions-to-board player-id minions)
                                    (add-cards-to-deck player-id deck)
-                                   (add-cards-to-hand player-id hand)))
+                                   (add-cards-to-hand player-id hand)
+                                   (assoc-in [:minion-ids-summoned-this-turn] [])))
                              $
                              players-data))]
      (if (empty? kvs)
@@ -570,6 +576,24 @@
            )}
   [state]
   (concat (get-heroes state) (get-minions state)))
+
+(defn get-deck-size
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                  {:minions [(create-minion "Emil" :id "e")]}])
+                    (get-deck-size "p1"))
+                0)
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m1")]
+                                   :deck    [(create-minion "Emil" :id "e1")
+                                             (create-minion "Emil" :id "e2")]}
+                                  {:minions [(create-minion "Emil" :id "e3")]
+                                   :deck    [(create-minion "Emil" :id "e4")
+                                            (create-minion "Emil" :id "e5")]}])
+                    (get-deck-size "p1"))
+                2)
+           )}
+  [state player-id]
+  (count (get-in state [:players player-id :deck])))
 
 (defn replace-minion
   "Replaces a minion with the same id as the given new-minion."
@@ -1065,9 +1089,6 @@
   ([state minion-id property duration]
    (update-minion state minion-id :properties (fn [properties-map]
                                                 (assoc-in properties-map [:temporary (keyword property)] duration)))))
-
-;TODO remove property
-;TODO remove-property-all? remove-property-permanent? remove-property-temporary?
 
 (defn get-minion-properties
   "Gets properties of a minion"
