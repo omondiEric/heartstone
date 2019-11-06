@@ -15,8 +15,9 @@
                                          get-minions
                                          get-minion-properties
                                          minion?]]
-            [firestone.core :refer [get-health
-                                    get-attack
+            [firestone.core :refer [get-attack
+                                    get-health
+                                    get-minion-max-health
                                     sleepy?
                                     valid-attack?]]
             [firestone.core-api :refer [attack-hero-or-minion
@@ -142,6 +143,11 @@
      :playable           true
      :description        (:description card-definition)
      :type               (name (:type card-definition))
+     :owner-id           (:owner-id card)
+     :attack             (:attack card-definition)
+     :health             (:health card-definition)
+     :original-attack    (:attack card-definition)
+     :original-health    (:health card-definition)
      ::valid-target-ids  (first (conj [] (get-valid-target-ids-for-card state card (:owner-id card))))}))
 
 (defn get-client-hand
@@ -202,22 +208,24 @@
                                  (get-client-minion minion))))))}
   [state minion]
   (let [minion-defn (get-definition (:name minion))
-        minion-permanent-set (get-in minion [:properties :permanent])]
+        minion-permanent-set (get-in minion [:properties :permanent])
+        valid-attack-ids (first (conj [] (get-valid-target-ids-for-minion state minion (:owner-id minion))))]
     {:attack           (get-attack state (:id minion))
-     :can-attack       (not (contains? minion-permanent-set "NoAttack"))
+     :can-attack       (not (empty? valid-attack-ids))
      :entity-type      "minion"
-     :health           (get-health minion)
+     :health           (get-health state (:id minion))
      :id               (:id minion)
      :name             (:name minion)
      :mana-cost        (:mana-cost minion-defn)
-     :max-health       30                                   ; is this true?
+     :max-health       (get-minion-max-health state (:id minion))
      :original-attack  (:attack minion-defn)
      :original-health  (:health minion-defn)
      :owner-id         (:owner-id minion)
      :position         (:position minion)
      :sleepy           (sleepy? state (:id minion))
      :states           (get-minion-states state minion)
-     :valid-attack-ids (first (conj [] (get-valid-target-ids-for-minion state minion (:owner-id minion))))}))
+     :valid-attack-ids valid-attack-ids
+     :description      (:description minion-defn)}))
 
 (defn get-client-minions
   {:test (fn []

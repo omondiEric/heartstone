@@ -83,7 +83,7 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "taunt."}
+    :description "Taunt."}
 
    "Alfred"
    {:name        "Alfred"
@@ -150,7 +150,7 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "deathrattle: Take control of a random enemy minion."
+    :description "Deathrattle: Take control of a random enemy minion."
     :deathrattle (fn [state minion-id]
                    (let [random-result (get-random-minion state (get-other-player-id (:owner-id (get-minion state minion-id))))]
                      (switch-minion-side state (:id (last random-result)))))}
@@ -165,7 +165,7 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "taunt. Divine Shield."}
+    :description "Taunt. Divine Shield."}
 
    "Madicken"
    {:name        "Madicken"
@@ -177,7 +177,7 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "deathrattle: Summon Elisabeth."
+    :description "Deathrattle: Summon Elisabeth."
     :deathrattle (fn [state minion-id]
                    (replace-minion state (create-minion "Elisabeth" :id minion-id)))}
 
@@ -223,7 +223,7 @@
     :health      3
     :mana-cost   3
     :type        :minion
-    :properties  {:permanent     #{"Poisonous"}
+    :properties  {:permanent     #{"poisonous"}
                   :temporary     {}
                  :stats         {}}
     :set         :custom
@@ -239,7 +239,7 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "windfury"}
+    :description "Windfury"}
 
    "Tjorven"
    {:name        "Tjorven"
