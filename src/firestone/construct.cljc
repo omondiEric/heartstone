@@ -1226,7 +1226,7 @@
                     (has-poisonous "k"))
                 false))}
   [state minion-id]
-  (has-property? state minion-id "Poisonous"))
+  (has-property? state minion-id "poisonous"))
 
 ;Gives divine shield to a card
 (defn give-divine-shield
