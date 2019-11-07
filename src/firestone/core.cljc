@@ -70,7 +70,27 @@
    (let [definition (get-definition character)]
      (- (:health definition) (:damage-taken character))))
   ([state id]
-   (get-health (get-character state id))))
+   (if (minion? (get-character state id))
+     (last (get-minion-stats state id))
+     (get-health (get-character state id)))))
+
+(defn get-minion-max-health
+  "Get max health of minion"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (get-minion-max-health "m"))
+                2)
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m" :damage-taken 1)]}])
+                    (get-minion-max-health "m"))
+                2)
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m" :damage-taken 1)]}])
+                    (modify-minion-stats "m" 2 2)
+                    (get-minion-max-health "m"))
+                4)
+           )}
+  [state minion-id]
+  (+ (get-health state minion-id) (:damage-taken (get-minion state minion-id))))
+
 
 (defn get-attack
   "Returns the attack of the minion with the given id."
