@@ -57,27 +57,16 @@
                              (get-client-hero-power game player hero hero-power)))))}
   [state player hero hero-power]
   (let [hero-power-def (get-definition hero-power)]
-<<<<<<< HEAD
-  {:can-use true
-   :owner-id (:id hero)
-   :entity-type (name (:type hero-power-def))
-   :has-used-your-turn (:hero-power-used hero)
-   :name (:name hero-power-def)
-   :description (:description hero-power-def)
-   :valid-target-ids (when (= (:name hero-power-def) "Blessing")
-                       (get-client-hero-power-target-ids state (:id player)))
-   :type (name (:type hero-power-def))}))
-=======
+
     {:can-use            true
      :owner-id           (:id hero)
      :entity-type        (name (:type hero-power-def))
      :has-used-your-turn (:hero-power-used hero)
      :name               (:name hero-power-def)
      :description        (:description hero-power-def)
-     :valid-target-ids   (when (= (:name hero-power-def) "Blessing")
+     :valid-target-ids   (when (= (:name hero-power-def) "Blessing") ;;TODO do this without hard coding the hero power name.
                            (get-client-hero-power-target-ids state (:id player)))
      :type               (name (:type hero-power-def))}))
->>>>>>> 059977805c50f7e66f58faf1d15d69c10244fb9f
 
 (defn get-client-hero
   {:test (fn []
@@ -237,7 +226,9 @@
      :sleepy           (sleepy? state (:id minion))
      :states           (get-minion-states state minion)
      :valid-attack-ids valid-attack-ids
-     :description      (:description minion-defn)}))
+     :description      (if-not (:description minion-defn)
+                         ""
+                         (:description minion-defn))}))
 
 (defn get-client-minions
   {:test (fn []

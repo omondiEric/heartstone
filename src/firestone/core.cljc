@@ -438,6 +438,13 @@
                     (get-minion "e")
                     (:damage-taken))
                 3)
+
+           (is= (-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}])
+                    (deal-damage "m" 2)
+                    (get-minion "m")
+                    (:damage-taken))
+                0)
+
            ;test to see if amount of damage taken is updated well
            (is= (-> (create-game [{:minions [(create-minion "Jonatan" :id "j" :damage-taken 1)]}])
                     (deal-damage "j" 3)
