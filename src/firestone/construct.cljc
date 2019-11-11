@@ -599,7 +599,7 @@
   "Replaces a minion with the same id as the given new-minion."
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
-                    (replace-minion (create-minion "Ronja" :id "m"))
+                    (replace-minion (create-minion "Ronja" :id "m" :position 0 :added-to-board-time-id 2 :owner-id "p1"))
                     (get-minion "m")
                     (:name))
                 "Ronja"))}
@@ -614,6 +614,7 @@
                           new-minion
                           m))
                       minions)))))
+;position, added-to-board-time-id, owner-id
 
 (defn update-minion
   "Updates the value of the given key for the minion with the given id. If function-or-value is a value it will be the

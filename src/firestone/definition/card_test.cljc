@@ -100,18 +100,18 @@
                    (has-taunt? $ "k"))))
 
 (deftest Uncle-Nilsson
-         "take control of random enemy minion on death"
+         "Take control of random enemy minion on death"
          (is= (-> (create-game [{:minions [(create-minion "Uncle Nilsson" :id "n")]}
                                 {:minions [(create-minion "Mio" :id "m")]}])
-                  (do-deathrattle "n")
+                  (deal-damage "n" 10)
                   (get-minions "p2")
                   (count))
               0))
 
 (deftest Madicken
-         "summons elisabeth on death"
+         "Summons elisabeth on death"
          (is= (-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}])
-                  (do-deathrattle "m")
+                  (deal-damage "m" 2))
                   (get-minions "p1")
                   (first)
                   (:name))

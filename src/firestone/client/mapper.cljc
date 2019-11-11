@@ -57,27 +57,16 @@
                              (get-client-hero-power game player hero hero-power)))))}
   [state player hero hero-power]
   (let [hero-power-def (get-definition hero-power)]
-<<<<<<< HEAD
-  {:can-use true
-   :owner-id (:id hero)
-   :entity-type (name (:type hero-power-def))
-   :has-used-your-turn (:hero-power-used hero)
-   :name (:name hero-power-def)
-   :description (:description hero-power-def)
-   :valid-target-ids (when (= (:name hero-power-def) "Blessing")
-                       (get-client-hero-power-target-ids state (:id player)))
-   :type (name (:type hero-power-def))}))
-=======
     {:can-use            true
      :owner-id           (:id hero)
      :entity-type        (name (:type hero-power-def))
      :has-used-your-turn (:hero-power-used hero)
      :name               (:name hero-power-def)
      :description        (:description hero-power-def)
+     ;TODO generalize
      :valid-target-ids   (when (= (:name hero-power-def) "Blessing")
                            (get-client-hero-power-target-ids state (:id player)))
      :type               (name (:type hero-power-def))}))
->>>>>>> 059977805c50f7e66f58faf1d15d69c10244fb9f
 
 (defn get-client-hero
   {:test (fn []
@@ -125,10 +114,10 @@
     (when (= (:name (get-definition card)) "Radar Raid")
       (let [spell-function (:spell-fn (get-definition card))
             valid-targets
-              (filter (fn [c]
-                        (spell-function state (:id c)))
-                      (get-characters state))]
-          (map :id valid-targets)))
+            (filter (fn [c]
+                      (spell-function state (:id c)))
+                    (get-characters state))]
+        (map :id valid-targets)))
     ;TODO generalize this too
     (when (or (= (:name (get-definition card)) "Annika") (= (:name (get-definition card)) "Astrid"))
       (let [on-play-function (:on-play (get-definition card))
@@ -137,7 +126,7 @@
               (filter (fn [c]
                         (on-play-function state player-id (:id card) (:id c)))
                       (get-characters state)))]
-            (map :id valid-targets)))))
+        (map :id valid-targets)))))
 
 (defn get-client-card
   {:test (fn []
@@ -146,10 +135,10 @@
                                  card (get-card game "e")]
                              (get-client-card game card)))))}
   [state card]
-  (let [card-definition (get-definition card)]              ;lets us get mana-cost
+  (let [card-definition (get-definition card)]
     {:entity-type        "card"
      :name               (:name card)
-     :mana-cost          (:mana-cost card-definition)       ;(get-mana-cost state (:id card))
+     :mana-cost          (:mana-cost card-definition)
      :original-mana-cost (:mana-cost card-definition)
      :id                 (:id card)
      :playable           true
@@ -220,7 +209,6 @@
                                  (get-client-minion minion))))))}
   [state minion]
   (let [minion-defn (get-definition (:name minion))
-        minion-permanent-set (get-in minion [:properties :permanent])
         valid-attack-ids (first (conj [] (get-valid-target-ids-for-minion state minion (:owner-id minion))))]
     {:attack           (get-attack state (:id minion))
      :can-attack       (not (empty? valid-attack-ids))
@@ -237,7 +225,9 @@
      :sleepy           (sleepy? state (:id minion))
      :states           (get-minion-states state minion)
      :valid-attack-ids valid-attack-ids
-     :description      (:description minion-defn)}))
+     :description      (if-not (:description minion-defn)
+                         ""
+                         (:description minion-defn))}))
 
 (defn get-client-minions
   {:test (fn []

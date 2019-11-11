@@ -131,11 +131,11 @@
   "Changes attacks-performed-this-turn for all friendly minions to 0"
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m1" :attacks-performed-this-turn 1)
-                                            (create-minion "Mio" :id "m2" :attacks-performed-this-turn 1)]}])
-                   (refresh-minion-attacks "p1")
-                   (get-minion "m1")
-                   (:attacks-performed-this-turn))
-               0)
+                                             (create-minion "Mio" :id "m2" :attacks-performed-this-turn 1)]}])
+                    (refresh-minion-attacks "p1")
+                    (get-minion "m1")
+                    (:attacks-performed-this-turn))
+                0)
            )}
   [state player-id]
   (reduce (fn [state minion]
@@ -183,7 +183,7 @@
                    (valid-attack? "p1" "m" "r")))
            ; Should be able to attack an enemy hero
            (is (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]
-                                  :minion-ids-summoned-this-turn [])
+                                :minion-ids-summoned-this-turn [])
                    (valid-attack? "p1" "m" "h2")))
            ; Should not be able to attack your own minions
            (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")
@@ -210,7 +210,7 @@
            ; Should be able to attack if target minion has taunt
            (is (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
                                  {:minions [(create-minion "Jonatan" :id "j")]}]
-                                  :minion-ids-summoned-this-turn [])
+                                :minion-ids-summoned-this-turn [])
                    (valid-attack? "p1" "m" "j")))
            ; Should not be able to attack if target minion does not have taunt, but other enemy minions do
            (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
@@ -407,21 +407,10 @@
                 ["Elisabeth" "Mio"])
            )}
   [state]
-  (let [dead-minions (map :id (get-dead-minions state))]
-      (let [dead-deathrattle-minions (map :id (get-dead-minions-with-deathrattle state))]
-        (as-> state $
-              (reduce do-deathrattles $ dead-deathrattle-minions)
-              (reduce remove-minions $ dead-minions)))))
-  ;            (reduce remove-minions $ dead-minions)
-  ;(let [dead-minions (map :id (get-dead-minions state))]
-  ;  (let [dead-deathrattle-minions (map :id (get-dead-minions-with-deathrattle state))]
-  ;    (if (empty? dead-deathrattle-minions)
-  ;      (reduce remove-minions state dead-minions)
-  ;      (as-> state $
-  ;            (reduce do-deathrattles $ dead-deathrattle-minions)
-  ;            (reduce remove-minions $ dead-minions)
-  ;            (remove-dead-minions $)
-  ;            )))))
+  (as-> state $
+        (reduce do-deathrattles $ (map :id (get-dead-minions-with-deathrattle $)))
+        (reduce remove-minions $ (map :id (get-dead-minions $)))))
+
 
 ;deal damage to a character and remove dead minions
 (defn deal-damage
