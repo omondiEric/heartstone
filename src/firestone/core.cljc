@@ -70,7 +70,27 @@
    (let [definition (get-definition character)]
      (- (:health definition) (:damage-taken character))))
   ([state id]
-   (get-health (get-character state id))))
+   (if (minion? (get-character state id))
+     (last (get-minion-stats state id))
+     (get-health (get-character state id)))))
+
+(defn get-minion-max-health
+  "Get max health of minion"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (get-minion-max-health "m"))
+                2)
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m" :damage-taken 1)]}])
+                    (get-minion-max-health "m"))
+                2)
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m" :damage-taken 1)]}])
+                    (modify-minion-stats "m" 2 2)
+                    (get-minion-max-health "m"))
+                4)
+           )}
+  [state minion-id]
+  (+ (get-health state minion-id) (:damage-taken (get-minion state minion-id))))
+
 
 (defn get-attack
   "Returns the attack of the minion with the given id."
@@ -101,10 +121,27 @@
            (is (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]
                                 :minion-ids-summoned-this-turn ["m"])
                    (sleepy? "m")))
-           (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+           (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]
+                                    :minion-ids-summoned-this-turn [])
                        (sleepy? "m"))))}
   [state id]
   (seq-contains? (:minion-ids-summoned-this-turn state) id))
+
+(defn refresh-minion-attacks
+  "Changes attacks-performed-this-turn for all friendly minions to 0"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m1" :attacks-performed-this-turn 1)
+                                            (create-minion "Mio" :id "m2" :attacks-performed-this-turn 1)]}])
+                   (refresh-minion-attacks "p1")
+                   (get-minion "m1")
+                   (:attacks-performed-this-turn))
+               0)
+           )}
+  [state player-id]
+  (reduce (fn [state minion]
+            (update-minion state (:id minion) :attacks-performed-this-turn 0))
+          state
+          (get-minions state player-id)))
 
 (defn filter-dead-minions
   "Filters dead minions at a given state and returns all living minions"
@@ -141,10 +178,12 @@
   {:test (fn []
            ; Should be able to attack an enemy minion
            (is (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
-                                 {:minions [(create-minion "Ronja" :id "r")]}])
+                                 {:minions [(create-minion "Ronja" :id "r")]}]
+                                :minion-ids-summoned-this-turn [])
                    (valid-attack? "p1" "m" "r")))
            ; Should be able to attack an enemy hero
-           (is (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+           (is (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]
+                                  :minion-ids-summoned-this-turn [])
                    (valid-attack? "p1" "m" "h2")))
            ; Should not be able to attack your own minions
            (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")
@@ -170,7 +209,8 @@
                        (valid-attack? "p1" "a" "r")))
            ; Should be able to attack if target minion has taunt
            (is (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
-                                 {:minions [(create-minion "Jonatan" :id "j")]}])
+                                 {:minions [(create-minion "Jonatan" :id "j")]}]
+                                  :minion-ids-summoned-this-turn [])
                    (valid-attack? "p1" "m" "j")))
            ; Should not be able to attack if target minion does not have taunt, but other enemy minions do
            (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
@@ -368,14 +408,20 @@
            )}
   [state]
   (let [dead-minions (map :id (get-dead-minions state))]
-    (let [dead-deathrattle-minions (map :id (get-dead-minions-with-deathrattle state))]
-      (if (empty? dead-deathrattle-minions)
-        (reduce remove-minions state dead-minions)
+      (let [dead-deathrattle-minions (map :id (get-dead-minions-with-deathrattle state))]
         (as-> state $
               (reduce do-deathrattles $ dead-deathrattle-minions)
-              (reduce remove-minions $ dead-minions)
-              (remove-dead-minions $)
-              )))))
+              (reduce remove-minions $ dead-minions)))))
+  ;            (reduce remove-minions $ dead-minions)
+  ;(let [dead-minions (map :id (get-dead-minions state))]
+  ;  (let [dead-deathrattle-minions (map :id (get-dead-minions-with-deathrattle state))]
+  ;    (if (empty? dead-deathrattle-minions)
+  ;      (reduce remove-minions state dead-minions)
+  ;      (as-> state $
+  ;            (reduce do-deathrattles $ dead-deathrattle-minions)
+  ;            (reduce remove-minions $ dead-minions)
+  ;            (remove-dead-minions $)
+  ;            )))))
 
 ;deal damage to a character and remove dead minions
 (defn deal-damage
@@ -508,11 +554,25 @@
 
 (defn pay-mana
   {:test (fn []
-           ; mana should be updated
+           ; minion card
+           (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
+                                             (create-card "Emil" :id "e")]
+                                   :minions [(create-minion "Alfred" :id "a")]}])
+                    (pay-mana "p1" "e")
+                    (get-mana "p1"))
+                6)
+           ; spell card
            (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
                                              (create-card "Emil" :id "e")]
                                    :minions [(create-minion "Alfred" :id "a")]}])
                     (pay-mana "p1" "r")
+                    (get-mana "p1"))
+                8)
+           ;hero power
+           (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
+                                             (create-card "Emil" :id "e")]
+                                   :minions [(create-minion "Alfred" :id "a")]}])
+                    (pay-mana "p1" "h2")
                     (get-mana "p1"))
                 8))}
   [state player-id id]

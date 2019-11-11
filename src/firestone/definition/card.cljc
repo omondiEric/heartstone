@@ -10,6 +10,7 @@
                                          get-other-player-id
                                          give-deathrattle
                                          give-taunt
+                                         minion?
                                          modify-minion-stats
                                          replace-minion
                                          ida-present?
@@ -82,7 +83,7 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "taunt."}
+    :description "Taunt."}
 
    "Alfred"
    {:name        "Alfred"
@@ -149,7 +150,7 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "deathrattle: Take control of a random enemy minion."
+    :description "Deathrattle: Take control of a random enemy minion."
     :deathrattle (fn [state minion-id]
                    (let [random-result (get-random-minion state (get-other-player-id (:owner-id (get-minion state minion-id))))]
                      (switch-minion-side state (:id (last random-result)))))}
@@ -164,7 +165,7 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "taunt. Divine Shield."}
+    :description "Taunt. Divine Shield."}
 
    "Madicken"
    {:name        "Madicken"
@@ -176,7 +177,7 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "deathrattle: Summon Elisabeth."
+    :description "Deathrattle: Summon Elisabeth."
     :deathrattle (fn [state minion-id]
                    (replace-minion state (create-minion "Elisabeth" :id minion-id)))}
 
@@ -222,7 +223,7 @@
     :health      3
     :mana-cost   3
     :type        :minion
-    :properties  {:permanent     #{"Poisonous"}
+    :properties  {:permanent     #{"poisonous"}
                   :temporary     {}
                  :stats         {}}
     :set         :custom
@@ -238,7 +239,7 @@
                   :temporary     {}
                   :stats         {}}
     :set         :custom
-    :description "windfury"}
+    :description "Windfury"}
 
    "Tjorven"
    {:name        "Tjorven"
@@ -293,7 +294,160 @@
                   :stats         {}}
     :set         :custom
     :description "Battlecry: Give a minion +2 Attack this turn."
-    :on-play      (fn [state player-id minion-id target-id] (modify-minion-stats state target-id 2 0 1))}
+    :on-play      (fn [state player-id minion-id target-id] (when (minion? (get-minion state target-id))
+                                                              (modify-minion-stats state target-id 2 0 1)))}
+   "Al'Akir the Windlord"
+   {:name        "Al'Akir the Windlord"
+    :attack      3
+    :health      5
+    :mana-cost   8
+    :type        :minion
+    :set         :classic
+    :rarity      :legendary
+    :description "Windfury, Charge, Divine Shield, Taunt"}
+
+   "Secretkeeper"
+   {:name        "Secretkeeper",
+    :attack      1
+    :health      2
+    :mana-cost   1
+    :type        :minion
+    :set         :classic
+    :rarity      :rare
+    :description "Whenever a Secret is played, gain +1/+1."}
+
+   "Mad Scientist"
+   {:name        "Mad Scientist"
+    :attack      2
+    :health      2
+    :mana-cost   2
+    :type        :minion
+    :set         :curse-of-naxxramas
+    :rarity      :common
+    :description "Deathrattle: Put a Secret from your deck into the battlefield."}
+
+   "Eater of Secrets"
+   {:name        "Eater of Secrets"
+    :attack      2
+    :health      4
+    :mana-cost   4
+    :type        :minion
+    :set         :whispers-of-the-old-gods
+    :rarity      :rare
+    :description "Battlecry: Destroy all enemy Secrets. Gain +1/+1 for each."}
+
+   "Kezan Mystic"
+   {:name        "Kezan Mystic"
+    :attack      4
+    :health      3
+    :mana-cost   4
+    :type        :minion
+    :set         :goblins-vs-gnomes
+    :rarity      :rare
+    :description "Battlecry: Take control of a random enemy Secret."}
+
+   "Stormwind Knight"
+   {:name        "Stormwind Knight"
+    :attack      2
+    :health      5
+    :mana-cost   4
+    :set         :basic
+    :type        :minion
+    :description "Charge"}
+
+   "Leeroy Jenkins"
+   {:name        "Leeroy Jenkins"
+    :attack      6
+    :health      2
+    :mana-cost   5
+    :type        :minion
+    :set         :classic
+    :rarity      :legendary
+    :description "Charge. Battlecry: Summon two 1/1 Whelps for your opponent."}
+
+   "The Mistcaller"
+   {:name        "The Mistcaller"
+    :attack      4
+    :health      4
+    :mana-cost   6
+    :type        :minion
+    :set         :the-grand-tournament
+    :rarity      :legendary
+    :description "Battlecry: Give all minions in your hand and deck +1/+1."}
+
+   "Spellbreaker"
+   {:name        "Spellbreaker"
+    :attack      4
+    :health      3
+    :mana-cost   4
+    :type        :minion
+    :set         :classic
+    :rarity      :common
+    :description "Battlecry: Silence a minion."}
+
+   "Shudderwock"
+   {:name        "Shudderwock"
+    :attack      6
+    :health      6
+    :mana-cost   9
+    :type        :minion
+    :set         :the-witchwood
+    :rarity      :legendary
+    :description "Battlecry: Repeat all other Battlecries from cards you played this game (targets chosen randomly)."}
+
+   "Silence"
+   {:name        "Silence"
+    :mana-cost   0
+    :type        :spell
+    :set         :classic
+    :rarity      :common
+    :description "Silence a minion."}
+
+   "Explosive Trap"
+   {:name        "Explosive Trap"
+    :mana-cost   2
+    :type        :spell
+    :sub-type    :secret
+    :set         :classic
+    :rarity      :common
+    :description "Secret: When your hero is attacked deal 2 damage to all enemies."}
+
+   "Venomstrike Trap"
+   {:name        "Venomstrike Trap"
+    :mana-cost   2
+    :type        :spell
+    :sub-type    :secret
+    :set         :knights-of-the-frozen-throne
+    :rarity      :rare
+    :description "Secret: When one of your minions is attacked summon a 2/3 Poisonous Cobra."}
+
+   "Vaporize"
+   {:name        "Vaporize"
+    :mana-cost   3
+    :type        :spell
+    :sub-type    :secret
+    :set         :classic
+    :rarity      :rare
+    :description "Secret: When a minion attacks your hero destroy it."}
+
+   "Whelp"
+   {:name      "Whelp"
+    :attack    1
+    :health    1
+    :mana-cost 1
+    :set       :classic
+    :type      :minion
+    :rarity    :common}
+
+   "Emperor Cobra"
+   {:name        "Emperor Cobra"
+    :attack      2
+    :health      3
+    :mana-cost   3
+    :type        :minion
+    :set         :classic
+    :rarity      :rare
+    :description "Poisonous."}
 
    })
 
