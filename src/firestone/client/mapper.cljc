@@ -13,13 +13,8 @@
                                          get-mana-cost
                                          get-minion
                                          get-minions
-                                         get-minion-properties]]
-            [firestone.core :refer [get-health
-                                    get-attack
-                                    sleepy?
-                                    valid-attack?
-                                    get-minion-properties
-                                    minion?]]
+                                         get-minion-properties
+                                         minion?]]
             [firestone.core :refer [get-attack
                                     get-health
                                     get-minion-max-health
@@ -62,15 +57,15 @@
                              (get-client-hero-power game player hero hero-power)))))}
   [state player hero hero-power]
   (let [hero-power-def (get-definition hero-power)]
-    {:can-use            true
-     :owner-id           (:id hero)
-     :entity-type        (name (:type hero-power-def))
-     :has-used-your-turn (:hero-power-used hero)
-     :name               (:name hero-power-def)
-     :description        (:description hero-power-def)
-     :valid-target-ids   (when (= (:name hero-power-def) "Blessing")
-                           (get-client-hero-power-target-ids state (:id player)))
-     :type               (name (:type hero-power-def))}))
+{:can-use            true
+ :owner-id           (:id hero)
+ :entity-type        (name (:type hero-power-def))
+ :has-used-your-turn (:hero-power-used hero)
+ :name               (:name hero-power-def)
+ :description        (:description hero-power-def)
+ :valid-target-ids   (when (= (:name hero-power-def) "Blessing")
+                       (get-client-hero-power-target-ids state (:id player)))
+ :type               (name (:type hero-power-def))}))
 
 (defn get-client-hero
   {:test (fn []
@@ -95,6 +90,7 @@
    :hero-power       (get-client-hero-power state player hero (:hero-power (get-definition (:name hero))))
    :valid-attack-ids []})
 
+
 (defn get-valid-target-ids-for-card
   {:test (fn []
            (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]
@@ -114,13 +110,13 @@
   [state card player-id]
   (if (= (:type (get-definition card)) :spell)
     ;TODO generalize this
-    (when (= (:name (get-definition card)) "Radar Raid")
+    (when-let [valid-target-fn (:valid-target (get-definition card))]
       (let [spell-function (:spell-fn (get-definition card))
             valid-targets
-              (filter (fn [c]
-                        (spell-function state (:id c)))
-                      (get-characters state))]
-          (map :id valid-targets)))
+            (filter (fn [c]
+                      (valid-target-fn state card c))
+                    (get-characters state))]
+        (map :id valid-targets)))
     ;TODO generalize this too
     (when (or (= (:name (get-definition card)) "Annika") (= (:name (get-definition card)) "Astrid"))
       (let [on-play-function (:on-play (get-definition card))
@@ -129,7 +125,7 @@
               (filter (fn [c]
                         (on-play-function state player-id (:id card) (:id c)))
                       (get-characters state)))]
-            (map :id valid-targets)))))
+        (map :id valid-targets)))))
 
 (defn get-client-card
   {:test (fn []
@@ -154,7 +150,6 @@
      :original-health    (:health card-definition)
      ::valid-target-ids  (first (conj [] (get-valid-target-ids-for-card state card (:owner-id card))))}))
 
-
 (defn get-client-hand
   {:test (fn []
            (is (check-spec :firestone.client.spec/hand
@@ -163,8 +158,9 @@
   [state player]
   (->> (get-hand state (:id player))
        (map (fn [c]
-              (get-client-card state c player)))))
+              (get-client-card state c)))))
 
+;todo currently does not get deathrattle or effects or others
 (defn get-minion-states
   {:test (fn []
            (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}]) $
@@ -230,7 +226,9 @@
      :sleepy           (sleepy? state (:id minion))
      :states           (get-minion-states state minion)
      :valid-attack-ids valid-attack-ids
-     :description      (:description minion-defn)}))
+     :description      (if-not (:description minion-defn)
+                         ""
+                         (:description minion-defn))}))
 
 (defn get-client-minions
   {:test (fn []

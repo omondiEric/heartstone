@@ -202,3 +202,19 @@
                     (map :id $))
               ["t" "e"]))
 
+;todo update this once a secret card works
+(deftest Secretkeeper
+         "Gain +1/+1"
+         (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")
+                                           (create-minion "Secretkeeper" :id "s")]}])
+                  (get-minion-stats "s"))
+              [1, 2]))
+
+(deftest Leeroy-Jenkins
+         "Battlecry: Summon two 1/1 Whelps for your opponent"
+         (is= (as-> (create-game [{:minions [(create-minion "Tjorven" :id "t")]}
+                                {:hand [(create-card "Leeroy Jenkins" :id "l")]}]) $
+                  (play-minion-card $ "p2" "l" 0)
+                  (get-minions $ "p1")
+                    (map :name $))
+              ["Tjorven", "Whelp", "Whelp"]))

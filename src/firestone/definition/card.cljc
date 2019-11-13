@@ -1,7 +1,8 @@
 (ns firestone.definition.card
   (:require [firestone.definitions :as definitions]
             [firestone.definitions :refer [get-definition]]
-            [firestone.construct :refer [create-game
+            [firestone.construct :refer [add-minions-to-board
+                                         create-game
                                          create-card
                                          create-minion
                                          friendly-minions?
@@ -213,6 +214,7 @@
     :mana-cost   2
     :type        :spell
     :set         :custom
+    :valid-target (fn [state this target] true)
     :spell-fn    (fn [state character-id]
                    (deal-damage state character-id 3))
     :description "Deal 3 damage to a character."}
@@ -302,6 +304,9 @@
     :health      5
     :mana-cost   8
     :type        :minion
+    :properties    {:permanent     #{"windfury", "taunt", "divine-shield" "charge"}
+                    :temporary     {}
+                    :stats         {}}
     :set         :classic
     :rarity      :legendary
     :description "Windfury, Charge, Divine Shield, Taunt"}
@@ -314,6 +319,8 @@
     :type        :minion
     :set         :classic
     :rarity      :rare
+    :secret-played  (fn [state minion-id]
+                      (modify-minion-stats state minion-id 1 1))
     :description "Whenever a Secret is played, gain +1/+1."}
 
    "Mad Scientist"
@@ -353,6 +360,9 @@
     :mana-cost   4
     :set         :basic
     :type        :minion
+    :properties    {:permanent     #{"charge"}
+                    :temporary     {}
+                    :stats         {}}
     :description "Charge"}
 
    "Leeroy Jenkins"
@@ -361,9 +371,15 @@
     :health      2
     :mana-cost   5
     :type        :minion
+    :properties    {:permanent     #{"charge"}
+                    :temporary     {}
+                    :stats         {}}
     :set         :classic
     :rarity      :legendary
-    :description "Charge. Battlecry: Summon two 1/1 Whelps for your opponent."}
+    :description "Charge. Battlecry: Summon two 1/1 Whelps for your opponent."
+    :on-play   (fn [state player-id minion-id]
+                 (add-minions-to-board state (get-other-player-id player-id) [(create-minion "Whelp")
+                                                        (create-minion "Whelp")]))}
 
    "The Mistcaller"
    {:name        "The Mistcaller"
@@ -410,7 +426,11 @@
     :sub-type    :secret
     :set         :classic
     :rarity      :common
-    :description "Secret: When your hero is attacked deal 2 damage to all enemies."}
+    :description "Secret: When your hero is attacked deal 2 damage to all enemies."
+    :on-attack   (fn [state this {,,,}]
+                   ;(when (and (hero? target)
+                   ;           (attacker an enemy )
+                              )}
 
    "Venomstrike Trap"
    {:name        "Venomstrike Trap"

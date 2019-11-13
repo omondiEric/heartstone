@@ -125,6 +125,7 @@
                                                        :deck          []
                                                        :hand          []
                                                        :minions       []
+                                                       :active-secrets []
                                                        :fatigue-level 0
                                                        :hero          {:name            "Carl"
                                                                        :id              "c"
@@ -138,6 +139,7 @@
                                                        :deck          []
                                                        :hand          []
                                                        :minions       []
+                                                       :active-secrets []
                                                        :fatigue-level 0
                                                        :hero          {:name            "Gustaf"
                                                                        :id              "h2"
@@ -475,6 +477,7 @@
                                                                         :id                          "m1"
                                                                         :position                    0
                                                                         :owner-id                    "p1"}]
+                                                       :active-secrets         []
                                                        :fatigue-level 0
                                                        :hero          {:name            "Carl"
                                                                        :id              "h1"
@@ -488,6 +491,7 @@
                                                        :deck          []
                                                        :hand          []
                                                        :minions       []
+                                                       :active-secrets []
                                                        :fatigue-level 0
                                                        :hero          {:name            "Carl"
                                                                        :id              "h2"
@@ -1479,3 +1483,45 @@
    (-> state
        (modify-minion-attack minion-id attack duration)
        (modify-minion-max-health minion-id health duration))))
+
+; Creates a secret
+(defn create-secret
+  [name & kvs]
+  (let [secret {:name            name
+                :type             :spell
+                :sub-type       :secret
+                :damage-taken    0
+                :hero-power-used false}]
+    (if (empty? kvs)
+      secret
+      (apply assoc secret kvs))))
+
+; Gets all the active secrets
+(defn get-active-secrets
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" :id "e")]}])
+                    (get-active-secrets "p1"))
+                ["Explosive Trap"])
+           (is= (-> (create-empty-state)
+                    (get-active-secrets))
+                []))}
+  ([state player-id]
+   (:active-secrets (get-player state player-id)))
+  ([state]
+   (->> (:players state)
+        (vals)
+        (map :active-secrets)
+        (apply concat))))
+
+
+; Gets a specific secret
+(defn get-active-secret
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" :id "e")]}])
+                    (get-active-secret "e")
+                    (:name))
+                "Explosive Trap"))}
+  [state id]
+  (->> (get-active-secrets state)
+       (filter (fn [s] (= (:id s) id)))
+       (first)))
