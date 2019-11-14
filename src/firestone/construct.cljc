@@ -125,6 +125,7 @@
                                                        :deck          []
                                                        :hand          []
                                                        :minions       []
+                                                       :active-secrets []
                                                        :fatigue-level 0
                                                        :hero          {:name            "Carl"
                                                                        :id              "c"
@@ -138,6 +139,7 @@
                                                        :deck          []
                                                        :hand          []
                                                        :minions       []
+                                                       :active-secrets []
                                                        :fatigue-level 0
                                                        :hero          {:name            "Gustaf"
                                                                        :id              "h2"
@@ -162,6 +164,7 @@
                                                           :deck          []
                                                           :hand          []
                                                           :minions       []
+                                                          :active-secrets []
                                                           :fatigue-level 0
                                                           :hero          (if (contains? hero :id)
                                                                            (assoc hero :owner-id (str "p" (inc index)))
@@ -337,6 +340,19 @@
                                          index))
                   state)))
 
+;todo test please
+(defn add-secret-to-player
+  [state player-id secret]
+  (update-in state [:players player-id :active-secrets] conj secret))
+
+;todo test please
+(defn add-secrets-to-player
+  [state player-id secrets]
+  (reduce (fn [state secret]
+            (add-secret-to-player state player-id secret))
+          state
+          secrets))
+
 (defn- add-card-to
   "Adds a card to either the hand or the deck."
   {:test (fn []
@@ -475,6 +491,7 @@
                                                                         :id                          "m1"
                                                                         :position                    0
                                                                         :owner-id                    "p1"}]
+                                                       :active-secrets         []
                                                        :fatigue-level 0
                                                        :hero          {:name            "Carl"
                                                                        :id              "h1"
@@ -488,6 +505,7 @@
                                                        :deck          []
                                                        :hand          []
                                                        :minions       []
+                                                       :active-secrets []
                                                        :fatigue-level 0
                                                        :hero          {:name            "Carl"
                                                                        :id              "h2"
@@ -515,6 +533,7 @@
                      (reduce (fn [state {player-id :player-id
                                          mana      :mana
                                          minions   :minions
+                                         active-secrets :active-secrets
                                          deck      :deck
                                          hand      :hand}]
                                (-> (if mana
@@ -523,6 +542,7 @@
                                          (update-max-mana player-id mana))
                                      state)
                                    (add-minions-to-board player-id minions)
+                                   (add-secrets-to-player player-id active-secrets)
                                    (add-cards-to-deck player-id deck)
                                    (add-cards-to-hand player-id hand)
                                    (assoc-in [:minion-ids-summoned-this-turn] [])))
@@ -1480,3 +1500,73 @@
    (-> state
        (modify-minion-attack minion-id attack duration)
        (modify-minion-max-health minion-id health duration))))
+
+; Creates an active-secret for a player, needs a name an an owner id
+(defn create-secret
+  [name owner-id & kvs]
+  (let [secret {:name            name
+                :type             :spell
+                :sub-type       :secret
+                :damage-taken    0
+                :owner-id       owner-id
+                :hero-power-used false}]
+    (if (empty? kvs)
+      secret
+      (apply assoc secret kvs))))
+
+; Gets all the active secrets
+(defn get-active-secrets
+  {:test (fn []
+           (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}]) $
+                      (get-active-secrets $ "p1")
+                      (map :name $))
+                ["Explosive Trap"])
+           (is= (-> (create-empty-state)
+                    (get-active-secrets))
+                []))}
+  ([state player-id]
+   (:active-secrets (get-player state player-id)))
+  ([state]
+   (->> (:players state)
+        (vals)
+        (map :active-secrets)
+        (apply concat))))
+
+; Gets a secret with a given id
+(defn get-secret
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
+                    (get-secret "e")
+                    (:name))
+                "Explosive Trap"))}
+  [state id]
+  (->> (get-active-secrets state)
+       (filter (fn [s] (= (:id s) id)))
+       (first)))
+
+; Removes a secret
+(defn remove-secret
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
+                    (remove-secret "e")
+                    (get-active-secrets))
+                []))}
+  [state id]
+  (let [owner-id (:owner-id (get-secret state id))]
+    (update-in state
+               [:players owner-id :active-secrets]
+               (fn [secrets]
+                 (remove (fn [s] (= (:id s) id)) secrets)))))
+
+
+; Gets a specific secret
+(defn get-active-secret
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
+                    (get-active-secret "e")
+                    (:name))
+                "Explosive Trap"))}
+  [state id]
+  (->> (get-active-secrets state)
+       (filter (fn [s] (= (:id s) id)))
+       (first)))

@@ -21,11 +21,11 @@
                                          get-minion-properties
                                          get-minion-stats
                                          get-other-player-id
-                                         get-minion-properties
                                          get-random-minion
                                          give-divine-shield
                                          give-property
                                          give-taunt
+                                         has-property?
                                          has-divine-shield?
                                          has-taunt?
                                          has-windfury?
@@ -121,11 +121,14 @@
            (is (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]
                                 :minion-ids-summoned-this-turn ["m"])
                    (sleepy? "m")))
+           (is-not (-> (create-game [{:minions [(create-minion "Stormwind Knight" :id "a")]}])
+                   (sleepy? "a")))
            (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]
                                     :minion-ids-summoned-this-turn [])
                        (sleepy? "m"))))}
   [state id]
-  (seq-contains? (:minion-ids-summoned-this-turn state) id))
+  (and (seq-contains? (:minion-ids-summoned-this-turn state) id)
+      (not (has-property? state id "charge"))))
 
 (defn refresh-minion-attacks
   "Changes attacks-performed-this-turn for all friendly minions to 0"
@@ -453,6 +456,11 @@
                     (get-minion "r")
                     (:damage-taken))
                 0)
+           (is= (-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}])
+                    (deal-damage "m" 2)
+                    (get-minion "m")
+                    (:damage-taken))
+                0)
            ;test to see that Ida gets taunt when a minion is damaged
            (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
                                              (create-minion "Ida" :id "i")]}])
@@ -489,6 +497,7 @@
                (remove-divine-shield $ character-id))
              ;when character is hero
              (update-in $ [:players (:owner-id character) :hero :damage-taken] (fn [x] (+ x damage-amount))))))))
+
 
 (defn deal-damage-to-all-heroes
   "Deals damage to all heroes"

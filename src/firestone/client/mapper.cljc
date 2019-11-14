@@ -118,6 +118,14 @@
                       (spell-function state (:id c)))
                     (get-characters state))]
         (map :id valid-targets)))
+
+    ;(when-let [valid-target-fn (:valid-target (get-definition card))]
+    ;  (let [spell-function (:spell-fn (get-definition card))
+    ;        valid-targets
+    ;        (filter (fn [c]
+    ;                  (valid-target-fn state card c))
+    ;                (get-characters state))]
+    ;    (map :id valid-targets)))
     ;TODO generalize this too
     (when (or (= (:name (get-definition card)) "Annika") (= (:name (get-definition card)) "Astrid"))
       (let [on-play-function (:on-play (get-definition card))
@@ -161,6 +169,7 @@
        (map (fn [c]
               (get-client-card state c)))))
 
+;todo currently does not get deathrattle or effects or others
 (defn get-minion-states
   {:test (fn []
            (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}]) $
