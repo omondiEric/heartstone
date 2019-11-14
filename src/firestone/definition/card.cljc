@@ -214,7 +214,7 @@
     :mana-cost   2
     :type        :spell
     :set         :custom
-    :valid-target (fn [state this target] true)
+    ;:valid-target (fn [state this target] true)
     :spell-fn    (fn [state character-id]
                    (deal-damage state character-id 3))
     :description "Deal 3 damage to a character."}

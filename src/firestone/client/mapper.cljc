@@ -110,13 +110,20 @@
   [state card player-id]
   (if (= (:type (get-definition card)) :spell)
     ;TODO generalize this
-    (when-let [valid-target-fn (:valid-target (get-definition card))]
+    (when (= (:name (get-definition card)) "Radar Raid")
       (let [spell-function (:spell-fn (get-definition card))
             valid-targets
             (filter (fn [c]
-                      (valid-target-fn state card c))
+                      (spell-function state (:id c)))
                     (get-characters state))]
         (map :id valid-targets)))
+    ;(when-let [valid-target-fn (:valid-target (get-definition card))]
+    ;  (let [spell-function (:spell-fn (get-definition card))
+    ;        valid-targets
+    ;        (filter (fn [c]
+    ;                  (valid-target-fn state card c))
+    ;                (get-characters state))]
+    ;    (map :id valid-targets)))
     ;TODO generalize this too
     (when (or (= (:name (get-definition card)) "Annika") (= (:name (get-definition card)) "Astrid"))
       (let [on-play-function (:on-play (get-definition card))

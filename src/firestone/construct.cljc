@@ -164,6 +164,7 @@
                                                           :deck          []
                                                           :hand          []
                                                           :minions       []
+                                                          :active-secrets []
                                                           :fatigue-level 0
                                                           :hero          (if (contains? hero :id)
                                                                            (assoc hero :owner-id (str "p" (inc index)))
@@ -338,6 +339,19 @@
                                            minion)
                                          index))
                   state)))
+
+;todo test please
+(defn add-secret-to-player
+  [state player-id secret]
+  (update-in state [:players player-id :active-secrets] conj secret))
+
+;todo test please
+(defn add-secrets-to-player
+  [state player-id secrets]
+  (reduce (fn [state secret]
+            (add-secret-to-player state player-id secret))
+          state
+          secrets))
 
 (defn- add-card-to
   "Adds a card to either the hand or the deck."
@@ -519,6 +533,7 @@
                      (reduce (fn [state {player-id :player-id
                                          mana      :mana
                                          minions   :minions
+                                         active-secrets :active-secrets
                                          deck      :deck
                                          hand      :hand}]
                                (-> (if mana
@@ -527,6 +542,7 @@
                                          (update-max-mana player-id mana))
                                      state)
                                    (add-minions-to-board player-id minions)
+                                   (add-secrets-to-player player-id active-secrets)
                                    (add-cards-to-deck player-id deck)
                                    (add-cards-to-hand player-id hand)
                                    (assoc-in [:minion-ids-summoned-this-turn] [])))
@@ -1499,8 +1515,9 @@
 ; Gets all the active secrets
 (defn get-active-secrets
   {:test (fn []
-           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" :id "e")]}])
-                    (get-active-secrets "p1"))
+           (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" :id "e")]}]) $
+                    (get-active-secrets $ "p1")
+                      (map :name $))
                 ["Explosive Trap"])
            (is= (-> (create-empty-state)
                     (get-active-secrets))
