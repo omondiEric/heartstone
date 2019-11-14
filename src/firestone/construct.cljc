@@ -1500,45 +1500,24 @@
        (modify-minion-attack minion-id attack duration)
        (modify-minion-max-health minion-id health duration))))
 
-; Creates a secret
+; Creates an active-secret for a player, needs a name an an owner id
 (defn create-secret
-  [name & kvs]
+  [name owner-id & kvs]
   (let [secret {:name            name
                 :type             :spell
                 :sub-type       :secret
                 :damage-taken    0
+                :owner-id       owner-id
                 :hero-power-used false}]
     (if (empty? kvs)
       secret
       (apply assoc secret kvs))))
 
-; Gets a secret with a given id
-;todo test (and ones below too)
-(defn get-secret
-  [state id]
-  (->> (get-active-secrets state)
-       (filter (fn [s] (= (:id s) id)))
-       (first)))
-
-; Removes a secret
-(defn remove-secret
-  [state id]
-  (let [owner-id (:owner-id (get-secret state id))]
-    (update-in state
-               [:players owner-id :active-secrets]
-               (fn [secrets]
-                 (remove (fn [s] (= (:id s) id)) secrets)))))
-
-(defn remove-secrets
-  [state & ids]
-  (reduce remove-secret state ids))
-
-
 ; Gets all the active secrets
 (defn get-active-secrets
   {:test (fn []
-           (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" :id "e")]}]) $
-                    (get-active-secrets $ "p1")
+           (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}]) $
+                      (get-active-secrets $ "p1")
                       (map :name $))
                 ["Explosive Trap"])
            (is= (-> (create-empty-state)
@@ -1552,11 +1531,37 @@
         (map :active-secrets)
         (apply concat))))
 
+; Gets a secret with a given id
+(defn get-secret
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
+                    (get-secret "e")
+                    (:name))
+                "Explosive Trap"))}
+  [state id]
+  (->> (get-active-secrets state)
+       (filter (fn [s] (= (:id s) id)))
+       (first)))
+
+; Removes a secret
+(defn remove-secret
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
+                    (remove-secret "e")
+                    (get-active-secrets))
+                []))}
+  [state id]
+  (let [owner-id (:owner-id (get-secret state id))]
+    (update-in state
+               [:players owner-id :active-secrets]
+               (fn [secrets]
+                 (remove (fn [s] (= (:id s) id)) secrets)))))
+
 
 ; Gets a specific secret
 (defn get-active-secret
   {:test (fn []
-           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" :id "e")]}])
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
                     (get-active-secret "e")
                     (:name))
                 "Explosive Trap"))}

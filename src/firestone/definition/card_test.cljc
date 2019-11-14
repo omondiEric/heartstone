@@ -4,8 +4,10 @@
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [create-game
                                          create-card
+                                         create-secret
                                          create-minion
                                          do-game-event-functions
+                                         get-active-secrets
                                          get-card
                                          get-characters
                                          get-hand
@@ -219,6 +221,10 @@
                     (map :name $))
               ["Tjorven", "Whelp", "Whelp"]))
 
-;(deftest Eater-of-Secrets
-;         "Battlecry: Destroy all enemy Secrets. Gain +1/+1 for each."
-;         )
+(deftest Eater-of-Secrets
+         "Battlecry: Destroy all enemy Secrets. Gain +1/+1 for each."
+         (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}
+                                  {:hand [(create-card "Eater of Secrets" :id "s")]}]) $
+                    (play-minion-card $ "p2" "s" 0)
+                    (get-active-secrets $ "p1"))
+              ()))
