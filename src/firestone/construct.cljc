@@ -1512,6 +1512,28 @@
       secret
       (apply assoc secret kvs))))
 
+; Gets a secret with a given id
+;todo test (and ones below too)
+(defn get-secret
+  [state id]
+  (->> (get-active-secrets state)
+       (filter (fn [s] (= (:id s) id)))
+       (first)))
+
+; Removes a secret
+(defn remove-secret
+  [state id]
+  (let [owner-id (:owner-id (get-secret state id))]
+    (update-in state
+               [:players owner-id :active-secrets]
+               (fn [secrets]
+                 (remove (fn [s] (= (:id s) id)) secrets)))))
+
+(defn remove-secrets
+  [state & ids]
+  (reduce remove-secret state ids))
+
+
 ; Gets all the active secrets
 (defn get-active-secrets
   {:test (fn []

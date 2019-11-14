@@ -218,3 +218,7 @@
                   (get-minions $ "p1")
                     (map :name $))
               ["Tjorven", "Whelp", "Whelp"]))
+
+;(deftest Eater-of-Secrets
+;         "Battlecry: Destroy all enemy Secrets. Gain +1/+1 for each."
+;         )

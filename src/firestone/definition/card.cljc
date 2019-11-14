@@ -6,6 +6,7 @@
                                          create-card
                                          create-minion
                                          friendly-minions?
+                                         get-active-secrets
                                          get-minion
                                          get-random-minion
                                          get-other-player-id
@@ -14,6 +15,7 @@
                                          minion?
                                          modify-minion-stats
                                          replace-minion
+                                         remove-secret
                                          ida-present?
                                          switch-minion-side
                                          update-minion
@@ -341,6 +343,12 @@
     :type        :minion
     :set         :whispers-of-the-old-gods
     :rarity      :rare
+    :on-play     (fn [state player-id minion-id]
+                   (reduce (fn [state secret-id]
+                             (-> (remove-secret state secret-id)
+                             (modify-minion-stats minion-id 1 1)))
+                           state
+                           (map :id (get-active-secrets state (get-other-player-id player-id)))))
     :description "Battlecry: Destroy all enemy Secrets. Gain +1/+1 for each."}
 
    "Kezan Mystic"
