@@ -12,6 +12,7 @@
                                          get-hero
                                          get-minion
                                          get-minions
+                                         get-minion-properties
                                          get-minion-stats
                                          get-other-player-id
                                          give-deathrattle
@@ -21,7 +22,8 @@
             [firestone.core :refer [deal-damage
                                     do-on-play
                                     do-deathrattle
-                                    get-health]]
+                                    get-health
+                                    silence-minion]]
             [firestone.core-api :refer [attack-minion
                                         draw-card
                                         end-turn
@@ -202,3 +204,20 @@
                     (map :id $))
               ["t" "e"]))
 
+(deftest Silence
+         "Silence a minion"
+         (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]
+                                   :hand    [(create-card "Silence" :id "s")]}]) $
+                    (play-spell-card $ "p1" "s" "j")
+                    (get-minion-properties $ "j"))
+              {:permanent #{}, :temporary {}, :stats {}})
+         )
+
+(deftest Spellbreaker
+         "Battlecry: silence a minion"
+         (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}
+                                  {:hand [(create-card "Spellbreaker" :id "s")]}]) $
+                    (play-minion-card $ "p2" "s" 0 "j")
+                    (get-minion-properties $ "j"))
+              {:permanent #{}, :temporary {}, :stats {}})
+         )

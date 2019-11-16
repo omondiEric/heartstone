@@ -20,7 +20,8 @@
             [firestone.core :refer [deal-damage
                                     deal-damage-to-other-minions
                                     deal-damage-to-all-minions
-                                    deal-damage-to-all-heroes]]
+                                    deal-damage-to-all-heroes
+                                    silence-minion]]
             [firestone.core-api :refer [draw-card]]))
 
 (def card-definitions
@@ -56,7 +57,7 @@
                   :temporary {}
                   :stats     {}}
     :description "Battlecry: Deal 4 damage to the enemy hero."
-    :on-play     (fn [state player-id minion-id]
+    :battlecry     (fn [state player-id minion-id]
                    (let [target-hero-id (get-in state [:players (get-other-player-id player-id) :hero :id])]
                      (deal-damage state target-hero-id 4)))}
 
@@ -70,7 +71,7 @@
                   :temporary {}
                   :stats     {}}
     :description "Battlecry: Draw a card."
-    :on-play     (fn [state player-id minion-id]
+    :battlecry     (fn [state player-id minion-id]
                    (draw-card state player-id))}
 
    "Jonatan"
@@ -267,7 +268,8 @@
                   :stats     {}}
     :set         :custom
     :description "Battlecry: Copy another minions deathrattle."
-    :on-play     (fn [state player-id minion-id target-id] (give-deathrattle state minion-id (:name (get-minion state target-id))))}
+    :battlecry     (fn [state player-id minion-id target-id]
+                     (give-deathrattle state minion-id (:name (get-minion state target-id))))}
 
    "Skrallan"
    {:name                     "Skrallan"
@@ -296,7 +298,7 @@
                   :stats     {}}
     :set         :custom
     :description "Battlecry: Give a minion +2 Attack this turn."
-    :on-play     (fn [state player-id minion-id target-id] (when (minion? (get-minion state target-id))
+    :battlecry     (fn [state player-id minion-id target-id] (when (minion? (get-minion state target-id))
                                                              (modify-minion-stats state target-id 2 0 1)))}
 
    "Al'Akir the Windlord"
@@ -386,7 +388,9 @@
     :type        :minion
     :set         :classic
     :rarity      :common
-    :description "Battlecry: Silence a minion."}
+    :description "Battlecry: Silence a minion."
+    :battlecry    (fn [state player-id minion-id target-id]
+                    (silence-minion state target-id))}
 
    "Shudderwock"
    {:name        "Shudderwock"
@@ -404,7 +408,9 @@
     :type        :spell
     :set         :classic
     :rarity      :common
-    :description "Silence a minion."}
+    :description "Silence a minion."
+    :spell-fn    (fn [state minion-id]
+                   (silence-minion state minion-id))}
 
    "Explosive Trap"
    {:name        "Explosive Trap"

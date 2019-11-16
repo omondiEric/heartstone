@@ -120,11 +120,11 @@
         (map :id valid-targets)))
     ;TODO generalize this too
     (when (or (= (:name (get-definition card)) "Annika") (= (:name (get-definition card)) "Astrid"))
-      (let [on-play-function (:on-play (get-definition card))
+      (let [battlecry-function (:battlecry (get-definition card))
             valid-targets
-            (when on-play-function
+            (when battlecry-function
               (filter (fn [c]
-                        (on-play-function state player-id (:id card) (:id c)))
+                        (battlecry-function state player-id (:id card) (:id c)))
                       (get-characters state)))]
         (map :id valid-targets)))))
 

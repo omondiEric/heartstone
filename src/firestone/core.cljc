@@ -278,13 +278,13 @@
   ;definition is required because it gets around the problem of here card-id is for a card, but in play-minion-card
   ;the card will be played and becomes a minion
   ([state player-id card-id minion-def]
-   (if (contains? minion-def :on-play)
-     (let [on-play-fn (:on-play minion-def)]
+   (if (contains? minion-def :battlecry)
+     (let [on-play-fn (:battlecry minion-def)]
        (on-play-fn state player-id card-id))
      state))
   ([state player-id card-id minion-def target-id]
-   (if (contains? minion-def :on-play)
-     (let [on-play-fn (:on-play minion-def)]
+   (if (contains? minion-def :battlecry)
+     (let [on-play-fn (:battlecry minion-def)]
        (on-play-fn state player-id card-id target-id))
      state)))
 
