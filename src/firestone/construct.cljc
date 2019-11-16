@@ -306,14 +306,14 @@
                                    :id id
                                    :added-to-board-time-id time-id)]
     (-> (update-in state
-               [:players player-id :minions]
-               (fn [minions]
-                 (conj (->> minions
-                            (mapv (fn [m]
-                                    (if (< (:position m) position)
-                                      m
-                                      (update m :position inc)))))
-                       ready-minion)))
+                   [:players player-id :minions]
+                   (fn [minions]
+                     (conj (->> minions
+                                (mapv (fn [m]
+                                        (if (< (:position m) position)
+                                          m
+                                          (update m :position inc)))))
+                           ready-minion)))
         (update-in [:minion-ids-summoned-this-turn] (fn [list] (conj list (:id minion)))))))
 
 
@@ -588,7 +588,7 @@
                                              (create-minion "Emil" :id "e2")]}
                                   {:minions [(create-minion "Emil" :id "e3")]
                                    :deck    [(create-minion "Emil" :id "e4")
-                                            (create-minion "Emil" :id "e5")]}])
+                                             (create-minion "Emil" :id "e5")]}])
                     (get-deck-size "p1"))
                 2)
            )}
@@ -614,7 +614,6 @@
                           new-minion
                           m))
                       minions)))))
-;position, added-to-board-time-id, owner-id
 
 (defn update-minion
   "Updates the value of the given key for the minion with the given id. If function-or-value is a value it will be the
@@ -1145,6 +1144,22 @@
                                              (update-in properties-map [:temporary] (fn [temporary-set]
                                                                                       (dissoc temporary-set (keyword property))))))))
 
+(defn remove-all-properties
+  {:test (fn []
+           (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}]) $
+                 (give-property $ "j" "windfury" 1)
+                 (remove-all-properties $ "j")
+                 (do (is-not (has-property? $ "j" "taunt"))
+                     (is-not (has-property? $ "j" "windfury"))))
+           )}
+  [state minion-id]
+  (-> state
+      (update-minion minion-id :properties (fn [properties-map]
+                                             (assoc-in properties-map [:permanent] #{})))
+      (update-minion minion-id :properties (fn [properties-map]
+                                             (assoc-in properties-map [:temporary] {})))
+      ))
+
 (defn give-taunt
   "Gives taunt to a minion"
   {:test (fn []
@@ -1480,3 +1495,39 @@
    (-> state
        (modify-minion-attack minion-id attack duration)
        (modify-minion-max-health minion-id health duration))))
+
+(defn remove-minion-stat-buffs
+  "Resets minion's stats to original"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (modify-minion-stats "e" 3 3)
+                    (modify-minion-stats "e" 1 1 1)
+                    (remove-minion-stat-buffs "e")
+                    (get-minion-stats "e"))
+                [1, 1])
+           ;can add buffs after removal
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (modify-minion-stats "e" 3 3)
+                    (modify-minion-stats "e" 1 1 1)
+                    (remove-minion-stat-buffs "e")
+                    (modify-minion-stats "e" 3 3)
+                    (get-minion-stats "e"))
+                [4, 4])
+           )}
+  [state minion-id]
+  (update-minion state minion-id :properties (fn [properties-map]
+                                               (assoc-in properties-map [:stats] {}))))
+
+(defn remove-minion-effects
+  "Remove all deathrattle, on-turn, etc effects from a minion"
+  {:test (fn []
+           (is-not (-> (create-game [{:minions [(create-minion "Madicken" :id "e")]}])
+                         (remove-minion-effects "e")
+                         (get-minion "e")
+                         (:deathrattle)))
+           )}
+  [state minion-id]
+  (let [minion (get-minion state minion-id)
+        standard-minion-keys (map first
+                                  (filter (fn [x] (not (contains? game-event-fn-names (key x)))) minion))]
+    (replace-minion state (select-keys minion standard-minion-keys))))

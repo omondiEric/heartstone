@@ -111,7 +111,7 @@
 (deftest Madicken
          "Summons elisabeth on death"
          (is= (-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}])
-                  (deal-damage "m" 2))
+                  (deal-damage "m" 2)
                   (get-minions "p1")
                   (first)
                   (:name))

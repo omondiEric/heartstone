@@ -146,7 +146,7 @@
     :health      5
     :mana-cost   6
     :type        :minion
-    :properties  {:permanent #{"deathrattle"}
+    :properties  {:permanent #{}
                   :temporary {}
                   :stats     {}}
     :set         :custom
@@ -173,7 +173,7 @@
     :health      2
     :mana-cost   2
     :type        :minion
-    :properties  {:permanent #{"deathrattle"}
+    :properties  {:permanent #{}
                   :temporary {}
                   :stats     {}}
     :set         :custom
@@ -298,6 +298,7 @@
     :description "Battlecry: Give a minion +2 Attack this turn."
     :on-play     (fn [state player-id minion-id target-id] (when (minion? (get-minion state target-id))
                                                              (modify-minion-stats state target-id 2 0 1)))}
+
    "Al'Akir the Windlord"
    {:name        "Al'Akir the Windlord"
     :attack      3
@@ -433,19 +434,25 @@
     :description "Secret: When a minion attacks your hero destroy it."}
 
    "Whelp"
-   {:name      "Whelp"
-    :attack    1
-    :health    1
-    :mana-cost 1
-    :set       :classic
-    :type      :minion
-    :rarity    :common}
+   {:name       "Whelp"
+    :attack     1
+    :health     1
+    :mana-cost  1
+    :properties {:permanent #{}
+                 :temporary {}
+                 :stats     {}}
+    :set        :classic
+    :type       :minion
+    :rarity     :common}
 
    "Emperor Cobra"
    {:name        "Emperor Cobra"
     :attack      2
     :health      3
     :mana-cost   3
+    :properties  {:permanent #{"poisonous"}
+                  :temporary {}
+                  :stats     {}}
     :type        :minion
     :set         :classic
     :rarity      :rare
