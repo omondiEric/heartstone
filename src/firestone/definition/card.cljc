@@ -1,10 +1,13 @@
 (ns firestone.definition.card
   (:require [firestone.definitions :as definitions]
             [firestone.definitions :refer [get-definition]]
-            [firestone.construct :refer [create-game
+            [firestone.construct :refer [buff-minion-card
+                                         create-game
                                          create-card
                                          create-minion
                                          friendly-minions?
+                                         get-deck
+                                         get-hand
                                          get-minion
                                          get-random-minion
                                          get-other-player-id
@@ -376,9 +379,15 @@
     :health      4
     :mana-cost   6
     :type        :minion
+    :properties  {:permanent #{}
+                  :temporary {}
+                  :stats     {}}
     :set         :the-grand-tournament
     :rarity      :legendary
-    :description "Battlecry: Give all minions in your hand and deck +1/+1."}
+    :description "Battlecry: Give all minions in your hand and deck +1/+1."
+    :battlecry   (fn [state player-id minion-id]
+                   (let [card-ids (concat (map :id (get-hand state player-id)) (map :id (get-deck state player-id)))]
+                     (reduce (fn [new-state card-id] (buff-minion-card new-state card-id 1 1)) state card-ids)))}
 
    "Spellbreaker"
    {:name        "Spellbreaker"

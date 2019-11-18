@@ -12,12 +12,14 @@
                                          get-hero
                                          get-minion
                                          get-minions
+                                         get-minion-card-stat-buffs
                                          get-minion-properties
                                          get-minion-stats
                                          get-other-player-id
                                          give-deathrattle
                                          has-divine-shield?
                                          has-taunt?
+                                         update-mana
                                          update-minion]]
             [firestone.core :refer [deal-damage
                                     do-on-play
@@ -214,10 +216,31 @@
          )
 
 (deftest Spellbreaker
-         "Battlecry: silence a minion"
+         "Battlecry: Silence a minion"
          (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}
                                   {:hand [(create-card "Spellbreaker" :id "s")]}]) $
                     (play-minion-card $ "p2" "s" 0 "j")
                     (get-minion-properties $ "j"))
               {:permanent #{}, :temporary {}, :stats {}})
+         )
+
+(deftest The-Mistcaller
+         "Battlecry: Give all minions in your hand and deck +1/+1."
+         (as-> (create-game [{:hand [(create-card "Emil" :id "e")
+                                     (create-card "The Mistcaller" :id "tm")]
+                              :deck [(create-card "Madicken" :id "m")]}]) $
+               (play-minion-card $ "p1" "tm" 0)
+               (do
+                 (is= (get-minion-card-stat-buffs $ "e")
+                      [1 1])
+                 (is= (get-minion-card-stat-buffs $ "m")
+                      [1 1])
+                 (play-minion-card $ "p1" "e" 1))
+               (update-mana $ "p1" 10)
+               (play-minion-card $ "p1" "m" 2)
+               (do
+                 (is= (get-minion-stats $ "e")
+                      [3 6])
+                 (is= (get-minion-stats $ "m")
+                      [2 3])))
          )

@@ -733,6 +733,96 @@
        (filter (fn [c] (= (:id c) card-id)))
        (first)))
 
+(defn card-in-hand?
+  "Returns whether a card is in the hand"
+  {:test (fn []
+           (is (as-> (create-game [{:hand [(create-card "Mio" :id "m")]}]) $
+                     (card-in-hand? $ "m")))
+           (is-not (-> (create-game [{:deck [(create-card "Mio" :id "m")]}])
+                       (card-in-hand? "m")))
+           )}
+  [state card-id]
+  (let [owner-id (:owner-id (get-card state card-id))
+        hand-ids (map :id (get-hand state owner-id))]
+    (not (nil? (some (fn [item] (= card-id item)) hand-ids)))))
+
+
+(defn card-in-deck?
+  "Returns whether a card is in the deck"
+  {:test (fn []
+           (is-not (as-> (create-game [{:hand [(create-card "Mio" :id "m")]}]) $
+                         (card-in-deck? $ "m")))
+           (is (-> (create-game [{:deck [(create-card "Mio" :id "m")]}])
+                   (card-in-deck? "m")))
+           )}
+  [state card-id]
+  (let [owner-id (:owner-id (get-card state card-id))
+        deck-ids (map :id (get-deck state owner-id))]
+    (not (nil? (some (fn [item] (= card-id item)) deck-ids)))))
+
+(defn replace-card
+  "Replaces a card with the same id as the given new-card."
+  {:test (fn []
+           ;card in hand
+           (is= (-> (create-game [{:hand [(create-card "Mio" :id "m")]}])
+                    (replace-card (create-card "Ronja" :id "m"))
+                    (get-card "m")
+                    (:name))
+                "Ronja")
+           ;card in deck
+           (is= (-> (create-game [{:deck [(create-card "Mio" :id "m")]}])
+                    (replace-card (create-card "Ronja" :id "m"))
+                    (get-card "m")
+                    (:name))
+                "Ronja")
+           ;card not in hand or deck
+           (error? (-> (create-game [{:hand [(create-card "Mio" :id "m")]}])
+                       (replace-card (create-card "Ronja" :id "e"))))
+           )}
+  [state new-card]
+  (let [owner-id (or (:owner-id new-card)
+                     (:owner-id (get-card state (:id new-card))))]
+    (cond
+      (card-in-hand? state (:id new-card))
+      (update-in state
+                 [:players owner-id :hand]
+                 (fn [card]
+                   (map (fn [m]
+                          (if (= (:id m) (:id new-card))
+                            new-card
+                            m))
+                        card)))
+      (card-in-deck? state (:id new-card))
+      (update-in state
+                 [:players owner-id :deck]
+                 (fn [card]
+                   (map (fn [m]
+                          (if (= (:id m) (:id new-card))
+                            new-card
+                            m))
+                        card)))
+      :else (error "Card not found"))))
+
+(defn update-card
+  "Like update-minion but for cards"
+  {:test (fn []
+           (is= (-> (create-game [{:hand [(create-card "Mio" :id "m" :attack-buff 1)]}])
+                    (update-card "m" :attack-buff inc)
+                    (get-card "m")
+                    (:attack-buff))
+                2)
+           (is= (-> (create-game [{:hand [(create-card "Mio" :id "m")]}])
+                    (update-card "m" :attack-buff 2)
+                    (get-card "m")
+                    (:attack-buff))
+                2)
+           )}
+  [state id key function-or-value]
+  (let [card (get-card state id)]
+    (replace-card state (if (fn? function-or-value)
+                          (update card key function-or-value)
+                          (assoc card key function-or-value)))))
+
 (defn remove-card-from-hand
   {:test (fn []
            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")
@@ -1040,8 +1130,6 @@
                     (get-minion "e1")
                     (:damage-taken))
                 1)
-           ; testing on minion damage function: Note for steve: this currently doesnt work because "give-taunt"
-           ; doesnt work  - but once that is fixed, this should work
            (is= (as-> (create-game [{:minions [(create-minion "Ida" :id "i")
                                                (create-minion "Mio" :id "m")
                                                (create-minion "Emil" :id "e1")
@@ -1522,12 +1610,110 @@
   "Remove all deathrattle, on-turn, etc effects from a minion"
   {:test (fn []
            (is-not (-> (create-game [{:minions [(create-minion "Madicken" :id "e")]}])
-                         (remove-minion-effects "e")
-                         (get-minion "e")
-                         (:deathrattle)))
+                       (remove-minion-effects "e")
+                       (get-minion "e")
+                       (:deathrattle)))
            )}
   [state minion-id]
   (let [minion (get-minion state minion-id)
         standard-minion-keys (map first
                                   (filter (fn [x] (not (contains? game-event-fn-names (key x)))) minion))]
     (replace-minion state (select-keys minion standard-minion-keys))))
+
+
+(defn get-minion-card-stat-buffs
+  "Gets the stat buffs applied to a minion card"
+  {:test (fn []
+           (is= (-> (create-game [{:hand [(create-card "Madicken" :id "e")]}])
+                    (get-minion-card-stat-buffs "e"))
+                [0 0])
+           (is= (-> (create-game [{:hand [(create-card "Madicken" :id "e" :attack-buff 2 :health-buff 2)]}])
+                    (get-minion-card-stat-buffs "e"))
+                [2 2])
+           )}
+  [state card-id]
+  (let [attack-buff (:attack-buff (get-card state card-id))
+        health-buff (:health-buff (get-card state card-id))]
+    (let [attack-buff (if (nil? attack-buff) 0 attack-buff)
+          health-buff (if (nil? health-buff) 0 health-buff)]
+      [attack-buff, health-buff])))
+
+(defn buff-minion-card
+  "Gives a minion card a stat buff"
+  {:test (fn []
+           ;card in hand
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 2 2)
+                    (get-minion-card-stat-buffs "e"))
+                [2 2])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 2 0)
+                    (get-minion-card-stat-buffs "e"))
+                [2 0])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 0 2)
+                    (get-minion-card-stat-buffs "e"))
+                [0 2])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 0 0)
+                    (get-minion-card-stat-buffs "e"))
+                [0 0])
+           ;card in deck
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 2 2)
+                    (get-minion-card-stat-buffs "e"))
+                [2 2])
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 2 0)
+                    (get-minion-card-stat-buffs "e"))
+                [2 0])
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 0 2)
+                    (get-minion-card-stat-buffs "e"))
+                [0 2])
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 0 0)
+                    (get-minion-card-stat-buffs "e"))
+                [0 0])
+           ;multiple buffs
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 2 2)
+                    (buff-minion-card "e" 2 2)
+                    (get-minion-card-stat-buffs "e"))
+                [4 4])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 2 0)
+                    (buff-minion-card "e" 2 0)
+                    (get-minion-card-stat-buffs "e"))
+                [4 0])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 0 2)
+                    (buff-minion-card "e" 0 2)
+                    (get-minion-card-stat-buffs "e"))
+                [0 4])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 0 2)
+                    (buff-minion-card "e" 2 0)
+                    (get-minion-card-stat-buffs "e"))
+                [2 2])
+           )}
+  [state card-id attack health]
+  (cond
+    (and (> attack 0) (> health 0))
+    (as-> state $
+          (if (nil? (:attack-buff (get-card $ card-id)))
+            (update-card $ card-id :attack-buff attack)
+            (update-card $ card-id :attack-buff (fn [x] (+ attack x))))
+          (if (nil? (:health-buff (get-card $ card-id)))
+            (update-card $ card-id :health-buff health)
+            (update-card $ card-id :health-buff (fn [x] (+ health x)))))
+    (> attack 0)
+    (if (nil? (:attack-buff (get-card state card-id)))
+      (update-card state card-id :attack-buff attack)
+      (update-card state card-id :attack-buff (fn [x] (+ attack x))))
+    (> health 0)
+    (if (nil? (:health-buff (get-card state card-id)))
+      (update-card state card-id :health-buff health)
+      (update-card state card-id :health-buff (fn [x] (+ health x))))
+    :else state))
+
