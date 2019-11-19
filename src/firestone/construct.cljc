@@ -1061,8 +1061,6 @@
                     (get-minion "e1")
                     (:damage-taken))
                 1)
-           ; testing on minion damage function: Note for steve: this currently doesnt work because "give-taunt"
-           ; doesnt work  - but once that is fixed, this should work
            (is= (as-> (create-game [{:minions [(create-minion "Ida" :id "i")
                                                (create-minion "Mio" :id "m")
                                                (create-minion "Emil" :id "e1")
@@ -1350,6 +1348,7 @@
   [state]
   (some (fn [m] (when (= (:name m) "Ida") m))
         (get-minions state)))
+
 
 (defn get-minion-stats
   "Gets the stats of a minion"

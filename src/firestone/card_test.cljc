@@ -1,13 +1,11 @@
-(ns firestone.definition.card_test
+(ns firestone.card_test
   (:require [ysera.test :refer [deftest is is-not is= error?]]
             [ysera.error :refer [error]]
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [create-game
                                          create-card
-                                         create-secret
                                          create-minion
                                          do-game-event-functions
-                                         get-active-secrets
                                          get-card
                                          get-characters
                                          get-hand
@@ -102,18 +100,18 @@
                    (has-taunt? $ "k"))))
 
 (deftest Uncle-Nilsson
-         "Take control of random enemy minion on death"
+         "take control of random enemy minion on death"
          (is= (-> (create-game [{:minions [(create-minion "Uncle Nilsson" :id "n")]}
                                 {:minions [(create-minion "Mio" :id "m")]}])
-                  (deal-damage "n" 10)
+                  (do-deathrattle "n")
                   (get-minions "p2")
                   (count))
               0))
 
 (deftest Madicken
-         "Summons elisabeth on death"
+         "summons elisabeth on death"
          (is= (-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}])
-                  (deal-damage "m" 2)
+                  (do-deathrattle "m")
                   (get-minions "p1")
                   (first)
                   (:name))
@@ -204,27 +202,13 @@
                     (map :id $))
               ["t" "e"]))
 
-;todo update this once a secret card works
-(deftest Secretkeeper
-         "Gain +1/+1"
-         (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")
-                                           (create-minion "Secretkeeper" :id "s")]}])
-                  (get-minion-stats "s"))
-              [1, 2]))
+(deftest Vaporize)
 
-(deftest Leeroy-Jenkins
-         "Battlecry: Summon two 1/1 Whelps for your opponent"
-         (is= (as-> (create-game [{:minions [(create-minion "Tjorven" :id "t")]}
-                                {:hand [(create-card "Leeroy Jenkins" :id "l")]}]) $
-                  (play-minion-card $ "p2" "l" 0)
-                  (get-minions $ "p1")
-                    (map :name $))
-              ["Tjorven", "Whelp", "Whelp"]))
+(deftest Venomstrike Trap)
 
-(deftest Eater-of-Secrets
-         "Battlecry: Destroy all enemy Secrets. Gain +1/+1 for each."
-         (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}
-                                  {:hand [(create-card "Eater of Secrets" :id "s")]}]) $
-                    (play-minion-card $ "p2" "s" 0)
-                    (get-active-secrets $ "p1"))
-              ()))
+(deftest Explosive Trap)
+
+(deftest Mad Scientist)
+
+
+

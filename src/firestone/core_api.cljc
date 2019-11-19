@@ -298,7 +298,9 @@
   (let [attacker-attack-val (get-attack state attacker-id)]
     (when (valid-attack? state player-id attacker-id target-hero-id)
       (-> (deal-damage state target-hero-id attacker-attack-val)
-          (update-minion attacker-id :attacks-performed-this-turn inc)))))
+          (update-minion attacker-id :attacks-performed-this-turn inc)
+          ;(do-game-event-functions :on-attack attacker-id)
+          ))))
 
 (defn attack-hero-or-minion
   {:test (fn []
@@ -314,9 +316,11 @@
                     (get-health "r"))
                 1))}
   [state player-id attacker-id target-id]
-  (if (minion? (get-character state target-id))
-    (attack-minion state player-id attacker-id target-id)
-    (attack-hero state player-id attacker-id target-id)))
+  (cond (minion? (get-character state target-id))
+        (-> (attack-minion state player-id attacker-id target-id)
+            (do-game-event-functions :on-attack attacker-id target-id))
+        :else (-> (attack-hero state player-id attacker-id target-id)
+                  (do-game-event-functions :on-attack attacker-id target-id))))
 
 (defn play-spell-card
   "Plays a spell card, removes it from hand"

@@ -2,12 +2,17 @@
   (:require [firestone.definitions :as definitions]
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [add-minions-to-board
+                                         add-minion-to-board
                                          create-game
                                          create-card
                                          create-minion
                                          friendly-minions?
                                          get-active-secrets
+                                         get-character
+                                         get-deck
                                          get-minion
+                                         get-minions
+                                         get-player
                                          get-random-minion
                                          get-other-player-id
                                          give-deathrattle
@@ -16,6 +21,7 @@
                                          modify-minion-stats
                                          replace-minion
                                          remove-secret
+                                         remove-card-from-deck
                                          ida-present?
                                          switch-minion-side
                                          update-minion
@@ -24,13 +30,15 @@
                                     deal-damage-to-other-minions
                                     deal-damage-to-all-minions
                                     deal-damage-to-all-heroes]]
-            [firestone.core-api :refer [draw-card]]))
+            [firestone.core-api :refer [draw-card
+                                        kill-minion-fn
+                                        play-card]]))
 
 (def card-definitions
-  {
 
-   "Mio"
-   {:name       "Mio"
+
+  "Mio"
+  {{:name       "Mio"
     :attack     1
     :health     2
     :mana-cost  1
@@ -308,24 +316,24 @@
     :health      5
     :mana-cost   8
     :type        :minion
-    :properties    {:permanent     #{"windfury", "taunt", "divine-shield" "charge"}
-                    :temporary     {}
-                    :stats         {}}
+    :properties  {:permanent #{"windfury", "taunt", "divine-shield" "charge"}
+                  :temporary {}
+                  :stats     {}}
     :set         :classic
     :rarity      :legendary
     :description "Windfury, Charge, Divine Shield, Taunt"}
 
    "Secretkeeper"
-   {:name        "Secretkeeper",
-    :attack      1
-    :health      2
-    :mana-cost   1
-    :type        :minion
-    :set         :classic
-    :rarity      :rare
-    :secret-played  (fn [state minion-id]
-                      (modify-minion-stats state minion-id 1 1))
-    :description "Whenever a Secret is played, gain +1/+1."}
+   {:name          "Secretkeeper",
+    :attack        1
+    :health        2
+    :mana-cost     1
+    :type          :minion
+    :set           :classic
+    :rarity        :rare
+    :secret-played (fn [state minion-id]
+                     (modify-minion-stats state minion-id 1 1))
+    :description   "Whenever a Secret is played, gain +1/+1."}
 
    "Mad Scientist"
    {:name        "Mad Scientist"
@@ -335,7 +343,21 @@
     :type        :minion
     :set         :curse-of-naxxramas
     :rarity      :common
-    :description "Deathrattle: Put a Secret from your deck into the battlefield."}
+    :description "Deathrattle: Put a Secret from your deck into the battlefield."
+    ;get player deck - stores minions?? cards??
+    ;scan for active secrets and get them
+    ;remove the secret from deck - remove-card-from-deck // there is no remove-minion-from-deck
+    ;add secret to board - add-minion-to-board
+
+    ;or get-character then add it to board as a minion
+    :deathrattle (fn [state owner-id]
+                   (let [the-secret (->> (get-deck state owner-id)
+                                         (filter (fn [s] (= (:sub-type s) :secret)))
+                                         (first))
+                         secret-id (:id the-secret)]
+                     (as-> state $
+                           (remove-card-from-deck $ owner-id secret-id)
+                           play-card (state $ owner-id secret-id 0))))}
 
    "Eater of Secrets"
    {:name        "Eater of Secrets"
@@ -348,7 +370,7 @@
     :on-play     (fn [state player-id minion-id]
                    (reduce (fn [state secret-id]
                              (-> (remove-secret state secret-id)
-                             (modify-minion-stats minion-id 1 1)))
+                                 (modify-minion-stats minion-id 1 1)))
                            state
                            (map :id (get-active-secrets state (get-other-player-id player-id)))))
     :description "Battlecry: Destroy all enemy Secrets. Gain +1/+1 for each."}
@@ -370,9 +392,9 @@
     :mana-cost   4
     :set         :basic
     :type        :minion
-    :properties    {:permanent     #{"charge"}
-                    :temporary     {}
-                    :stats         {}}
+    :properties  {:permanent #{"charge"}
+                  :temporary {}
+                  :stats     {}}
     :description "Charge"}
 
    "Leeroy Jenkins"
@@ -381,15 +403,15 @@
     :health      2
     :mana-cost   5
     :type        :minion
-    :properties    {:permanent     #{"charge"}
-                    :temporary     {}
-                    :stats         {}}
+    :properties  {:permanent #{"charge"}
+                  :temporary {}
+                  :stats     {}}
     :set         :classic
     :rarity      :legendary
     :description "Charge. Battlecry: Summon two 1/1 Whelps for your opponent."
-    :on-play   (fn [state player-id minion-id]
-                 (add-minions-to-board state (get-other-player-id player-id) [(create-minion "Whelp")
-                                                        (create-minion "Whelp")]))}
+    :on-play     (fn [state player-id minion-id]
+                   (add-minions-to-board state (get-other-player-id player-id) [(create-minion "Whelp")
+                                                                                (create-minion "Whelp")]))}
 
    "The Mistcaller"
    {:name        "The Mistcaller"
@@ -437,10 +459,19 @@
     :set         :classic
     :rarity      :common
     :description "Secret: When your hero is attacked deal 2 damage to all enemies."
-    :on-attack   (fn [state this {,,,}]
-                   ;(when (and (hero? target)
-                   ;           (attacker an enemy )
-                              )}
+    :on-attack   (fn [state attacker-id target-id]
+                   (if-not (minion? (get-character state target-id))
+                     (as-> state $
+                           (let [attacker-owner-id (:owner-id (get-character $ attacker-id))
+                                 enemy-player (get-player $ attacker-owner-id)
+                                 enemy-hero (:hero enemy-player)
+                                 enemy-minions (get-minions $ attacker-owner-id)]
+                             (reduce (fn [$ minion]
+                                       (deal-damage $ (:id minion) 2))
+                                     state
+                                     enemy-minions)
+                             (deal-damage $ (:id enemy-hero))))
+                     state))}
 
    "Venomstrike Trap"
    {:name        "Venomstrike Trap"
@@ -449,7 +480,13 @@
     :sub-type    :secret
     :set         :knights-of-the-frozen-throne
     :rarity      :rare
-    :description "Secret: When one of your minions is attacked summon a 2/3 Poisonous Cobra."}
+    :description "Secret: When one of your minions is attacked summon a 2/3 Poisonous Cobra."
+    :on-attack   (fn [state target-id]
+                   (if (minion? (get-character state target-id))
+                     (as-> state $
+                           (let [victim-owner-id (:owner-id (get-character $ target-id))]
+                             (add-minion-to-board $ victim-owner-id (create-minion "Emperor Cobra" :id "ec") 0)))
+                     state))}
 
    "Vaporize"
    {:name        "Vaporize"
@@ -458,7 +495,11 @@
     :sub-type    :secret
     :set         :classic
     :rarity      :rare
-    :description "Secret: When a minion attacks your hero destroy it."}
+    :description "Secret: When a minion attacks your hero destroy it."
+    :on-attack   (fn [state attacker-id]
+                   (if (minion? (get-character state attacker-id))
+                     (kill-minion-fn state attacker-id)
+                     state))}
 
    "Whelp"
    {:name      "Whelp"
