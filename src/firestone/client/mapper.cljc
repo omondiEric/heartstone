@@ -99,34 +99,23 @@
                                                (create-card "Insect Swarm" :id "is")]}
                                     {:minions [(create-minion "Emil" :id "e")
                                                (create-minion "Ronja" :id "r")]}]) $
-                      (get-valid-target-ids-for-card $ (get-card $ "rr") "p1"))
+                      (get-valid-target-ids-for-card $ (get-card $ "rr")))
                 ["h1" "h2" "j" "e" "r"])
            (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]
                                      :hand    [(create-card "Annika" :id "a")]}
                                     {:minions [(create-minion "Emil" :id "e")
                                                (create-minion "Ronja" :id "r")]}]) $
-                      (get-valid-target-ids-for-card $ (get-card $ "a") "p1"))
+                      (get-valid-target-ids-for-card $ (get-card $ "a")))
                 ["j" "e" "r"])
            )}
-  [state card player-id]
-  (if (= (:type (get-definition card)) :spell)
-    ;TODO generalize this
-    (when (= (:name (get-definition card)) "Radar Raid")
-      (let [spell-function (:spell-fn (get-definition card))
-            valid-targets
-            (filter (fn [c]
-                      (spell-function state (:id c)))
-                    (get-characters state))]
-        (map :id valid-targets)))
-    ;TODO generalize this too
-    (when (or (= (:name (get-definition card)) "Annika") (= (:name (get-definition card)) "Astrid"))
-      (let [battlecry-function (:battlecry (get-definition card))
-            valid-targets
-            (when battlecry-function
-              (filter (fn [c]
-                        (battlecry-function state player-id (:id card) (:id c)))
-                      (get-characters state)))]
-        (map :id valid-targets)))))
+  [state card]
+  (when (some? (:valid-target? (get-definition card)))
+    (let [valid-target-function (:valid-target? (get-definition card))
+          valid-targets
+          (filter (fn [character]
+                    (valid-target-function state character))
+                  (get-characters state))]
+      (map :id valid-targets))))
 
 (defn get-client-card
   {:test (fn []
@@ -149,7 +138,7 @@
      :health             (:health card-definition)
      :original-attack    (:attack card-definition)
      :original-health    (:health card-definition)
-     ::valid-target-ids  (first (conj [] (get-valid-target-ids-for-card state card (:owner-id card))))}))
+     ::valid-target-ids  (first (conj [] (get-valid-target-ids-for-card state card)))}))
 
 (defn get-client-hand
   {:test (fn []

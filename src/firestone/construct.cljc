@@ -1459,13 +1459,27 @@
 
 (defn minion?
   {:test (fn []
-           (is= ((create-game [{:hero (create-hero "Carl" :id "h1")}])
-                 (minion? "Carl"))
-                nil))}
+           (is (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
+                    (minion? (get-minion $ "e"))))
+           (is-not (as-> (create-game [{:hand [(create-card "Emil" :id "e")]}]) $
+                     (minion? (get-card $ "e"))))
+           (is-not ((create-game [{:hero (create-hero "Carl" :id "h1")}])
+                 (minion? "Carl")))
+           )}
   [character]
-  (if (= (:entity-type character) :minion)
-    true))
+  (= (:entity-type character) :minion))
 
+(defn character?
+  {:test (fn []
+           (is (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
+                     (character? (get-minion $ "e"))))
+           (is-not (as-> (create-game [{:hand [(create-card "Emil" :id "e")]}]) $
+                         (character? (get-card $ "e"))))
+           (is (as-> (create-game [{:hero (create-hero "Carl" :id "h1")}]) $
+                    (character? (get-character $ "h1"))))
+           )}
+  [character]
+  (or (= (:entity-type character) :minion) (= (:entity-type character) :hero)))
 
 (defn give-deathrattle
   "Gives a minion deathrattle from another minion"

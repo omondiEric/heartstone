@@ -2,6 +2,7 @@
   (:require [firestone.definitions :as definitions]
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [buff-minion-card
+                                         character?
                                          create-game
                                          create-card
                                          create-minion
@@ -224,6 +225,8 @@
     :mana-cost   2
     :type        :spell
     :set         :custom
+    :valid-target?  (fn [state target]
+                      (character? target))
     :spell-fn    (fn [state character-id]
                    (deal-damage state character-id 3))
     :description "Deal 3 damage to a character."}
@@ -450,6 +453,8 @@
     :set         :classic
     :rarity      :common
     :description "Silence a minion."
+    :valid-target?  (fn [state target]
+                      (character? target))
     :spell-fn    (fn [state minion-id]
                    (silence-minion state minion-id))}
 

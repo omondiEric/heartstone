@@ -11,12 +11,12 @@
 
 (defn create-game!
   []
-  (get-client-state (reset! state-atom (create-game [{:deck    ["Insect Swarm", "Madicken", "Jonatan"]
-                                                      :hand    ["Emil", "Ida", "Annika", "Radar Raid", "Skrallan"]
+  (get-client-state (reset! state-atom (create-game [{:deck    ["Ida", "Insect Swarm", "Madicken", "Jonatan"]
+                                                      :hand    ["Emil","Silence" , "Karlsson", "Radar Raid", "Skrallan"]
                                                       :mana    10
                                                       :hero "Carl"}
-                                                     {:deck    ["Pippi", "Uncle Nilsson", "Alfred"]
-                                                      :hand    ["Ronja", "Kato", "Karlsson", "Tjorven", "Herr Nilsson"]
+                                                     {:deck    ["Pippi", "Kato", "Uncle Nilsson", "Herr Nilsson", "Alfred"]
+                                                      :hand    ["Spellbreaker", "The Mistcaller", "Annika", "Tjorven", "Shudderwock"]
                                                       :mana    10
                                                       :hero "Gustaf"}]))))
 
