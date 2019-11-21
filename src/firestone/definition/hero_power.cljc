@@ -4,6 +4,7 @@
                                          get-random-minion
                                          get-random-minions-distinct
                                          give-divine-shield
+                                         minion?
                                          remove-minion
                                          modify-minion-attack]]
             [firestone.core :refer [deal-damage]]))
@@ -15,6 +16,8 @@
    {:name        "Blessing"
     :type        :hero-power
     :mana-cost   2
+    :valid-target? (fn [state character]
+                     (minion? character))
     :power-fn    (fn [state target-id]
                    (give-divine-shield state target-id))
     :description "Give a minion Divine Shield."}
