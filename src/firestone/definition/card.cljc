@@ -6,10 +6,13 @@
                                          create-card
                                          create-minion
                                          friendly-minions?
+                                         get-all-played-cards-with-property
+                                         get-character
                                          get-deck
                                          get-hand
                                          get-minion
                                          get-random-minion
+                                         get-random-minion-conditional
                                          get-other-player-id
                                          give-deathrattle
                                          give-taunt
@@ -19,11 +22,13 @@
                                          ida-present?
                                          switch-minion-side
                                          update-minion
-                                         update-seed]]
+                                         update-seed
+                                         valid-minion-effect-target?]]
             [firestone.core :refer [deal-damage
                                     deal-damage-to-other-minions
                                     deal-damage-to-all-minions
                                     deal-damage-to-all-heroes
+                                    do-battlecry
                                     silence-minion]]
             [firestone.core-api :refer [draw-card]]))
 
@@ -60,7 +65,7 @@
                   :temporary {}
                   :stats     {}}
     :description "Battlecry: Deal 4 damage to the enemy hero."
-    :battlecry     (fn [state player-id minion-id]
+    :battlecry   (fn [state player-id minion-id]
                    (let [target-hero-id (get-in state [:players (get-other-player-id player-id) :hero :id])]
                      (deal-damage state target-hero-id 4)))}
 
@@ -74,7 +79,7 @@
                   :temporary {}
                   :stats     {}}
     :description "Battlecry: Draw a card."
-    :battlecry     (fn [state player-id minion-id]
+    :battlecry   (fn [state player-id minion-id]
                    (draw-card state player-id))}
 
    "Jonatan"
@@ -261,16 +266,19 @@
     :aura        #{"Friendly-windfury"}}
 
    "Astrid"
-   {:name        "Astrid"
-    :attack      3
-    :health      3
-    :mana-cost   4
-    :type        :minion
-    :properties  {:permanent #{}
-                  :temporary {}
-                  :stats     {}}
-    :set         :custom
-    :description "Battlecry: Copy another minions deathrattle."
+   {:name          "Astrid"
+    :attack        3
+    :health        3
+    :mana-cost     4
+    :type          :minion
+    :properties    {:permanent #{}
+                    :temporary {}
+                    :stats     {}}
+    :set           :custom
+    :description   "Battlecry: Copy another minions deathrattle."
+    :valid-target? (fn [state target]
+                     (and (minion? target)
+                          (some? (:deathrattle (get-definition target)))))
     :battlecry     (fn [state player-id minion-id target-id]
                      (give-deathrattle state minion-id (:name (get-minion state target-id))))}
 
@@ -291,18 +299,19 @@
                                   state))}
 
    "Annika"
-   {:name        "Annika"
-    :attack      2
-    :health      2
-    :mana-cost   3
-    :type        :minion
-    :properties  {:permanent #{}
-                  :temporary {}
-                  :stats     {}}
-    :set         :custom
-    :description "Battlecry: Give a minion +2 Attack this turn."
+   {:name          "Annika"
+    :attack        2
+    :health        2
+    :mana-cost     3
+    :type          :minion
+    :properties    {:permanent #{}
+                    :temporary {}
+                    :stats     {}}
+    :set           :custom
+    :description   "Battlecry: Give a minion +2 Attack this turn."
+    :valid-target? (fn [state target] (minion? target))
     :battlecry     (fn [state player-id minion-id target-id] (when (minion? (get-minion state target-id))
-                                                             (modify-minion-stats state target-id 2 0 1)))}
+                                                               (modify-minion-stats state target-id 2 0 1)))}
 
    "Al'Akir the Windlord"
    {:name        "Al'Akir the Windlord"
@@ -390,16 +399,20 @@
                      (reduce (fn [new-state card-id] (buff-minion-card new-state card-id 1 1)) state card-ids)))}
 
    "Spellbreaker"
-   {:name        "Spellbreaker"
-    :attack      4
-    :health      3
-    :mana-cost   4
-    :type        :minion
-    :set         :classic
-    :rarity      :common
-    :description "Battlecry: Silence a minion."
-    :battlecry    (fn [state player-id minion-id target-id]
-                    (silence-minion state target-id))}
+   {:name          "Spellbreaker"
+    :attack        4
+    :health        3
+    :mana-cost     4
+    :type          :minion
+    :properties    {:permanent #{}
+                    :temporary {}
+                    :stats     {}}
+    :set           :classic
+    :rarity        :common
+    :description   "Battlecry: Silence a minion."
+    :valid-target? (fn [state target] (minion? target))
+    :battlecry     (fn [state player-id minion-id target-id]
+                     (silence-minion state target-id))}
 
    "Shudderwock"
    {:name        "Shudderwock"
@@ -407,10 +420,29 @@
     :health      6
     :mana-cost   9
     :type        :minion
+    :properties  {:permanent #{}
+                  :temporary {}
+                  :stats     {}}
     :set         :the-witchwood
     :rarity      :legendary
-    :description "Battlecry: Repeat all other Battlecries from cards you played this game (targets chosen randomly)."}
-
+    :description "Battlecry: Repeat all other Battlecries from cards you played this game (targets chosen randomly)."
+    :battlecry   (fn [state player-id minion-id]
+                   (let [minion-defs (map (fn [card] (get-definition card)) (get-all-played-cards-with-property state :battlecry))
+                         minion-defs-with-target (filter (fn [minion-def] (some? (:valid-target? minion-def))) minion-defs)
+                         minion-defs-without-target (filter (fn [minion-def] (and (nil? (:valid-target? minion-def)) (not= (:name minion-def) "Shudderwock"))) minion-defs)]
+                     (as-> state $
+                           ;do battlecries that don't require target
+                           (reduce (fn [state minion-def]
+                                     (do-battlecry state player-id minion-id minion-def)) $ minion-defs-without-target)
+                           ;;do battlecries that require a target
+                           (reduce (fn [state minion-def]
+                                     (let [random-result
+                                           (get-random-minion-conditional state
+                                                                          (fn [game-state minion-id]
+                                                                            (valid-minion-effect-target? game-state minion-def minion-id)))
+                                           new-state (first random-result)
+                                           random-minion-id (:id (last random-result))]
+                                       (do-battlecry new-state player-id minion-id minion-def random-minion-id))) $ minion-defs-with-target))))}
    "Silence"
    {:name        "Silence"
     :mana-cost   0

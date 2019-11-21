@@ -9,6 +9,7 @@
                                          create-minion
                                          draw-card-to-hand
                                          do-game-event-functions
+                                         get-all-played-cards-with-property
                                          get-card
                                          get-character
                                          get-heroes
@@ -23,6 +24,7 @@
                                          get-other-player-id
                                          get-minion-properties
                                          get-random-minion
+                                         get-random-minion-conditional
                                          give-divine-shield
                                          give-property
                                          give-taunt
@@ -41,9 +43,11 @@
                                          remove-minions
                                          remove-minion-effects
                                          remove-minion-stat-buffs
+                                         shuffle-with-seed
                                          switch-minion-side
                                          update-mana
-                                         update-minion]]))
+                                         update-minion
+                                         valid-minion-effect-target?]]))
 
 (defn get-health
   "Returns the health of the character."
@@ -245,36 +249,38 @@
          (> (get-attack state attacker-id) 0)
          (not= (:owner-id attacker) (:owner-id target)))))
 
-(defn do-on-play
+(defn do-battlecry
   "Returns the on-play function of a minion or nil"
   {:test (fn []
            ;check that damage is taken for Kato
            (is= (as-> (create-game [{:hand [(create-card "Kato" :id "k")]}]) $
-                      (do-on-play $ "p1" "k" (get-definition (get-card $ "k")))
-                      (do-on-play $ "p2" "k" (get-definition (get-card $ "k")))
-                      (do-on-play $ "p2" "k" (get-definition (get-card $ "k")))
-                      (do-on-play $ "p2" "k" (get-definition (get-card $ "k")))
+                      (do-battlecry $ "p1" "k" (get-definition (get-card $ "k")))
+                      (do-battlecry $ "p2" "k" (get-definition (get-card $ "k")))
+                      (do-battlecry $ "p2" "k" (get-definition (get-card $ "k")))
+                      (do-battlecry $ "p2" "k" (get-definition (get-card $ "k")))
                       (get-in $ [:players "p1" :hero :damage-taken]))
                 12)
            ;check that card is drawn for Emil
            (is= (as-> (create-game [{:hand [(create-card "Emil" :id "e")] :deck [(create-card "Mio" :id "m")]}]) $
-                      (do-on-play $ "p1" "e" (get-definition (get-card $ "e")))
+                      (do-battlecry $ "p1" "e" (get-definition (get-card $ "e")))
                       (get-hand $ "p1")
                       (count $))
                 2)
            ;check that Annika can target a minion
            (is= (as-> (create-game [{:hand    [(create-card "Annika" :id "a")]
                                      :minions [(create-minion "Emil" :id "e")]}]) $
-                      (do-on-play $ "p1" "a" (get-definition (get-card $ "a")) "e")
+                      (do-battlecry $ "p1" "a" (get-definition (get-card $ "a")) "e")
                       (get-minion-stats $ "e"))
                 [4, 5])
            ;check that Ronja will cause no errors
            (is= (as-> (create-game [{:hand [(create-card "Ronja" :id "r")]}]) $
-                      (do-on-play $ "p1" "r" (get-definition (get-card $ "r")))
+                      (do-battlecry $ "p1" "r" (get-definition (get-card $ "r")))
                       (get-hand $ "p1")
                       (count $))
                 1)
            )}
+  ;TODO use the new get-card-or-character function
+
   ;definition is required because it gets around the problem of here card-id is for a card, but in play-minion-card
   ;the card will be played and becomes a minion
   ([state player-id card-id minion-def]
@@ -301,6 +307,8 @@
            (is-not (-> (create-game [{:minions [(create-card "Mio" :id "m")]}])
                        (has-deathrattle "m")))
            )}
+  ;TODO fix this because permanent set does not contain "deathrattle"
+
   ;([card]
   ; (let [permanent-set (get-in (get-definition card) [:properties :permanent])]
   ;   (contains? permanent-set "deathrattle")))

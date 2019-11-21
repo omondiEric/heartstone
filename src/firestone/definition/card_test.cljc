@@ -7,6 +7,7 @@
                                          create-minion
                                          do-game-event-functions
                                          get-card
+                                         get-character
                                          get-characters
                                          get-hand
                                          get-hero
@@ -20,9 +21,10 @@
                                          has-divine-shield?
                                          has-taunt?
                                          update-mana
-                                         update-minion]]
+                                         update-minion
+                                         valid-minion-effect-target?]]
             [firestone.core :refer [deal-damage
-                                    do-on-play
+                                    do-battlecry
                                     do-deathrattle
                                     get-health
                                     silence-minion]]
@@ -153,7 +155,11 @@
                                    :hand    [(create-card "Annika" :id "a")]}]) $
                     (play-minion-card $ "p1" "a" 1 "j")
                     (get-minion-stats $ "j"))
-              [5 6]))
+              [5 6])
+         (is (as-> (create-game [{:minions [(create-minion "Madicken" :id "m")]
+                                  :hand    [(create-card "Annika" :id "a")]}]) $
+                   (valid-minion-effect-target? $ "a" "m")))
+         )
 
 (deftest Astrid
          "Battlecry: copy another minion's deathrattle"
@@ -162,7 +168,13 @@
                     (play-minion-card $ "p1" "a" 0 "m")
                     (get-minion $ "a")
                     (:deathrattle $))
-              "Madicken"))
+              "Madicken")
+         (is (as-> (create-game [{:minions [(create-minion "Madicken" :id "m")]
+                                  :hand    [(create-card "Astrid" :id "a")]}]) $
+                   (valid-minion-effect-target? $ "a" "m")))
+         (is-not (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]
+                                      :hand    [(create-card "Astrid" :id "a")]}]) $
+                       (valid-minion-effect-target? $ "a" "m"))))
 
 (deftest Skrallan
          "Gets +2/+2 whenever a friendly minion loses divine shield"
@@ -242,5 +254,50 @@
                  (is= (get-minion-stats $ "e")
                       [3 6])
                  (is= (get-minion-stats $ "m")
-                      [2 3])))
+                      [2 3]))))
+
+(deftest Shudderwock
+         "Battlecry: Repeat all battlecries played this game"
+         ;only battlecry without target
+         (as-> (create-game [{:hand [(create-card "Shudderwock" :id "s")]
+                              :minions [(create-minion "Emil" :id "e")]}]
+                            :cards-played-this-game [{:name "Kato", :entity-type :card, :id "k", :owner-id "p1"}
+                                                     {:name "Ronja", :entity-type :card, :id "r", :owner-id "p1"}
+                                                     {:name "Radar Raid", :entity-type :card, :id "rr", :owner-id "p2"}
+                                                     ]) $
+               (play-minion-card $ "p1" "s" 0)
+               (is= (get-health $ "h2")
+                      26))
+         ;only battlecry with target
+         (as-> (create-game [{:hand [(create-card "Shudderwock" :id "s")]
+                              :minions [(create-minion "Emil" :id "e")]}]
+                            :cards-played-this-game [{:name "Annika", :entity-type :card, :id "a1", :owner-id "p2"}
+                                                     {:name "Annika", :entity-type :card, :id "a2", :owner-id "p2"}
+                                                     {:name "Ronja", :entity-type :card, :id "r", :owner-id "p1"}
+                                                     {:name "Radar Raid", :entity-type :card, :id "rr", :owner-id "p2"}
+                                                     ]) $
+               (play-minion-card $ "p1" "s" 0)
+               (do
+                 (is= (get-minion-stats $ "e")
+                      [4,5])
+                 (is= (get-minion-stats $ "s")
+                      [8,6])))
+         ;battlecries with both target and no target
+         (as-> (create-game [{:hand [(create-card "Shudderwock" :id "s")]
+                              :minions [(create-minion "Emil" :id "e")]}]
+                            :cards-played-this-game [{:name "Kato", :entity-type :card, :id "k", :owner-id "p1"}
+                                                     {:name "Kato", :entity-type :card, :id "k2", :owner-id "p1"}
+                                                     {:name "Ronja", :entity-type :card, :id "r", :owner-id "p1"}
+                                                     {:name "Annika", :entity-type :card, :id "a1", :owner-id "p2"}
+                                                     {:name "Annika", :entity-type :card, :id "a2", :owner-id "p2"}
+                                                     {:name "Radar Raid", :entity-type :card, :id "rr", :owner-id "p2"}
+                                                     ]) $
+               (play-minion-card $ "p1" "s" 0)
+               (do
+                 (is= (get-health $ "h2")
+                      22)
+                 (is= (get-minion-stats $ "e")
+                      [4,5])
+                 (is= (get-minion-stats $ "s")
+                      [8,6])))
          )

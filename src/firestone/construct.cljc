@@ -147,7 +147,8 @@
                                                                        :entity-type     :hero}}}
                  :counter                       1
                  :seed                          0
-                 :minion-ids-summoned-this-turn []}))}
+                 :minion-ids-summoned-this-turn []
+                 :cards-played-this-game        []}))}
   ([heroes]
    ; Creates Carl heroes if heroes are missing.
    (let [heroes (->> (concat heroes [(create-hero "Carl")
@@ -172,7 +173,8 @@
                                                   {}))
       :counter                       1
       :seed                          0
-      :minion-ids-summoned-this-turn []}))
+      :minion-ids-summoned-this-turn []
+      :cards-played-this-game        []}))
   ([]
    (create-empty-state [])))
 
@@ -497,7 +499,8 @@
                                                                        :hero-power-used false}}}
                  :counter                       5
                  :seed                          0
-                 :minion-ids-summoned-this-turn []}))}
+                 :minion-ids-summoned-this-turn []
+                 :cards-played-this-game        []}))}
   ([data & kvs]
    (let [players-data (map-indexed (fn [index player-data]
                                      (assoc player-data :player-id (str "p" (inc index))))
@@ -1118,6 +1121,46 @@
    (let [minions-collection (last (shuffle-with-seed state (get-minions state player-id)))]
      (take number minions-collection))))
 
+(defn get-random-minion-conditional
+  "Gets a random minion from a list filtered by supplied function"
+  {:test (fn []
+           ;get a random minion from all
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")
+                                          (create-minion "Mio" :id "m2")
+                                          (create-minion "Emil" :id "e1")
+                                          (create-minion "Emil" :id "e2")]}
+                               {:minions [(create-minion "Mio" :id "m3")
+                                          (create-minion "Mio" :id "m4")
+                                          (create-minion "Emil" :id "e3")
+                                          (create-minion "Emil" :id "e4")]}]) $
+                 (get-random-minion-conditional $ (fn [state minion-id]
+                                                    (some? (:battlecry (get-definition (get-minion state minion-id))))))
+                 (do (is= (:id (last $)) "e1")
+                     (is (not= (:seed (first $)) 0))))
+           ;get a random minion from specific player
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")
+                                          (create-minion "Mio" :id "m2")
+                                          (create-minion "Emil" :id "e1")
+                                          (create-minion "Emil" :id "e2")]}
+                               {:minions [(create-minion "Mio" :id "m3")
+                                          (create-minion "Mio" :id "m4")
+                                          (create-minion "Emil" :id "e3")
+                                          (create-minion "Emil" :id "e4")]}]) $
+                 (get-random-minion-conditional $ (fn [state minion-id]
+                                                    (some? (:battlecry (get-definition (get-minion state minion-id)))))
+                                                "p2")
+                 (do (is= (:id (last $)) "e3")
+                     (is (not= (:seed (first $)) 0))))
+           )}
+  ([state condition-function]
+   (->> (filter (fn [minion]
+                  (condition-function state (:id minion))) (get-minions state))
+        (random-nth state)))
+  ([state condition-function player-id]
+   (->> (filter (fn [minion]
+                  (condition-function state (:id minion))) (get-minions state player-id))
+        (random-nth state))))
+
 ; call all the functions of active minions corresponding to a game event eg. end-of-turn, on-minion-damage
 (defn do-game-event-functions
   {:test (fn []
@@ -1397,6 +1440,22 @@
             (get-minions state))
       (some (fn [h] (when (= (:id h) id) h))
             (get-heroes state))))
+
+(defn get-card-or-character
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (get-card-or-character "e")
+                    (:name))
+                "Emil")
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (get-card-or-character "e")
+                    (:name))
+                "Emil")
+           )}
+  [state id]
+  (if (card? state id)
+    (get-card state id)
+    (get-character state id)))
 
 (defn minion?
   {:test (fn []
@@ -1717,3 +1776,79 @@
       (update-card state card-id :health-buff (fn [x] (+ health x))))
     :else state))
 
+(defn add-card-to-cards-played
+  "Adds a card to the state field"
+  {:test (fn []
+           (is= (as-> (create-game [{:hand [(create-card "Emil" :id "e")]}]) $
+                      (add-card-to-cards-played $ (get-card $ "e"))
+                      (get-in $ [:cards-played-this-game]))
+                [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}])
+           (is= (as-> (create-game [{:hand [(create-card "Emil" :id "e")
+                                            (create-card "Ronja" :id "r")]}]) $
+                      (add-card-to-cards-played $ (get-card $ "e"))
+                      (add-card-to-cards-played $ (get-card $ "r"))
+                      (get-in $ [:cards-played-this-game]))
+                [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}
+                 {:name "Ronja", :entity-type :card, :id "r", :owner-id "p1"}])
+           )}
+  [state card]
+  (let [cards-played-this-game (get-in state [:cards-played-this-game])]
+    (assoc-in state [:cards-played-this-game] (conj cards-played-this-game card))))
+
+(defn get-all-played-cards-with-property
+  "Returns list of all cards played this game with a certain property, e.g. battlecry"
+  {:test (fn []
+           (is= (as-> (create-game []
+                                   :cards-played-this-game [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}
+                                                            {:name "Ronja", :entity-type :card, :id "r", :owner-id "p1"}
+                                                            {:name "Spellbreaker", :entity-type :card, :id "s", :owner-id "p2"}
+                                                            {:name "Radar Raid", :entity-type :card, :id "rr", :owner-id "p2"}
+                                                            ]) $
+                      (get-all-played-cards-with-property $ :battlecry))
+                [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}
+                 {:name "Spellbreaker", :entity-type :card, :id "s", :owner-id "p2"}])
+           (is= (as-> (create-game []
+                                   :cards-played-this-game [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}
+                                                            {:name "Ronja", :entity-type :card, :id "r", :owner-id "p1"}
+                                                            {:name "Spellbreaker", :entity-type :card, :id "s", :owner-id "p2"}
+                                                            {:name "Radar Raid", :entity-type :card, :id "rr", :owner-id "p2"}
+                                                            ]) $
+                      (get-all-played-cards-with-property $ :battlecry "p1"))
+                [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}])
+           )}
+  ([state property]
+   (let [cards-played-this-game (get-in state [:cards-played-this-game])]
+     (filter
+       (fn [card] (some? ((keyword property) (get-definition card))))
+       cards-played-this-game)))
+  ([state property player-id]
+   (let [cards-played-this-game (get-in state [:cards-played-this-game])]
+     (filter
+       (fn [card] (and
+                    (some? ((keyword property) (get-definition card)))
+                    (= (:owner-id card) player-id)))
+       cards-played-this-game))))
+
+(defn valid-minion-effect-target?
+  "Checks whether target is valid"
+  {:test (fn []
+           (is (as-> (create-game [{:minions [(create-minion "Astrid" :id "a")
+                                              (create-minion "Madicken" :id "m")]}]) $
+                     (valid-minion-effect-target? $ "a" "m")))
+           (is (as-> (create-game [{:hand [(create-minion "Astrid" :id "a")]}
+                                   {:minions [(create-minion "Madicken" :id "m")]}]) $
+                     (valid-minion-effect-target? $ "a" "m")))
+           (is-not (-> (create-game [{:minions [(create-minion "Astrid" :id "a")
+                                                (create-minion "Emil" :id "e")]}])
+                       (valid-minion-effect-target? "a" "e")))
+           (is (as-> (create-game [{:minions [(create-minion "Astrid" :id "a")
+                                              (create-minion "Madicken" :id "m")]}]) $
+                     (valid-minion-effect-target? $ (get-definition "Astrid") "m")))
+           )}
+  [state id-or-def target-id]
+  (let [valid-target-function (if (some? (:description id-or-def))
+                                (:valid-target? id-or-def)
+                                (:valid-target? (get-definition (get-card-or-character state id-or-def))))]
+    (if (some? valid-target-function)
+      (valid-target-function state (get-character state target-id))
+      (error "No valid target function found"))))
