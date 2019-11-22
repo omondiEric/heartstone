@@ -1543,6 +1543,23 @@
        (filter (fn [s] (= (:id s) id)))
        (first)))
 
+;todo test this
+(defn get-random-secret-minion
+  {:test (fn []
+           ;get a random minion from specific player
+           (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                 (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                               {:hand [(create-card "Kezan Mystic" :id "s")]}]) $
+                 (get-random-secret-minion $ "p1")
+                 (do (is= (:id (last $)) "e")
+                     (is (not= (:seed (first $)) 0)))))}
+  ([state]
+   (->> (get-active-secrets state)
+        (random-nth state)))
+  ([state player-id]
+   (->> (get-active-secrets state player-id)
+        (random-nth state))))
+
 ; Removes a secret
 (defn remove-secret
   {:test (fn []
@@ -1569,3 +1586,20 @@
   (->> (get-active-secrets state)
        (filter (fn [s] (= (:id s) id)))
        (first)))
+
+(defn switch-secret-side
+  "Switches a secret from one player to the other"
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                                  {:hand [(create-card "Kezan Mystic" :id "s")]}])
+                    (switch-secret-side "e")
+                    (get-active-secrets "p2")
+                    (count))
+                1))}
+  [state secret-id]
+  (let [secret (get-secret state secret-id)
+        player-id (get-other-player-id (secret :owner-id))]
+    (-> state
+        (remove-secret secret-id)
+        (add-secret-to-player player-id secret))))

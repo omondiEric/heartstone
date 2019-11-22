@@ -221,10 +221,27 @@
                     (map :name $))
               ["Tjorven", "Whelp", "Whelp"]))
 
+(deftest Kezan-Mystic
+         "Battlecry: Take control of a random enemy Secret."
+         (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                                  {:hand [(create-card "Kezan Mystic" :id "s")]}]) $
+                    (play-minion-card $ "p2" "s" 0)
+                    (get-active-secrets $ "p2")
+                    (count $))
+              1))
+
 (deftest Eater-of-Secrets
          "Battlecry: Destroy all enemy Secrets. Gain +1/+1 for each."
-         (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}
+         (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
                                   {:hand [(create-card "Eater of Secrets" :id "s")]}]) $
                     (play-minion-card $ "p2" "s" 0)
                     (get-active-secrets $ "p1"))
-              ()))
+              ())
+         (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                                  {:hand [(create-card "Eater of Secrets" :id "s")]}]) $
+                    (play-minion-card $ "p2" "s" 0)
+                    (get-minion-stats $ "s"))
+              [4,6]))

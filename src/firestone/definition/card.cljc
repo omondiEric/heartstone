@@ -9,6 +9,7 @@
                                          get-active-secrets
                                          get-minion
                                          get-random-minion
+                                         get-random-secret-minion
                                          get-other-player-id
                                          give-deathrattle
                                          give-taunt
@@ -18,6 +19,7 @@
                                          remove-secret
                                          ida-present?
                                          switch-minion-side
+                                         switch-secret-side
                                          update-minion
                                          update-seed]]
             [firestone.core :refer [deal-damage
@@ -359,6 +361,12 @@
     :type        :minion
     :set         :goblins-vs-gnomes
     :rarity      :rare
+    :on-play     (fn [state player-id minion-id]
+                   (let [random-result (get-random-secret-minion state (get-other-player-id player-id))]
+                     (do (println (last random-result)))
+                     (let [state (first random-result)
+                           random-minion (last random-result)]
+                       (switch-secret-side state (:id (last random-result))))))
     :description "Battlecry: Take control of a random enemy Secret."}
 
    "Stormwind Knight"
