@@ -208,9 +208,13 @@
 (deftest Secretkeeper
          "Gain +1/+1"
          (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")
-                                           (create-minion "Secretkeeper" :id "s")]}])
+                                           (create-minion "Secretkeeper" :id "s")]
+                                 :active-secrets [(create-secret "Explosive Trap" "p1" :id "t")
+                                                  (create-secret "Venomstrike Trap" "p1" :id "v")]}])
+                  ;(play-minion-card "p1" "s" 0) should be play-secret-card instead
+                  (play-minion-card "p1" "s" 0)
                   (get-minion-stats "s"))
-              [1, 2]))
+              [2, 3]))
 
 (deftest Leeroy-Jenkins
          "Battlecry: Summon two 1/1 Whelps for your opponent"

@@ -245,6 +245,22 @@
          (> (get-attack state attacker-id) 0)
          (not= (:owner-id attacker) (:owner-id target)))))
 
+(defn on-secret-played-fns
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")
+                                             (create-minion "Secretkeeper" :id "s")]}])
+                    (on-secret-played-fns)
+                    (get-minion-stats "s"))
+                [2, 3]))}
+  [state]
+  (reduce (fn [state minion]
+            (if (contains? (get-definition minion) :secret-played)
+              (let [secret-played-fn (:secret-played (get-definition minion))]
+                (secret-played-fn state (:id minion)))
+              state))
+          state
+          (get-minions state)))
+
 (defn do-on-play
   "Returns the on-play function of a minion or nil"
   {:test (fn []
@@ -280,12 +296,20 @@
   ([state player-id card-id minion-def]
    (if (contains? minion-def :on-play)
      (let [on-play-fn (:on-play minion-def)]
-       (on-play-fn state player-id card-id))
+       (if (and (contains? minion-def :sub-type)
+                (= (:sub-type minion-def) :secret))
+         (-> (on-play-fn state player-id card-id)
+             (on-secret-played-fns))
+         (on-play-fn state player-id card-id)))
      state))
   ([state player-id card-id minion-def target-id]
    (if (contains? minion-def :on-play)
      (let [on-play-fn (:on-play minion-def)]
-       (on-play-fn state player-id card-id target-id))
+       (if (and (contains? minion-def :sub-type)
+                (= (:sub-type minion-def) :secret))
+         (-> (on-play-fn state player-id card-id target-id)
+             (on-secret-played-fns))
+         (on-play-fn state player-id card-id target-id)))
      state)))
 
 (defn has-deathrattle
