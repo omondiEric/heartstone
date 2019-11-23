@@ -1489,6 +1489,15 @@
 
 ; Creates an active-secret for a player, needs a name an an owner id
 (defn create-secret
+  {:test (fn []
+           (is= (create-secret "Vaporize" "p1" :id "v")
+                {:name            "Vaporize"
+                 :type             :spell
+                 :sub-type       :secret
+                 :damage-taken    0
+                 :owner-id       "p1"
+                 :hero-power-used false
+                 :id               "v"}))}
   [name owner-id & kvs]
   (let [secret {:name            name
                 :type             :spell
