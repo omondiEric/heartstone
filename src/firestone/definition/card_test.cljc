@@ -25,6 +25,7 @@
                                     do-deathrattle
                                     get-health]]
             [firestone.core-api :refer [attack-minion
+                                        attack-hero-or-minion
                                         draw-card
                                         end-turn
                                         play-minion-card
@@ -215,9 +216,9 @@
 (deftest Leeroy-Jenkins
          "Battlecry: Summon two 1/1 Whelps for your opponent"
          (is= (as-> (create-game [{:minions [(create-minion "Tjorven" :id "t")]}
-                                {:hand [(create-card "Leeroy Jenkins" :id "l")]}]) $
-                  (play-minion-card $ "p2" "l" 0)
-                  (get-minions $ "p1")
+                                  {:hand [(create-card "Leeroy Jenkins" :id "l")]}]) $
+                    (play-minion-card $ "p2" "l" 0)
+                    (get-minions $ "p1")
                     (map :name $))
               ["Tjorven", "Whelp", "Whelp"]))
 
@@ -228,3 +229,26 @@
                     (play-minion-card $ "p2" "s" 0)
                     (get-active-secrets $ "p1"))
               ()))
+
+(deftest Vaporize
+         "Secret: When a minion attacks your hero destroy it."
+         (is= (as-> (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]}
+                                  {:minions [(create-minion "Mio" :id "m")]}]) $
+                    ;(end-turn $ "p1")
+                    ;(end-turn $ "p2")
+                    (play-minion-card $ "p2" "m" 0)
+                    ;(end-turn $ "p2")
+                    ;(end-turn $ "p1")
+                    ;(get-minions $ "p1"))
+                    (attack-hero-or-minion $ "p2" "m" "h1")
+                    (get-minions $ "p2"))
+              []))
+;
+;(deftest Mad Scientist
+;
+;         (is= (as-> (create-game [{:deck [(create-secret "Vaporize" "p1" :id "v")]
+;                                   :minions [(create-minion "Mad Scientist" :id "ms")]}]))))
+;
+;(deftest Explosive Trap)
+;
+;(deftest Venomstrike Trap)

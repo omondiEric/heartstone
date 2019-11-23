@@ -3,6 +3,7 @@
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [add-minions-to-board
                                          add-minion-to-board
+                                         add-secret-to-player
                                          create-game
                                          create-card
                                          create-minion
@@ -36,9 +37,9 @@
 
 (def card-definitions
 
-
-  "Mio"
-  {{:name       "Mio"
+  {
+   "Mio"
+   {:name       "Mio"
     :attack     1
     :health     2
     :mana-cost  1
@@ -344,12 +345,6 @@
     :set         :curse-of-naxxramas
     :rarity      :common
     :description "Deathrattle: Put a Secret from your deck into the battlefield."
-    ;get player deck - stores minions?? cards??
-    ;scan for active secrets and get them
-    ;remove the secret from deck - remove-card-from-deck // there is no remove-minion-from-deck
-    ;add secret to board - add-minion-to-board
-
-    ;or get-character then add it to board as a minion
     :deathrattle (fn [state owner-id]
                    (let [the-secret (->> (get-deck state owner-id)
                                          (filter (fn [s] (= (:sub-type s) :secret)))
@@ -357,7 +352,8 @@
                          secret-id (:id the-secret)]
                      (as-> state $
                            (remove-card-from-deck $ owner-id secret-id)
-                           play-card (state $ owner-id secret-id 0))))}
+                           (add-secret-to-player $ owner-id the-secret))))}
+                           ;(play-card state $ owner-id secret-id 0))))}
 
    "Eater of Secrets"
    {:name        "Eater of Secrets"
@@ -484,8 +480,8 @@
     :on-attack   (fn [state target-id]
                    (if (minion? (get-character state target-id))
                      (as-> state $
-                           (let [victim-owner-id (:owner-id (get-character $ target-id))]
-                             (add-minion-to-board $ victim-owner-id (create-minion "Emperor Cobra" :id "ec") 0)))
+                           (let [target-owner-id (:owner-id (get-character $ target-id))]
+                             (add-minion-to-board $ target-owner-id (create-minion "Emperor Cobra" :id "ec") 0)))
                      state))}
 
    "Vaporize"
@@ -496,10 +492,15 @@
     :set         :classic
     :rarity      :rare
     :description "Secret: When a minion attacks your hero destroy it."
-    :on-attack   (fn [state attacker-id]
+    :on-attack   (fn [state attacker-id target-id]
                    (if (minion? (get-character state attacker-id))
-                     (kill-minion-fn state attacker-id)
-                     state))}
+                     (as-> state $
+                           (let [victim-owner-id (:owner-id (get-character $ target-id))
+                                 victim-player (get-player $ victim-owner-id)
+                                 victim-hero (:hero victim-player)
+                                 enemy-minion (get-minion $ attacker-id)]
+                             (if (= target-id (:id victim-hero))
+                               kill-minion-fn (state attacker-id))))))}
 
    "Whelp"
    {:name      "Whelp"

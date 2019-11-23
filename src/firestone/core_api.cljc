@@ -14,12 +14,15 @@
                                     valid-attack?]]
             [firestone.construct :refer [add-card-to-hand
                                          add-minion-to-board
+                                         add-secret-to-player
+                                         add-secrets-to-player
                                          change-player-in-turn
                                          create-card
                                          create-empty-state
                                          create-game
                                          create-hero
                                          create-minion
+                                         create-secret
                                          do-game-event-functions
                                          draw-card-to-hand
                                          fatigue-hero
@@ -39,6 +42,7 @@
                                          get-random-minions-distinct
                                          get-player-id-in-turn
                                          get-players
+                                         get-secret
                                          get-other-player-id
                                          give-divine-shield
                                          has-poisonous
@@ -340,6 +344,7 @@
                     (play-spell-card "p1" "r" "a")
                     (get-mana "p1"))
                 8)
+
            ; Testing Insect Swarm
            (is= (-> (create-game [{:hand [(create-card "Insect Swarm" :id "i")] :deck [(create-card "Mio" :id "m")]}
                                   {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}
@@ -363,6 +368,25 @@
    (-> ((:spell-fn (get-definition (get-card state card-id))) state)
        (pay-mana player-id card-id)
        (remove-card-from-hand player-id card-id))))
+
+(defn play-secret-card-fn
+  {:test (fn []
+           ;todo temp test for vaporize
+           (is= (as-> (create-game [{:hand    [(create-secret "Vaporize" "p1" :id "v")
+                                               (create-card "Emil" :id "e")]}
+                                    {:minions [(create-minion "Alfred" :id "a")]}]) $
+                      (play-secret-card-fn $ "p1" "v")
+                      ;(add-secret-to-player $ "p1" (create-secret "Vaporize" "p1" :id "v"))
+                      (attack-hero-or-minion $ "p2" "a" "h1")
+                      (get-minions $ "p2"))
+                []))}
+  [state player-id secret-id]
+  (as-> state $
+        (add-secret-to-player $ player-id (get-secret $ secret-id))
+        (remove-card-from-hand $ player-id secret-id)
+        (pay-mana $ player-id secret-id)
+        ;(on-secret-played-fns $)
+        ))
 
 ; plays either spell card or minion card
 (defn play-card
