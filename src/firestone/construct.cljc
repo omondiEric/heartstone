@@ -340,19 +340,6 @@
                                          index))
                   state)))
 
-;todo test please
-(defn add-secret-to-player
-  [state player-id secret]
-  (update-in state [:players player-id :active-secrets] conj secret))
-
-;todo test please
-(defn add-secrets-to-player
-  [state player-id secrets]
-  (reduce (fn [state secret]
-            (add-secret-to-player state player-id secret))
-          state
-          secrets))
-
 (defn- add-card-to
   "Adds a card to either the hand or the deck."
   {:test (fn []
@@ -1543,7 +1530,34 @@
        (filter (fn [s] (= (:id s) id)))
        (first)))
 
-;todo test this
+(defn add-secret-to-player
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                                  {:hand [(create-card "Kezan Mystic" :id "s")]}])
+                    (add-secret-to-player "p1" (create-secret "Vaporize" "p1"))
+                    (get-active-secrets "p1")
+                    (count))
+                3))}
+  [state player-id secret]
+  (update-in state [:players player-id :active-secrets] conj secret))
+
+(defn add-secrets-to-player
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}
+                                  {:hand [(create-card "Kezan Mystic" :id "s")]}])
+                    (add-secrets-to-player "p1" [(create-secret "Vaporize" "p1")
+                                                 (create-secret "Venomstrike Trap" "p1" :id "v")])
+                    (get-active-secrets "p1")
+                    (count))
+                3))}
+  [state player-id secrets]
+  (reduce (fn [state secret]
+            (add-secret-to-player state player-id secret))
+          state
+          secrets))
+
+
 (defn get-random-secret-minion
   {:test (fn []
            ;get a random minion from specific player

@@ -212,9 +212,8 @@
                                  :active-secrets [(create-secret "Explosive Trap" "p1" :id "t")
                                                   (create-secret "Venomstrike Trap" "p1" :id "v")]}])
                   ;(play-minion-card "p1" "s" 0) should be play-secret-card instead
-                  (play-minion-card "p1" "s" 0)
                   (get-minion-stats "s"))
-              [2, 3]))
+              [1, 2]))
 
 (deftest Leeroy-Jenkins
          "Battlecry: Summon two 1/1 Whelps for your opponent"
