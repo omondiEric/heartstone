@@ -314,6 +314,7 @@
                     (attack-hero-or-minion "p1" "m" "h2")
                     (get-health "h2"))
                 29)
+
            (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
                                   {:minions [(create-minion "Ronja" :id "r")]}])
                     (attack-hero-or-minion "p1" "m" "r")
@@ -322,9 +323,9 @@
   [state player-id attacker-id target-id]
   (cond (minion? (get-character state target-id))
         (-> (attack-minion state player-id attacker-id target-id)
-            (do-game-event-functions :on-attack attacker-id target-id))
+            (do-game-event-functions :on-attack player-id target-id))
         :else (-> (attack-hero state player-id attacker-id target-id)
-                  (do-game-event-functions :on-attack attacker-id target-id))))
+                  (do-game-event-functions :on-attack player-id target-id))))
 
 (defn play-spell-card
   "Plays a spell card, removes it from hand"
@@ -371,22 +372,22 @@
 
 (defn play-secret-card-fn
   {:test (fn []
-           ;todo temp test for vaporize
-           (is= (as-> (create-game [{:hand    [(create-secret "Vaporize" "p1" :id "v")
-                                               (create-card "Emil" :id "e")]}
-                                    {:minions [(create-minion "Alfred" :id "a")]}]) $
-                      (play-secret-card-fn $ "p1" "v")
-                      ;(add-secret-to-player $ "p1" (create-secret "Vaporize" "p1" :id "v"))
-                      (attack-hero-or-minion $ "p2" "a" "h1")
-                      (get-minions $ "p2"))
+           ;todo this is not working since on-attack for spell cards is not being reached by do-game-event fn
+           ;todo current do-game-event fn only works 4 minions
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                  {:hand [(create-secret "Vaporize" "p1" :id "v")]}])
+                    (play-secret-card-fn "p2" "v" 0)
+                    (attack-hero-or-minion "p1" "m" "h2")
+                    (get-minions "p1"))
                 []))}
-  [state player-id secret-id]
-  (as-> state $
-        (add-secret-to-player $ player-id (get-secret $ secret-id))
-        (remove-card-from-hand $ player-id secret-id)
-        (pay-mana $ player-id secret-id)
-        ;(on-secret-played-fns $)
-        ))
+  [state player-id secret-id position]
+  (let [secret-card (get-card state secret-id)]
+    (as-> state $
+          (add-secret-to-player $ player-id secret-card) ;todo using get-secret gives null
+          (remove-card-from-hand $ player-id secret-id)
+          ;(pay-mana $ player-id secret-id) ;todo assertion fails for some reason
+          ;(on-secret-played-fns $)
+          )))
 
 ; plays either spell card or minion card
 (defn play-card
@@ -408,55 +409,56 @@
                 "Ronja")
            )}
   ([state player-id card-id position target-id]
-   (if (= (:type (get-definition (get-card state card-id))) :minion)
-     (play-minion-card state player-id card-id position target-id)
-     (play-spell-card state player-id card-id target-id)))
-  ([state player-id card-id position]
-   (if (= (:type (get-definition (get-card state card-id))) :minion)
-     (play-minion-card state player-id card-id position)
-     (play-spell-card state player-id card-id))))
+   (cond (= (:type (get-definition (get-card state card-id))) :minion) (play-minion-card state player-id card-id position target-id)
+         (= (:type (get-definition (get-card state card-id))) :spell) (play-spell-card state player-id card-id target-id)
+         (= (:sub-type (get-definition (get-card state card-id))) :secret) (play-secret-card-fn state player-id card-id position)))
 
-(defn do-hero-power
-  {:test (fn []
-           ;Carl's Blessing gives target minion divine shield
-           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
-                                   :hero    (create-hero "Carl")}])
-                    (do-hero-power "p1" :target-id "k")
-                    (get-minion "k")
-                    (get-in [:properties :permanent])
-                    (contains? "divine-shield"))
-                true)
-           ;check mana is decreased
-           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
-                                   :hero    (create-hero "Carl")}])
-                    (do-hero-power "p1" :target-id "k")
-                    (get-mana "p1"))
-                8)
-           ;can't perform twice in a turn
-           (error? (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
-                                      :hero    (create-hero "Carl")}])
-                       (do-hero-power "p1" :target-id "k")
-                       (do-hero-power "p1" :target-id "k")))
-           ;can perform in subsequent in a turn
-           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]
-                                   :hero    (create-hero "Gustaf")}])
-                    (do-hero-power "p1")
-                    (end-turn "p1")
-                    (end-turn "p2")
-                    (do-hero-power "p1")
-                    (get-minion "e")
-                    (:damage-taken))
-                2)
-           )}
-  ;target-id is needed for some (maybe think about overloading instead)
-  ([state player-id & {:keys [target-id]}]
-   (if (get-in state [:players player-id :hero :hero-power-used])
-     (error "Hero power already used this turn")
-     (let [hero-power (:hero-power (get-definition (get-in state [:players player-id :hero])))
-           power-function (:power-fn (get-definition hero-power))]
-       (as-> state $
-             (pay-mana $ player-id (get-in $ [:players player-id :hero :id]))
-             (assoc-in $ [:players player-id :hero :hero-power-used] true)
-             (if (empty? target-id)
-               (power-function $ player-id)
-               (power-function $ target-id)))))))
+  ([state player-id card-id position]
+   (cond (= (:type (get-definition (get-card state card-id))) :minion) (play-minion-card state player-id card-id position)
+         (= (:type (get-definition (get-card state card-id))) :spell) (play-spell-card state player-id card-id)
+         (= (:sub-type (get-definition (get-card state card-id))) :secret) (play-secret-card-fn state player-id card-id position))))
+
+  (defn do-hero-power
+    {:test (fn []
+             ;Carl's Blessing gives target minion divine shield
+             (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
+                                     :hero    (create-hero "Carl")}])
+                      (do-hero-power "p1" :target-id "k")
+                      (get-minion "k")
+                      (get-in [:properties :permanent])
+                      (contains? "divine-shield"))
+                  true)
+             ;check mana is decreased
+             (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
+                                     :hero    (create-hero "Carl")}])
+                      (do-hero-power "p1" :target-id "k")
+                      (get-mana "p1"))
+                  8)
+             ;can't perform twice in a turn
+             (error? (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
+                                        :hero    (create-hero "Carl")}])
+                         (do-hero-power "p1" :target-id "k")
+                         (do-hero-power "p1" :target-id "k")))
+             ;can perform in subsequent in a turn
+             (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]
+                                     :hero    (create-hero "Gustaf")}])
+                      (do-hero-power "p1")
+                      (end-turn "p1")
+                      (end-turn "p2")
+                      (do-hero-power "p1")
+                      (get-minion "e")
+                      (:damage-taken))
+                  2)
+             )}
+    ;target-id is needed for some (maybe think about overloading instead)
+    ([state player-id & {:keys [target-id]}]
+     (if (get-in state [:players player-id :hero :hero-power-used])
+       (error "Hero power already used this turn")
+       (let [hero-power (:hero-power (get-definition (get-in state [:players player-id :hero])))
+             power-function (:power-fn (get-definition hero-power))]
+         (as-> state $
+               (pay-mana $ player-id (get-in $ [:players player-id :hero :id]))
+               (assoc-in $ [:players player-id :hero :hero-power-used] true)
+               (if (empty? target-id)
+                 (power-function $ player-id)
+                 (power-function $ target-id)))))))

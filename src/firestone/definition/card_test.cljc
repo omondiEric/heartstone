@@ -28,6 +28,7 @@
                                         attack-hero-or-minion
                                         draw-card
                                         end-turn
+                                        play-card
                                         play-minion-card
                                         play-spell-card]]))
 
@@ -230,25 +231,32 @@
                     (get-active-secrets $ "p1"))
               ()))
 
+;todo play-card will call play-secret-card which currently does not work
 (deftest Vaporize
          "Secret: When a minion attacks your hero destroy it."
          (is= (as-> (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]}
                                   {:minions [(create-minion "Mio" :id "m")]}]) $
-                    ;(end-turn $ "p1")
-                    ;(end-turn $ "p2")
-                    (play-minion-card $ "p2" "m" 0)
-                    ;(end-turn $ "p2")
-                    ;(end-turn $ "p1")
-                    ;(get-minions $ "p1"))
+                    (play-card $ "p2" "m" 0)
                     (attack-hero-or-minion $ "p2" "m" "h1")
                     (get-minions $ "p2"))
               []))
-;
-;(deftest Mad Scientist
-;
-;         (is= (as-> (create-game [{:deck [(create-secret "Vaporize" "p1" :id "v")]
-;                                   :minions [(create-minion "Mad Scientist" :id "ms")]}]))))
-;
-;(deftest Explosive Trap)
-;
-;(deftest Venomstrike Trap)
+
+(deftest Mad-Scientist
+         "Deathrattle: Put a Secret from your deck into the battlefield."
+         (is= (as-> (create-game [{:deck    [(create-secret "Vaporize" "p1" :id "v")]
+                                   :minions [(create-minion "Mad Scientist" :id "ms")]}]) $
+                    (play-card $ "p1" "v" 0)
+                    (get-active-secrets $ "p1")
+                    (map :name $))
+              ["Vaporize"]))
+
+(deftest Venomstrike-Trap
+         "Secret: When one of your minions is attacked summon a 2/3 Poisonous Cobra."
+         (is= (-> (create-game [{:active-secrets [(create-secret "Venomstrike Trap" "p1" :id "vt")]
+                                 :minions        [(create-minion "Ronja" :id "r")]}
+                                {:minions [(create-minion "Mio" :id "m")]}])
+                  (end-turn "p1")
+                  (attack-hero-or-minion "p2" "m" "r")
+                  (get-minion "vc")
+                  (:name))
+              "Emperor Cobra"))

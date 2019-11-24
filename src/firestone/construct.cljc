@@ -1556,16 +1556,3 @@
                [:players owner-id :active-secrets]
                (fn [secrets]
                  (remove (fn [s] (= (:id s) id)) secrets)))))
-
-
-; Gets a specific secret
-(defn get-active-secret
-  {:test (fn []
-           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
-                    (get-active-secret "e")
-                    (:name))
-                "Explosive Trap"))}
-  [state id]
-  (->> (get-active-secrets state)
-       (filter (fn [s] (= (:id s) id)))
-       (first)))
