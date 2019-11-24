@@ -210,7 +210,10 @@
 (deftest Secretkeeper
          "Gain +1/+1"
          (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")
-                                           (create-minion "Secretkeeper" :id "s")]}])
+                                           (create-minion "Secretkeeper" :id "s")]
+                                 :active-secrets [(create-secret "Explosive Trap" "p1" :id "t")
+                                                  (create-secret "Venomstrike Trap" "p1" :id "v")]}])
+                  ;(play-minion-card "p1" "s" 0) should be play-secret-card instead
                   (get-minion-stats "s"))
               [1, 2]))
 
@@ -223,13 +226,30 @@
                     (map :name $))
               ["Tjorven", "Whelp", "Whelp"]))
 
+(deftest Kezan-Mystic
+         "Battlecry: Take control of a random enemy Secret."
+         (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                                  {:hand [(create-card "Kezan Mystic" :id "s")]}]) $
+                    (play-minion-card $ "p2" "s" 0)
+                    (get-active-secrets $ "p2")
+                    (count $))
+              1))
+
 (deftest Eater-of-Secrets
          "Battlecry: Destroy all enemy Secrets. Gain +1/+1 for each."
-         (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}
+         (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
                                   {:hand [(create-card "Eater of Secrets" :id "s")]}]) $
                     (play-minion-card $ "p2" "s" 0)
                     (get-active-secrets $ "p1"))
-              ()))
+              ())
+         (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                                  {:hand [(create-card "Eater of Secrets" :id "s")]}]) $
+                    (play-minion-card $ "p2" "s" 0)
+                    (get-minion-stats $ "s"))
+              [4,6]))
 
 ;todo play-card will call play-secret-card which currently does not work
 (deftest Vaporize

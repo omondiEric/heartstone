@@ -9,6 +9,7 @@
                                     decrement-all-player-minion-temporary-durations
                                     get-attack
                                     get-health
+                                    on-secret-played-fns
                                     refresh-minion-attacks
                                     pay-mana
                                     valid-attack?]]
@@ -163,6 +164,7 @@
         (inc-max-mana other-player-id)
         (restore-mana other-player-id)
         (draw-card other-player-id))))
+
 
 (defn play-minion-card
   {:test (fn []
