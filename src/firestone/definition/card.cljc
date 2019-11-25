@@ -1,29 +1,38 @@
 (ns firestone.definition.card
   (:require [firestone.definitions :as definitions]
             [firestone.definitions :refer [get-definition]]
-            [firestone.construct :refer [add-minion-to-board
-                                         add-minions-to-board
+            [firestone.construct :refer [add-minions-to-board
+                                         add-minion-to-board
+                                         add-secret-to-player
                                          buff-minion-card
                                          character?
+                                         create-game
+                                         create-card
                                          create-minion
                                          friendly-minions?
+                                         get-active-secrets
+                                         get-card
+                                         get-deck
                                          get-all-played-cards-with-property
                                          get-character
                                          get-deck
                                          get-hand
+                                         get-hero
                                          get-minion
+                                         get-minions
+                                         get-other-player-id
+                                         get-player
                                          get-random-minion
                                          get-random-minion-conditional
-                                         get-active-secrets
-                                         get-minion
-                                         get-random-minion
                                          get-random-secret
-                                         get-other-player-id
+                                         get-secret
                                          give-deathrattle
                                          give-taunt
                                          minion?
                                          modify-minion-stats
                                          replace-minion
+                                         remove-card-from-deck
+                                         remove-minion
                                          remove-secret
                                          switch-minion-side
                                          switch-secret-side
@@ -36,11 +45,12 @@
                                     deal-damage-to-all-heroes
                                     do-battlecry
                                     silence-minion]]
-            [firestone.core-api :refer [draw-card]]))
+            [firestone.core-api :refer [draw-card
+                                        play-card]]))
 
 (def card-definitions
-  {
 
+  {
    "Mio"
    {:name      "Mio"
     :attack    1
@@ -265,7 +275,7 @@
     :description   "Battlecry: Give a minion +2 Attack this turn."
     :valid-target? (fn [_ target] (minion? target))
     :battlecry     (fn [state _ _ target-id] (when (minion? (get-minion state target-id))
-                                                               (modify-minion-stats state target-id 2 0 1)))}
+                                               (modify-minion-stats state target-id 2 0 1)))}
 
    "Al'Akir the Windlord"
    {:name        "Al'Akir the Windlord"
@@ -298,7 +308,17 @@
     :type        :minion
     :set         :curse-of-naxxramas
     :rarity      :common
-    :description "Deathrattle: Put a Secret from your deck into the battlefield."}
+    :description "Deathrattle: Put a Secret from your deck into the battlefield."
+    :deathrattle (fn [state card-id]
+                   (let [owner-id (:owner-id (get-minion state card-id))
+                         the-secret (->> (get-deck state owner-id)
+                                         (filter (fn [s] (= (:sub-type s) :secret)))
+                                         (first))
+                         secret-id (:id the-secret)]
+                     (as-> state $
+                           (remove-card-from-deck $ owner-id secret-id)
+                           (add-secret-to-player $ owner-id the-secret))))}
+   ;(play-card state $ owner-id secret-id 0))))}
 
    "Eater of Secrets"
    {:name        "Eater of Secrets"
@@ -429,10 +449,20 @@
     :set         :classic
     :rarity      :common
     :description "Secret: When your hero is attacked deal 2 damage to all enemies."
-    :on-attack   (fn [state this {,,,}]
-                   ;(when (and (hero? target)
-                   ;           (attacker an enemy )
-                   )}
+    :on-attack   (fn [state player-id attacker-id target-id]
+                   (let [attacker-owner-id (:owner-id (get-character state attacker-id))
+                         victim-hero (get-hero state target-id)
+                         enemy-player (get-player state attacker-owner-id)
+                         enemy-hero (get-hero state (get-in state [:players (:id enemy-player) :hero :id]))
+                         enemy-minions (get-minions state attacker-owner-id)]
+                     (if (= target-id (:id victim-hero))
+                       (as-> state $
+                             (reduce (fn [state minion]
+                                       (deal-damage state (:id minion) 2))
+                                     $
+                                     enemy-minions)
+                             (deal-damage $ (:id enemy-hero) 2))
+                       state)))}
 
    "Venomstrike Trap"
    {:name        "Venomstrike Trap"
@@ -441,38 +471,53 @@
     :sub-type    :secret
     :set         :knights-of-the-frozen-throne
     :rarity      :rare
-    :description "Secret: When one of your minions is attacked summon a 2/3 Poisonous Cobra."}
+    :description "Secret: When one of your minions is attacked summon a 2/3 Poisonous Cobra."
+    :on-attack   (fn [state player-id attacker-id target-id]
+                   (if (minion? (get-character state target-id))
+                     (let [target-owner-id (:owner-id (get-character state target-id))]
+                       (add-minion-to-board state target-owner-id (create-minion "Emperor Cobra") 0))
+                   state)) }
 
-   "Vaporize"
-   {:name        "Vaporize"
-    :mana-cost   3
-    :type        :spell
-    :sub-type    :secret
-    :set         :classic
-    :rarity      :rare
-    :description "Secret: When a minion attacks your hero destroy it."}
+"Vaporize"
+{:name        "Vaporize"
+ :mana-cost   3
+ :type        :spell
+ :sub-type    :secret
+ :set         :classic
+ :rarity      :rare
+ :description "Secret: When a minion attacks your hero destroy it."
+ :on-attack   (fn [state player-id attacker-id target-id]
+                (if (minion? (get-character state attacker-id))
+                  (as-> state $
+                        (let [victim-owner-id (:owner-id (get-character $ target-id))
+                              victim-player (get-player $ victim-owner-id)
+                              victim-hero (:hero victim-player)]
+                          (if (= target-id (:id victim-hero))
+                            (remove-minion $ attacker-id)
+                            $)))
+                  state))}
 
-   "Whelp"
-   {:name      "Whelp"
-    :attack    1
-    :health    1
-    :mana-cost 1
-    :set       :classic
-    :type      :minion
-    :rarity    :common}
+"Whelp"
+{:name      "Whelp"
+ :attack    1
+ :health    1
+ :mana-cost 1
+ :set       :classic
+ :type      :minion
+ :rarity    :common}
 
-   "Emperor Cobra"
-   {:name        "Emperor Cobra"
-    :attack      2
-    :health      3
-    :mana-cost   3
-    :properties  #{"poisonous"}
-    :type        :minion
-    :set         :classic
-    :rarity      :rare
-    :description "Poisonous."}
+"Emperor Cobra"
+{:name        "Emperor Cobra"
+ :attack      2
+ :health      3
+ :mana-cost   3
+ :properties  #{"poisonous"}
+ :type        :minion
+ :set         :classic
+ :rarity      :rare
+ :description "Poisonous."}
 
-   })
+} )
 
 
 (definitions/add-definitions! card-definitions)

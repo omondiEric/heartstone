@@ -1233,6 +1233,87 @@
                   (condition-function state (:id minion))) (get-minions state player-id))
         (random-nth state))))
 
+; Creates an active-secret for a player, needs a name an an owner id
+(defn create-secret
+  {:test (fn []
+           (is= (create-secret "Vaporize" "p1" :id "v")
+                {:name         "Vaporize"
+                 :type         :spell
+                 :sub-type     :secret
+                 :damage-taken 0
+                 :owner-id     "p1"
+                 :id           "v"}))}
+  [name owner-id & kvs]
+  (let [secret {:name         name
+                :type         :spell
+                :sub-type     :secret
+                :damage-taken 0
+                :owner-id     owner-id}]
+    (if (empty? kvs)
+      secret
+      (apply assoc secret kvs))))
+
+; Gets all the active secrets
+(defn get-active-secrets
+  {:test (fn []
+           (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}]) $
+                      (get-active-secrets $ "p1")
+                      (map :name $))
+                ["Explosive Trap"])
+           (is= (-> (create-empty-state)
+                    (get-active-secrets))
+                []))}
+  ([state player-id]
+   (:active-secrets (get-player state player-id)))
+  ([state]
+   (->> (:players state)
+        (vals)
+        (map :active-secrets)
+        (apply concat))))
+
+; Gets a secret with a given id
+(defn get-secret
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
+                    (get-secret "e")
+                    (:name))
+                "Explosive Trap"))}
+  [state id]
+  (->> (get-active-secrets state)
+       (filter (fn [s] (= (:id s) id)))
+       (first)))
+
+; Removes a secret
+(defn remove-secret
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
+                    (remove-secret "e")
+                    (get-active-secrets))
+                []))}
+  [state id]
+  (let [owner-id (:owner-id (get-secret state id))]
+    (update-in state
+               [:players owner-id :active-secrets]
+               (fn [secrets]
+                 (remove (fn [s] (= (:id s) id)) secrets)))))
+
+(defn switch-secret-side
+  "Switches a secret from one player to the other"
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                                  {:hand [(create-card "Kezan Mystic" :id "s")]}])
+                    (switch-secret-side "e")
+                    (get-active-secrets "p2")
+                    (count))
+                1))}
+  [state secret-id]
+  (let [secret (get-secret state secret-id)
+        player-id (get-other-player-id (secret :owner-id))]
+    (-> state
+        (remove-secret secret-id)
+        (add-secret-to-player player-id secret))))
+
 ; call all the functions of active minions corresponding to a game event eg. end-of-turn, on-minion-damage
 (defn do-game-event-functions
   {:test (fn []
@@ -1265,6 +1346,29 @@
      (if player-id
        (get-minions state player-id)
        (get-minions state)))))
+
+;todo trying to generalize do-game-event-fn to apply to all cards
+(defn do-secret-game-event-functions
+  {:test (fn []
+           (is= (-> (create-game [{:minions        [(create-minion "Mio" :id "m")]
+                                   :active-secrets [(create-secret "Vaporize" "p1" :id "v")]}
+                                  {:minions [(create-minion "Kato" :id "k")]}])
+                    (do-secret-game-event-functions :on-attack :player-id "p1" :attacker-id "k" :target-id "h1")
+                    (get-minions "p2"))
+                ()))}
+  [state game-event-key & {:keys [player-id attacker-id target-id]}]
+  (reduce
+    (fn [state secret]
+      (let [secret-def (get-definition (:name secret))]
+        (if (game-event-key secret-def)
+          (-> state
+              ((game-event-key secret-def) player-id attacker-id target-id)
+              (remove-secret (:id secret)))
+          state)))
+    state
+    (if player-id
+      (get-active-secrets state player-id)
+      (get-active-secrets state))))
 
 (defn give-property
   "Gives a property (temporary or permanent) to a minion. Temporary properties must have no spaces because it is a map key"
@@ -1494,7 +1598,6 @@
         (do-game-event-functions :on-divine-shield-removal :target-id minion-id))
     (error "No divine shield to be removed")))
 
-
 (defn get-character
   "Returns the character with the given id from the state."
   {:test (fn []
@@ -1713,6 +1816,22 @@
    (-> state
        (modify-minion-attack minion-id attack duration)
        (modify-minion-max-health minion-id health duration))))
+
+(defn get-random-secret-minion
+  {:test (fn []
+           ;get a random minion from specific player
+           (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                 (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                               {:hand [(create-card "Kezan Mystic" :id "s")]}]) $
+                 (get-random-secret-minion $ "p1")
+                 (do (is= (:id (last $)) "e")
+                     (is (not= (:seed (first $)) 0)))))}
+  ([state]
+   (->> (get-active-secrets state)
+        (random-nth state)))
+  ([state player-id]
+   (->> (get-active-secrets state player-id)
+        (random-nth state))))
 
 (defn remove-minion-stat-buffs
   "Resets minion's stats to original"

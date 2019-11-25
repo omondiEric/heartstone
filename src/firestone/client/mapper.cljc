@@ -1,9 +1,11 @@
 (ns firestone.client.mapper
   (:require [ysera.test :refer [is is-not is=]]
             [firestone.client.spec]
-            [firestone.construct :refer [create-game
-                                         create-card
+            [firestone.construct :refer [create-card
+                                         create-game
                                          create-minion
+                                         create-secret
+                                         get-active-secrets
                                          get-card
                                          get-characters
                                          get-deck-size
@@ -13,6 +15,7 @@
                                          get-minions
                                          get-minion-card-stat-buffs
                                          get-minion-properties
+                                         get-secret
                                          minion?
                                          get-player
                                          get-players]]
@@ -170,7 +173,6 @@
        (map (fn [c]
               (get-client-card state c)))))
 
-;todo currently does not get deathrattle or effects or others
 (defn get-minion-states
   {:test (fn []
            (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}]) $
@@ -267,19 +269,49 @@
        (map (fn [m]
               (get-client-minion state m)))))
 
+(defn get-client-secret
+  {:test (fn []
+           (is (check-spec :firestone.client.spec/secret
+                           (let [game (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]}])]
+                             (get-client-secret game "v"))))
+           )}
+  [state secret-id]
+  (let [secret (get-secret state secret-id)
+        secret-def (get-definition (:name secret))]
+    {:name (:name secret-def)
+     :owner-id (:owner-id secret)
+     :id (:id secret)
+     :entity-type "secret"
+     :original-mana-cost (:mana-cost secret-def)
+     :description (:description secret-def)
+     })
+  )
+
+(defn get-client-secrets
+  {:test (fn []
+           (is (check-spec :firestone.client.spec/active-secrets
+                           (as-> (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]}]) $
+                             (get-client-secrets $ (get-player $ "p1")))))
+           )}
+  [state player]
+  (->> (get-active-secrets state (:id player))
+       (map (fn [s]
+              (get-client-secret state (:id s))))))
+
 
 (defn get-client-player
   {:test (fn []
            (is (check-spec :firestone.client.spec/player
-                           (as-> (create-game [{:deck [(create-minion "Mio" :id "m1")
+                           (as-> (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]
+                                                :minion [(create-minion "Mio" :id "m1")
                                                        (create-minion "Emil" :id "e1")]}
-                                               {:deck [(create-minion "Mio" :id "m2")
+                                               {:minion [(create-minion "Mio" :id "m2")
                                                        (create-minion "Emil" :id "e2")]}]) $
                                  (get-client-player $ (get-player $ "p1")))
                            )))}
   [state player]
   {:board-entities (get-client-minions state player)
-   :active-secrets []
+   :active-secrets (get-client-secrets state player)
    :deck-size      (get-deck-size state (:id player))
    :hand           (get-client-hand state player)
    :hero           (get-client-hero state player (:hero player))
@@ -289,7 +321,11 @@
 (defn get-client-state
   {:test (fn []
            (is (check-spec :firestone.client.spec/game-states
-                           (-> (create-game)
+                           (-> (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]
+                                              :minion [(create-minion "Mio" :id "m1")
+                                                       (create-minion "Emil" :id "e1")]}
+                                             {:minion [(create-minion "Mio" :id "m2")
+                                                       (create-minion "Emil" :id "e2")]}])
                                (get-client-state)))))}
   [state]
   [{:id             "the-game-id"

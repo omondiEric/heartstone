@@ -7,6 +7,7 @@
                                          create-game
                                          create-hero
                                          create-minion
+                                         create-secret
                                          draw-card-to-hand
                                          do-game-event-functions
                                          get-all-played-cards-with-property
@@ -454,6 +455,13 @@
                     (get-minion "e")
                     (:damage-taken))
                 3)
+
+           (is= (-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}])
+                    (deal-damage "m" 2)
+                    (get-minion "m2")
+                    (:name))
+                "Elisabeth")
+
            ;test to see if amount of damage taken is updated well
            (is= (-> (create-game [{:minions [(create-minion "Jonatan" :id "j" :damage-taken 1)]}])
                     (deal-damage "j" 3)
@@ -591,6 +599,13 @@
                     (pay-mana "p1" "r")
                     (get-mana "p1"))
                 8)
+           ; secret card
+           (is= (-> (create-game [{:hand    [(create-secret "Vaporize"  "p1" :id "v")
+                                             (create-card "Emil" :id "e")]
+                                   :minions [(create-minion "Alfred" :id "a")]}])
+                    (pay-mana "p1" "e")
+                    (get-mana "p1"))
+                6)
            ;hero power
            (is= (-> (create-game [{:hand    [(create-card "Radar Raid" :id "r")
                                              (create-card "Emil" :id "e")]
