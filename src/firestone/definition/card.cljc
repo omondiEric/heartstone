@@ -17,7 +17,7 @@
                                          get-active-secrets
                                          get-minion
                                          get-random-minion
-                                         get-random-secret-minion
+                                         get-random-secret
                                          get-other-player-id
                                          give-deathrattle
                                          give-taunt
@@ -42,18 +42,18 @@
   {
 
    "Mio"
-   {:name       "Mio"
-    :attack     1
-    :health     2
-    :mana-cost  1
-    :type       :minion}
+   {:name      "Mio"
+    :attack    1
+    :health    2
+    :mana-cost 1
+    :type      :minion}
 
    "Ronja"
-   {:name       "Ronja"
-    :attack     3
-    :health     2
-    :mana-cost  2
-    :type       :minion}
+   {:name      "Ronja"
+    :attack    3
+    :health    2
+    :mana-cost 2
+    :type      :minion}
 
    "Kato"
    {:name        "Kato"
@@ -107,29 +107,29 @@
     :description "Divine Shield."}
 
    "Pippi"
-   {:name        "Pippi"
-    :attack      2
-    :health      4
-    :mana-cost   3
-    :type        :minion
+   {:name           "Pippi"
+    :attack         2
+    :health         4
+    :mana-cost      3
+    :type           :minion
     :on-end-of-turn (fn [state minion-id]
-                   (deal-damage-to-other-minions state minion-id 1))
-    :set         :custom
-    :description "At the end of your turn deal 1 damage to all other minions."}
+                      (deal-damage-to-other-minions state minion-id 1))
+    :set            :custom
+    :description    "At the end of your turn deal 1 damage to all other minions."}
 
    "Karlsson"
-   {:name        "Karlsson"
-    :attack      1
-    :health      4
-    :mana-cost   3
-    :type        :minion
+   {:name           "Karlsson"
+    :attack         1
+    :health         4
+    :mana-cost      3
+    :type           :minion
     :on-end-of-turn (fn [state id]
-                   (let [random-result (get-random-minion state)]
-                     (let [state (first random-result)
-                           random-minion (last random-result)]
-                       (give-taunt state (:id random-minion)))))
-    :set         :custom
-    :description "At the end of your turn give a random minion taunt."}
+                      (let [random-result (get-random-minion state)]
+                        (let [state (first random-result)
+                              random-minion (last random-result)]
+                          (give-taunt state (:id random-minion)))))
+    :set            :custom
+    :description    "At the end of your turn give a random minion taunt."}
 
    "Uncle Nilsson"
    {:name        "Uncle Nilsson"
@@ -188,15 +188,15 @@
     :description "Deal 2 damage to all characters."}
 
    "Radar Raid"
-   {:name        "Radar Raid"
-    :mana-cost   2
-    :type        :spell
-    :set         :custom
-    :valid-target?  (fn [state target]
-                      (character? target))
-    :spell-fn    (fn [state character-id]
-                   (deal-damage state character-id 3))
-    :description "Deal 3 damage to a character."}
+   {:name          "Radar Raid"
+    :mana-cost     2
+    :type          :spell
+    :set           :custom
+    :valid-target? (fn [state target]
+                     (character? target))
+    :spell-fn      (fn [state character-id]
+                     (deal-damage state character-id 3))
+    :description   "Deal 3 damage to a character."}
 
    "Herr Nilsson"
    {:name        "Herr Nilsson"
@@ -273,24 +273,22 @@
     :health      5
     :mana-cost   8
     :type        :minion
-    :properties    {:permanent     #{"windfury", "taunt", "divine-shield" "charge"}
-                    :temporary     {}
-                    :stats         {}}
+    :properties  #{"windfury", "taunt", "divine-shield" "charge"}
     :set         :classic
     :rarity      :legendary
     :description "Windfury, Charge, Divine Shield, Taunt"}
 
    "Secretkeeper"
-   {:name        "Secretkeeper",
-    :attack      1
-    :health      2
-    :mana-cost   1
-    :type        :minion
-    :set         :classic
-    :rarity      :rare
-    :secret-played  (fn [state minion-id]
-                      (modify-minion-stats state minion-id 1 1))
-    :description "Whenever a Secret is played, gain +1/+1."}
+   {:name          "Secretkeeper",
+    :attack        1
+    :health        2
+    :mana-cost     1
+    :type          :minion
+    :set           :classic
+    :rarity        :rare
+    :secret-played (fn [state minion-id]
+                     (modify-minion-stats state minion-id 1 1))
+    :description   "Whenever a Secret is played, gain +1/+1."}
 
    "Mad Scientist"
    {:name        "Mad Scientist"
@@ -310,10 +308,10 @@
     :type        :minion
     :set         :whispers-of-the-old-gods
     :rarity      :rare
-    :battlecry     (fn [state player-id minion-id]
+    :battlecry   (fn [state player-id minion-id]
                    (reduce (fn [state secret-id]
                              (-> (remove-secret state secret-id)
-                             (modify-minion-stats minion-id 1 1)))
+                                 (modify-minion-stats minion-id 1 1)))
                            state
                            (map :id (get-active-secrets state (get-other-player-id player-id)))))
     :description "Battlecry: Destroy all enemy Secrets. Gain +1/+1 for each."}
@@ -326,11 +324,13 @@
     :type        :minion
     :set         :goblins-vs-gnomes
     :rarity      :rare
-    :battlecry     (fn [state player-id minion-id]
-                   (let [random-result (get-random-secret-minion state (get-other-player-id player-id))]
+    :battlecry   (fn [state player-id minion-id]
+                   (let [random-result (get-random-secret state (get-other-player-id player-id))]
                      (let [state (first random-result)
-                           random-minion (last random-result)]
-                       (switch-secret-side state (:id (last random-result))))))
+                           random-secret (last random-result)]
+                       (if (some? random-secret)
+                         (switch-secret-side state (:id random-secret))
+                         state))))
     :description "Battlecry: Take control of a random enemy Secret."}
 
    "Stormwind Knight"
@@ -340,9 +340,7 @@
     :mana-cost   4
     :set         :basic
     :type        :minion
-    :properties    {:permanent     #{"charge"}
-                    :temporary     {}
-                    :stats         {}}
+    :properties  #{"charge"}
     :description "Charge"}
 
    "Leeroy Jenkins"
@@ -351,15 +349,13 @@
     :health      2
     :mana-cost   5
     :type        :minion
-    :properties    {:permanent     #{"charge"}
-                    :temporary     {}
-                    :stats         {}}
+    :properties  #{"charge"}
     :set         :classic
     :rarity      :legendary
     :description "Charge. Battlecry: Summon two 1/1 Whelps for your opponent."
     :battlecry   (fn [state player-id minion-id]
-                 (add-minions-to-board state (get-other-player-id player-id) [(create-minion "Whelp")
-                                                        (create-minion "Whelp")]))}
+                   (add-minions-to-board state (get-other-player-id player-id) [(create-minion "Whelp")
+                                                                                (create-minion "Whelp")]))}
 
    "The Mistcaller"
    {:name        "The Mistcaller"
@@ -414,16 +410,16 @@
                                            random-minion-id (:id (last random-result))]
                                        (do-battlecry new-state player-id minion-id minion-def random-minion-id))) $ minion-defs-with-target))))}
    "Silence"
-   {:name        "Silence"
-    :mana-cost   0
-    :type        :spell
-    :set         :classic
-    :rarity      :common
-    :description "Silence a minion."
-    :valid-target?  (fn [state target]
-                      (character? target))
-    :spell-fn    (fn [state minion-id]
-                   (silence-minion state minion-id))}
+   {:name          "Silence"
+    :mana-cost     0
+    :type          :spell
+    :set           :classic
+    :rarity        :common
+    :description   "Silence a minion."
+    :valid-target? (fn [state target]
+                     (character? target))
+    :spell-fn      (fn [state minion-id]
+                     (silence-minion state minion-id))}
 
    "Explosive Trap"
    {:name        "Explosive Trap"
@@ -436,7 +432,7 @@
     :on-attack   (fn [state this {,,,}]
                    ;(when (and (hero? target)
                    ;           (attacker an enemy )
-                              )}
+                   )}
 
    "Venomstrike Trap"
    {:name        "Venomstrike Trap"
@@ -457,13 +453,13 @@
     :description "Secret: When a minion attacks your hero destroy it."}
 
    "Whelp"
-   {:name       "Whelp"
-    :attack     1
-    :health     1
-    :mana-cost  1
-    :set        :classic
-    :type       :minion
-    :rarity     :common}
+   {:name      "Whelp"
+    :attack    1
+    :health    1
+    :mana-cost 1
+    :set       :classic
+    :type      :minion
+    :rarity    :common}
 
    "Emperor Cobra"
    {:name        "Emperor Cobra"

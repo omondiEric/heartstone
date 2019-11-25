@@ -1945,13 +1945,13 @@
        (filter (fn [s] (= (:id s) id)))
        (first)))
 
-(defn get-random-secret-minion
+(defn get-random-secret
   {:test (fn []
            ;get a random minion from specific player
            (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
                                                  (create-secret "Venomstrike Trap" "p1" :id "v")]}
                                {:hand [(create-card "Kezan Mystic" :id "s")]}]) $
-                 (get-random-secret-minion $ "p1")
+                 (get-random-secret $ "p1")
                  (do (is= (:id (last $)) "e")
                      (is (not= (:seed (first $)) 0)))))}
   ([state]

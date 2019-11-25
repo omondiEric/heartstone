@@ -1,5 +1,5 @@
 (ns firestone.core-api
-  (:require [ysera.test :refer [is is= error?]]
+  (:require [ysera.test :refer [is is= is-not error?]]
             [ysera.error :refer [error]]
             [firestone.definitions :refer [get-definition]]
             [firestone.core :refer [do-battlecry
@@ -10,8 +10,9 @@
                                     get-attack
                                     get-health
                                     on-secret-played-fns
-                                    refresh-minion-attacks
                                     pay-mana
+                                    refresh-minion-attacks
+                                    sleepy?
                                     valid-attack?]]
             [firestone.construct :refer [add-card-to-cards-played
                                          add-card-to-hand
@@ -416,6 +417,8 @@
                     (first)
                     (:name))
                 "Ronja")
+           (is-not (-> (create-game [{:hand [(create-card "Stormwind Knight" :id "a")]}])
+                       (sleepy? "a")))
            )}
   ([state player-id card-id position target-id]
    (if (= (:type (get-definition (get-card state card-id))) :minion)
