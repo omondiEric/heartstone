@@ -272,30 +272,38 @@
          "Secret: When a minion attacks your hero destroy it."
          (is= (as-> (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]}
                                   {:minions [(create-minion "Mio" :id "m")]}]) $
-                    (play-card $ "p2" "m" 0)
-                    (attack-hero-or-minion $ "p2" "m" "h1")
+                    ((:on-attack (get-definition "Vaporize")) $ "p1" "m" "h1")
                     (get-minions $ "p2"))
-              []))
+              ()))
 
 (deftest Mad-Scientist
          "Deathrattle: Put a Secret from your deck into the battlefield."
          (is= (as-> (create-game [{:deck    [(create-secret "Vaporize" "p1" :id "v")]
                                    :minions [(create-minion "Mad Scientist" :id "ms")]}]) $
-                    (play-card $ "p1" "v" 0)
-                    (get-active-secrets $ "p1")
-                    (map :name $))
-              ["Vaporize"]))
+                    ((:deathrattle (get-definition "Mad Scientist")) $ "ms")
+                    (:name (first (get-active-secrets $ "p1"))))
+              "Vaporize"))
 
 (deftest Venomstrike-Trap
          "Secret: When one of your minions is attacked summon a 2/3 Poisonous Cobra."
-         (is= (-> (create-game [{:active-secrets [(create-secret "Venomstrike Trap" "p1" :id "vt")]
-                                 :minions        [(create-minion "Ronja" :id "r")]}
-                                {:minions [(create-minion "Mio" :id "m")]}])
-                  (end-turn "p1")
-                  (attack-hero-or-minion "p2" "m" "r")
-                  (get-minion "vc")
-                  (:name))
+         (is= (as-> (create-game [{:active-secrets [(create-secret "Venomstrike Trap" "p1" :id "vt")]
+                                   :minions        [(create-minion "Ronja" :id "r")]}
+                                  {:minions [(create-minion "Mio" :id "m")]}]) $
+                    ((:on-attack (get-definition "Venomstrike Trap")) $ "p1" "m" "r")
+                    ;(get-minions $ "p1"))
+                    (:name (get-minion $ "ec")))
               "Emperor Cobra"))
+
+(deftest Explosive-Trap
+         "Secret: When your hero is attacked deal 2 damage to all enemies."
+         (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "et")]
+                                   :minions        [(create-minion "Ronja" :id "r")]}
+                                  {:minions [(create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e")]}]) $
+                    ((:on-attack (get-definition "Explosive Trap")) $ "p1" "m" "h1")
+                    (:damage-taken (get-minion $ "e")))
+              2))
+
 (deftest Silence
          "Silence a minion"
          (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]

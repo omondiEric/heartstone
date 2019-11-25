@@ -11,23 +11,27 @@
                                          create-minion
                                          friendly-minions?
                                          get-active-secrets
+                                         get-card
                                          get-deck
                                          get-all-played-cards-with-property
                                          get-character
                                          get-deck
                                          get-hand
+                                         get-hero
                                          get-minion
                                          get-minions
                                          get-player
                                          get-random-minion
                                          get-random-secret-minion
                                          get-random-minion-conditional
+                                         get-secret
                                          get-other-player-id
                                          give-deathrattle
                                          give-taunt
                                          minion?
                                          modify-minion-stats
                                          replace-minion
+                                         remove-minion
                                          remove-secret
                                          remove-card-from-deck
                                          ida-present?
@@ -39,13 +43,12 @@
             [firestone.core :refer [deal-damage
                                     deal-damage-to-other-minions
                                     deal-damage-to-all-minions
-                                    deal-damage-to-all-heroes]]
+                                    deal-damage-to-all-heroes
+                                    do-battlecry
+                                    silence-minion]]
             [firestone.core-api :refer [draw-card
                                         kill-minion-fn
-                                        play-card
-                                        deal-damage-to-all-heroes
-                                        do-battlecry
-                                        silence-minion]]))
+                                        play-card]]))
 
 (def card-definitions
 
@@ -235,15 +238,15 @@
     :description "Deal 2 damage to all characters."}
 
    "Radar Raid"
-   {:name      "Radar Raid"
-    :mana-cost 2
-    :type      :spell
-    :set       :custom
-               :valid-target? (fn [state target]
-                                (character? target))
-               :spell-fn (fn [state character-id]
-                           (deal-damage state character-id 3))
-               :description "Deal 3 damage to a character."}
+   {:name          "Radar Raid"
+    :mana-cost     2
+    :type          :spell
+    :set           :custom
+    :valid-target? (fn [state target]
+                     (character? target))
+    :spell-fn      (fn [state character-id]
+                     (deal-damage state character-id 3))
+    :description   "Deal 3 damage to a character."}
 
    "Herr Nilsson"
    {:name        "Herr Nilsson"
@@ -364,8 +367,9 @@
     :set         :curse-of-naxxramas
     :rarity      :common
     :description "Deathrattle: Put a Secret from your deck into the battlefield."
-    :deathrattle (fn [state owner-id]
-                   (let [the-secret (->> (get-deck state owner-id)
+    :deathrattle (fn [state card-id]
+                   (let [owner-id (:owner-id (get-minion state card-id))
+                         the-secret (->> (get-deck state owner-id)
                                          (filter (fn [s] (= (:sub-type s) :secret)))
                                          (first))
                          secret-id (:id the-secret)]
@@ -515,19 +519,20 @@
     :set         :classic
     :rarity      :common
     :description "Secret: When your hero is attacked deal 2 damage to all enemies."
-    :on-attack   (fn [state attacker-id target-id]
-                   (if-not (minion? (get-character state target-id))
-                     (as-> state $
-                           (let [attacker-owner-id (:owner-id (get-character $ attacker-id))
-                                 enemy-player (get-player $ attacker-owner-id)
-                                 enemy-hero (:hero enemy-player)
-                                 enemy-minions (get-minions $ attacker-owner-id)]
-                             (reduce (fn [$ minion]
-                                       (deal-damage $ (:id minion) 2))
-                                     state
-                                     enemy-minions)
-                             (deal-damage $ (:id enemy-hero))))
-                     state))}
+    :on-attack   (fn [state player-id attacker-id target-id]
+                     (let [attacker-owner-id (:owner-id (get-character state attacker-id))
+                           victim-hero (get-hero state target-id)
+                           enemy-player (get-player state attacker-owner-id)
+                           enemy-hero (get-hero state (get-in state [:players (:id enemy-player) :hero :id]))
+                           enemy-minions (get-minions state attacker-owner-id)]
+                       (if (= target-id (:id victim-hero))
+                         (as-> state $
+                               (reduce (fn [state minion]
+                                         (deal-damage state (:id minion) 2))
+                                       $
+                                       enemy-minions)
+                               (deal-damage $ (:id enemy-hero) 2))
+                         state)))}
 
    "Venomstrike Trap"
    {:name        "Venomstrike Trap"
@@ -537,7 +542,7 @@
     :set         :knights-of-the-frozen-throne
     :rarity      :rare
     :description "Secret: When one of your minions is attacked summon a 2/3 Poisonous Cobra."
-    :on-attack   (fn [state target-id]
+    :on-attack   (fn [state player-id attacker-id target-id]
                    (if (minion? (get-character state target-id))
                      (as-> state $
                            (let [target-owner-id (:owner-id (get-character $ target-id))]
@@ -552,15 +557,28 @@
     :set         :classic
     :rarity      :rare
     :description "Secret: When a minion attacks your hero destroy it."
-    :on-attack   (fn [state attacker-id target-id]
+    :on-attack   (fn [state player-id attacker-id target-id]
+
+                   ;(do (println "got here")
+                   ;    (println player-id)
+                   ;    (println "attacker-id " attacker-id)
+                   ;    (println "target-id " target-id))
+
                    (if (minion? (get-character state attacker-id))
                      (as-> state $
                            (let [victim-owner-id (:owner-id (get-character $ target-id))
                                  victim-player (get-player $ victim-owner-id)
                                  victim-hero (:hero victim-player)
                                  enemy-minion (get-minion $ attacker-id)]
+
+                             ;(do (println "victim hero id" (:id victim-hero))
+                             ;    (println "hero" victim-hero)
+                             ;    (println "enemy" enemy-minion))
+
                              (if (= target-id (:id victim-hero))
-                               kill-minion-fn (state attacker-id))))))}
+                               (remove-minion $ attacker-id)
+                               $)))
+                     state))}
 
    "Whelp"
    {:name       "Whelp"

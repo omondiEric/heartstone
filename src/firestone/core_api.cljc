@@ -26,6 +26,7 @@
                                          create-minion
                                          create-secret
                                          do-game-event-functions
+                                         do-secret-game-event-functions
                                          draw-card-to-hand
                                          fatigue-hero
                                          inc-max-mana
@@ -347,9 +348,28 @@
   [state player-id attacker-id target-id]
   (cond (minion? (get-character state target-id))
         (-> (attack-minion state player-id attacker-id target-id)
-            (do-game-event-functions :on-attack player-id target-id))
+            (do-game-event-functions :on-attack :player-id player-id :attacker-id attacker-id :target-id target-id)
+            (do-secret-game-event-functions :on-attack :player-id (get-other-player-id player-id) :attacker-id attacker-id :target-id target-id))
         :else (-> (attack-hero state player-id attacker-id target-id)
-                  (do-game-event-functions :on-attack player-id target-id))))
+                  (do-game-event-functions :on-attack :player-id player-id :attacker-id attacker-id :target-id target-id)
+                  (do-secret-game-event-functions :on-attack :player-id (get-other-player-id player-id) :attacker-id attacker-id :target-id target-id))))
+
+(defn play-secret-card-fn
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                  {:hand [(create-card "Vaporize" :id "v")]}])
+                    (play-secret-card-fn "p2" "v")
+                    (attack-hero-or-minion "p1" "m" "h2")
+                    (get-minions "p1"))
+                ()))}
+  [state player-id card-id]
+  (let [secret-card (get-card state card-id)
+        secret-name (:name secret-card)
+        secret (create-secret secret-name player-id)]
+    (as-> state $
+          (add-secret-to-player $ player-id secret)
+          (remove-card-from-hand $ player-id card-id)
+          (on-secret-played-fns $))))
 
 (defn play-spell-card
   "Plays a spell card, removes it from hand"
@@ -398,29 +418,14 @@
        (add-card-to-cards-played (get-card state card-id))
        (remove-card-from-hand player-id card-id)))
   ([state player-id card-id]
+   (let [card-def (get-definition (get-card state card-id))
+         card-subtype (:sub-type card-def)]
+     (when (= card-subtype :secret)
+       (play-secret-card-fn state player-id card-id))
    (-> ((:spell-fn (get-definition (get-card state card-id))) state)
        (pay-mana player-id card-id)
        (add-card-to-cards-played (get-card state card-id))
-       (remove-card-from-hand player-id card-id))))
-
-(defn play-secret-card-fn
-  {:test (fn []
-           ;todo this is not working since on-attack for spell cards is not being reached by do-game-event fn
-           ;todo current do-game-event fn only works 4 minions
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
-                                  {:hand [(create-secret "Vaporize" "p1" :id "v")]}])
-                    (play-secret-card-fn "p2" "v" 0)
-                    (attack-hero-or-minion "p1" "m" "h2")
-                    (get-minions "p1"))
-                []))}
-  [state player-id secret-id position]
-  (let [secret-card (get-card state secret-id)]
-    (as-> state $
-          (add-secret-to-player $ player-id secret-card) ;todo using get-secret gives null
-          (remove-card-from-hand $ player-id secret-id)
-          ;(pay-mana $ player-id secret-id) ;todo assertion fails for some reason
-          ;(on-secret-played-fns $)
-          )))
+       (remove-card-from-hand player-id card-id)))))
 
 ; plays either spell card or minion card
 (defn play-card
