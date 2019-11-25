@@ -437,6 +437,38 @@
     (update-in state [:players player-id :max-mana] fn-or-value)
     (assoc-in state [:players player-id :max-mana] fn-or-value)))
 
+; Creates an active-secret for a player, needs a name an an owner id
+(defn create-secret
+  {:test (fn []
+           (is= (create-secret "Vaporize" "p1" :id "v")
+                {:name            "Vaporize"
+                 :type             :spell
+                 :sub-type       :secret
+                 :damage-taken    0
+                 :owner-id       "p1"
+                 :hero-power-used false
+                 :id               "v"}))}
+  [name owner-id & kvs]
+  (let [secret {:name            name
+                :type             :spell
+                :sub-type       :secret
+                :damage-taken    0
+                :owner-id       owner-id
+                :hero-power-used false}]
+    (if (empty? kvs)
+      secret
+      (apply assoc secret kvs))))
+
+(defn add-secret-to-player
+  [state player-id secret]
+  (update-in state [:players player-id :active-secrets] conj secret))
+
+(defn add-secrets-to-player
+  [state player-id secrets]
+  (reduce (fn [state secret]
+            (add-secret-to-player state player-id secret))
+          state
+          secrets))
 
 (defn create-game
   "Creates a game with the given deck, hand, minions (placed on the board), and heroes."
@@ -1487,28 +1519,6 @@
        (modify-minion-attack minion-id attack duration)
        (modify-minion-max-health minion-id health duration))))
 
-; Creates an active-secret for a player, needs a name an an owner id
-(defn create-secret
-  {:test (fn []
-           (is= (create-secret "Vaporize" "p1" :id "v")
-                {:name            "Vaporize"
-                 :type             :spell
-                 :sub-type       :secret
-                 :damage-taken    0
-                 :owner-id       "p1"
-                 :hero-power-used false
-                 :id               "v"}))}
-  [name owner-id & kvs]
-  (let [secret {:name            name
-                :type             :spell
-                :sub-type       :secret
-                :damage-taken    0
-                :owner-id       owner-id
-                :hero-power-used false}]
-    (if (empty? kvs)
-      secret
-      (apply assoc secret kvs))))
-
 ; Gets all the active secrets
 (defn get-active-secrets
   {:test (fn []
@@ -1538,34 +1548,6 @@
   (->> (get-active-secrets state)
        (filter (fn [s] (= (:id s) id)))
        (first)))
-
-(defn add-secret-to-player
-  {:test (fn []
-           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
-                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
-                                  {:hand [(create-card "Kezan Mystic" :id "s")]}])
-                    (add-secret-to-player "p1" (create-secret "Vaporize" "p1"))
-                    (get-active-secrets "p1")
-                    (count))
-                3))}
-  [state player-id secret]
-  (update-in state [:players player-id :active-secrets] conj secret))
-
-(defn add-secrets-to-player
-  {:test (fn []
-           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}
-                                  {:hand [(create-card "Kezan Mystic" :id "s")]}])
-                    (add-secrets-to-player "p1" [(create-secret "Vaporize" "p1")
-                                                 (create-secret "Venomstrike Trap" "p1" :id "v")])
-                    (get-active-secrets "p1")
-                    (count))
-                3))}
-  [state player-id secrets]
-  (reduce (fn [state secret]
-            (add-secret-to-player state player-id secret))
-          state
-          secrets))
-
 
 (defn get-random-secret-minion
   {:test (fn []
