@@ -104,11 +104,11 @@
                   :attacks-performed-this-turn 0
                   :properties                  (if (empty? permanent)
                                                  {:permanent #{}
-                                                   :temporary {}
-                                                   :stats     {}}
+                                                  :temporary {}
+                                                  :stats     {}}
                                                  {:permanent permanent
-                                                   :temporary {}
-                                                   :stats     {}})}
+                                                  :temporary {}
+                                                  :stats     {}})}
                  (get-all-additional-minion-fields name)
                  )]
     (if (empty? kvs)
@@ -125,34 +125,34 @@
            (is= (create-empty-state [(create-hero "Carl" :id "c")
                                      (create-hero "Gustaf")])
                 {:player-id-in-turn             "p1"
-                 :players                       {"p1" {:id            "p1"
-                                                       :mana          10
-                                                       :max-mana      10
-                                                       :deck          []
-                                                       :hand          []
-                                                       :minions       []
+                 :players                       {"p1" {:id             "p1"
+                                                       :mana           10
+                                                       :max-mana       10
+                                                       :deck           []
+                                                       :hand           []
+                                                       :minions        []
                                                        :active-secrets []
-                                                       :fatigue-level 0
-                                                       :hero          {:name            "Carl"
-                                                                       :id              "c"
-                                                                       :owner-id        "p1"
-                                                                       :damage-taken    0
-                                                                       :hero-power-used false
-                                                                       :entity-type     :hero}}
-                                                 "p2" {:id            "p2"
-                                                       :mana          10
-                                                       :max-mana      10
-                                                       :deck          []
-                                                       :hand          []
-                                                       :minions       []
+                                                       :fatigue-level  0
+                                                       :hero           {:name            "Carl"
+                                                                        :id              "c"
+                                                                        :owner-id        "p1"
+                                                                        :damage-taken    0
+                                                                        :hero-power-used false
+                                                                        :entity-type     :hero}}
+                                                 "p2" {:id             "p2"
+                                                       :mana           10
+                                                       :max-mana       10
+                                                       :deck           []
+                                                       :hand           []
+                                                       :minions        []
                                                        :active-secrets []
-                                                       :fatigue-level 0
-                                                       :hero          {:name            "Gustaf"
-                                                                       :id              "h2"
-                                                                       :owner-id        "p2"
-                                                                       :damage-taken    0
-                                                                       :hero-power-used false
-                                                                       :entity-type     :hero}}}
+                                                       :fatigue-level  0
+                                                       :hero           {:name            "Gustaf"
+                                                                        :id              "h2"
+                                                                        :owner-id        "p2"
+                                                                        :damage-taken    0
+                                                                        :hero-power-used false
+                                                                        :entity-type     :hero}}}
                  :counter                       1
                  :seed                          0
                  :minion-ids-summoned-this-turn []
@@ -165,18 +165,18 @@
      {:player-id-in-turn             "p1"
       :players                       (->> heroes
                                           (map-indexed (fn [index hero]
-                                                         {:id            (str "p" (inc index))
-                                                          :mana          10
-                                                          :max-mana      10
-                                                          :deck          []
-                                                          :hand          []
-                                                          :minions       []
+                                                         {:id             (str "p" (inc index))
+                                                          :mana           10
+                                                          :max-mana       10
+                                                          :deck           []
+                                                          :hand           []
+                                                          :minions        []
                                                           :active-secrets []
-                                                          :fatigue-level 0
-                                                          :hero          (if (contains? hero :id)
-                                                                           (assoc hero :owner-id (str "p" (inc index)))
-                                                                           (assoc hero :id (str "h" (inc index))
-                                                                                       :owner-id (str "p" (inc index))))}))
+                                                          :fatigue-level  0
+                                                          :hero           (if (contains? hero :id)
+                                                                            (assoc hero :owner-id (str "p" (inc index)))
+                                                                            (assoc hero :id (str "h" (inc index))
+                                                                                        :owner-id (str "p" (inc index))))}))
                                           (reduce (fn [a v]
                                                     (assoc a (:id v) v))
                                                   {}))
@@ -450,18 +450,18 @@
   {:test (fn []
            (is= (create-secret "Vaporize" "p1" :id "v")
                 {:name            "Vaporize"
-                 :type             :spell
-                 :sub-type       :secret
+                 :type            :spell
+                 :sub-type        :secret
                  :damage-taken    0
-                 :owner-id       "p1"
+                 :owner-id        "p1"
                  :hero-power-used false
-                 :id               "v"}))}
+                 :id              "v"}))}
   [name owner-id & kvs]
   (let [secret {:name            name
-                :type             :spell
-                :sub-type       :secret
+                :type            :spell
+                :sub-type        :secret
                 :damage-taken    0
-                :owner-id       owner-id
+                :owner-id        owner-id
                 :hero-power-used false}]
     (if (empty? kvs)
       secret
@@ -496,50 +496,50 @@
                               {:hero "Carl"}]
                              :player-id-in-turn "p2")
                 {:player-id-in-turn             "p2"
-                 :players                       {"p1" {:id            "p1"
-                                                       :mana          3
-                                                       :max-mana      3
-                                                       :deck          [{:entity-type :card
-                                                                        :id          "c3"
-                                                                        :name        "Ronja"
-                                                                        :owner-id    "p1"}]
-                                                       :hand          [{:entity-type :card
-                                                                        :id          "c4"
-                                                                        :name        "Emil"
-                                                                        :owner-id    "p1"}]
-                                                       :minions       [{:damage-taken                0
-                                                                        :attacks-performed-this-turn 0
-                                                                        :added-to-board-time-id      2
-                                                                        :entity-type                 :minion
-                                                                        :properties                  {:permanent #{}
-                                                                                                      :temporary {}
-                                                                                                      :stats     {}}
-                                                                        :name                        "Mio"
-                                                                        :id                          "m1"
-                                                                        :position                    0
-                                                                        :owner-id                    "p1"}]
-                                                       :active-secrets         []
-                                                       :fatigue-level 0
-                                                       :hero          {:name            "Carl"
-                                                                       :id              "h1"
-                                                                       :owner-id        "p1"
-                                                                       :entity-type     :hero
-                                                                       :damage-taken    0
-                                                                       :hero-power-used false}}
-                                                 "p2" {:id            "p2"
-                                                       :mana          10
-                                                       :max-mana      10
-                                                       :deck          []
-                                                       :hand          []
-                                                       :minions       []
+                 :players                       {"p1" {:id             "p1"
+                                                       :mana           3
+                                                       :max-mana       3
+                                                       :deck           [{:entity-type :card
+                                                                         :id          "c3"
+                                                                         :name        "Ronja"
+                                                                         :owner-id    "p1"}]
+                                                       :hand           [{:entity-type :card
+                                                                         :id          "c4"
+                                                                         :name        "Emil"
+                                                                         :owner-id    "p1"}]
+                                                       :minions        [{:damage-taken                0
+                                                                         :attacks-performed-this-turn 0
+                                                                         :added-to-board-time-id      2
+                                                                         :entity-type                 :minion
+                                                                         :properties                  {:permanent #{}
+                                                                                                       :temporary {}
+                                                                                                       :stats     {}}
+                                                                         :name                        "Mio"
+                                                                         :id                          "m1"
+                                                                         :position                    0
+                                                                         :owner-id                    "p1"}]
                                                        :active-secrets []
-                                                       :fatigue-level 0
-                                                       :hero          {:name            "Carl"
-                                                                       :id              "h2"
-                                                                       :owner-id        "p2"
-                                                                       :entity-type     :hero
-                                                                       :damage-taken    0
-                                                                       :hero-power-used false}}}
+                                                       :fatigue-level  0
+                                                       :hero           {:name            "Carl"
+                                                                        :id              "h1"
+                                                                        :owner-id        "p1"
+                                                                        :entity-type     :hero
+                                                                        :damage-taken    0
+                                                                        :hero-power-used false}}
+                                                 "p2" {:id             "p2"
+                                                       :mana           10
+                                                       :max-mana       10
+                                                       :deck           []
+                                                       :hand           []
+                                                       :minions        []
+                                                       :active-secrets []
+                                                       :fatigue-level  0
+                                                       :hero           {:name            "Carl"
+                                                                        :id              "h2"
+                                                                        :owner-id        "p2"
+                                                                        :entity-type     :hero
+                                                                        :damage-taken    0
+                                                                        :hero-power-used false}}}
                  :counter                       5
                  :seed                          0
                  :minion-ids-summoned-this-turn []
@@ -558,12 +558,12 @@
                                                       :else
                                                       (:hero player-data)))
                                               data)) $
-                     (reduce (fn [state {player-id :player-id
-                                         mana      :mana
-                                         minions   :minions
+                     (reduce (fn [state {player-id      :player-id
+                                         mana           :mana
+                                         minions        :minions
                                          active-secrets :active-secrets
-                                         deck      :deck
-                                         hand      :hand}]
+                                         deck           :deck
+                                         hand           :hand}]
                                (-> (if mana
                                      (-> state
                                          (update-mana player-id mana)
@@ -683,24 +683,23 @@
                             (update minion key function-or-value)
                             (assoc minion key function-or-value)))))
 
-(defn decrement-minions-pos
+(defn decrement-minions-position
   "Decrements positions of all the minions on the board after a specific position"
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")
                                              (create-minion "Emil" :id "e")
                                              (create-minion "Annika" :id "a")]}])
-                    (decrement-minions-pos 1)
+                    (decrement-minions-position 1)
                     (get-minion "a")
                     (:position))
                 1))}
   [state minion-pos]
   (reduce (fn [state minion]
             (if (> (:position minion) minion-pos)
-              (update-minion state (:id minion) :position (- (:position minion) 1))
+              (update-minion state (:id minion) :position (dec (:position minion)))
               state))
           state
-          (get-minions state))
-  )
+          (get-minions state)))
 
 (defn remove-minion
   "Removes a minion with the given id from the state."
@@ -708,15 +707,25 @@
            (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
                     (remove-minion "m")
                     (get-minions))
-                []))}
+                [])
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m")
+                                          (create-minion "Ronja" :id "r1")
+                                          (create-minion "Ronja" :id "r2")]}
+                               {:minions [(create-minion "Emil" :id "e")]}]) $
+                 (remove-minion $ "m")
+                 (do (is= (:position (get-minion $ "r1"))
+                          0)
+                     (is= (:position (get-minion $ "r2"))
+                          1)))
+           )}
   [state id]
   (let [owner-id (:owner-id (get-minion state id))
         minion-pos (:position (get-minion state id))]
-    (as-> (decrement-minions-pos state minion-pos) $
-          (update-in $
-               [:players owner-id :minions]
-               (fn [minions]
-                 (remove (fn [m] (= (:id m) id)) minions))))))
+    (as-> (update-in state
+                     [:players owner-id :minions]
+                     (fn [minions]
+                       (remove (fn [m] (= (:id m) id)) minions))) $
+          (decrement-minions-position $ minion-pos))))
 
 (defn remove-minions
   "Removes the minions with the given ids from the state."

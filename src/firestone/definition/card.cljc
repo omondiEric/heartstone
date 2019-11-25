@@ -62,7 +62,7 @@
     :mana-cost   4
     :type        :minion
     :description "Battlecry: Deal 4 damage to the enemy hero."
-    :battlecry   (fn [state player-id minion-id]
+    :battlecry   (fn [state player-id _]
                    (let [target-hero-id (get-in state [:players (get-other-player-id player-id) :hero :id])]
                      (deal-damage state target-hero-id 4)))}
 
@@ -73,7 +73,7 @@
     :mana-cost   4
     :type        :minion
     :description "Battlecry: Draw a card."
-    :battlecry   (fn [state player-id minion-id]
+    :battlecry   (fn [state player-id _]
                    (draw-card state player-id))}
 
    "Jonatan"
@@ -123,7 +123,7 @@
     :health         4
     :mana-cost      3
     :type           :minion
-    :on-end-of-turn (fn [state id]
+    :on-end-of-turn (fn [state _]
                       (let [random-result (get-random-minion state)]
                         (let [state (first random-result)
                               random-minion (last random-result)]
@@ -192,7 +192,7 @@
     :mana-cost     2
     :type          :spell
     :set           :custom
-    :valid-target? (fn [state target]
+    :valid-target? (fn [_ target]
                      (character? target))
     :spell-fn      (fn [state character-id]
                      (deal-damage state character-id 3))
@@ -239,7 +239,7 @@
     :valid-target? (fn [state target]
                      (and (minion? target)
                           (some? (:deathrattle (get-minion state (:id target))))))
-    :battlecry     (fn [state player-id minion-id target-id]
+    :battlecry     (fn [state _ minion-id target-id]
                      (give-deathrattle state minion-id (:name (get-minion state target-id))))}
 
    "Skrallan"
@@ -263,8 +263,8 @@
     :type          :minion
     :set           :custom
     :description   "Battlecry: Give a minion +2 Attack this turn."
-    :valid-target? (fn [state target] (minion? target))
-    :battlecry     (fn [state player-id minion-id target-id] (when (minion? (get-minion state target-id))
+    :valid-target? (fn [_ target] (minion? target))
+    :battlecry     (fn [state _ _ target-id] (when (minion? (get-minion state target-id))
                                                                (modify-minion-stats state target-id 2 0 1)))}
 
    "Al'Akir the Windlord"
@@ -324,7 +324,7 @@
     :type        :minion
     :set         :goblins-vs-gnomes
     :rarity      :rare
-    :battlecry   (fn [state player-id minion-id]
+    :battlecry   (fn [state player-id _]
                    (let [random-result (get-random-secret state (get-other-player-id player-id))]
                      (let [state (first random-result)
                            random-secret (last random-result)]
@@ -353,7 +353,7 @@
     :set         :classic
     :rarity      :legendary
     :description "Charge. Battlecry: Summon two 1/1 Whelps for your opponent."
-    :battlecry   (fn [state player-id minion-id]
+    :battlecry   (fn [state player-id _]
                    (add-minions-to-board state (get-other-player-id player-id) [(create-minion "Whelp")
                                                                                 (create-minion "Whelp")]))}
 
@@ -366,7 +366,7 @@
     :set         :the-grand-tournament
     :rarity      :legendary
     :description "Battlecry: Give all minions in your hand and deck +1/+1."
-    :battlecry   (fn [state player-id minion-id]
+    :battlecry   (fn [state player-id _]
                    (let [card-ids (concat (map :id (get-hand state player-id)) (map :id (get-deck state player-id)))]
                      (reduce (fn [new-state card-id] (buff-minion-card new-state card-id 1 1)) state card-ids)))}
 
@@ -379,8 +379,8 @@
     :set           :classic
     :rarity        :common
     :description   "Battlecry: Silence a minion."
-    :valid-target? (fn [state target] (minion? target))
-    :battlecry     (fn [state player-id minion-id target-id]
+    :valid-target? (fn [_ target] (minion? target))
+    :battlecry     (fn [state _ _ target-id]
                      (silence-minion state target-id))}
 
    "Shudderwock"
@@ -416,7 +416,7 @@
     :set           :classic
     :rarity        :common
     :description   "Silence a minion."
-    :valid-target? (fn [state target]
+    :valid-target? (fn [_ target]
                      (character? target))
     :spell-fn      (fn [state minion-id]
                      (silence-minion state minion-id))}
