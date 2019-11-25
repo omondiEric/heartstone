@@ -17,7 +17,6 @@
                                          modify-minion-stats
                                          replace-minion
                                          remove-secret
-                                         ida-present?
                                          switch-minion-side
                                          switch-secret-side
                                          update-minion
@@ -196,10 +195,7 @@
                     :temporary     {}
                     :stats         {}}
     :on-minion-damage (fn [state id]
-                        (let [ida (ida-present? state)]
-                          (if (nil? ida)
-                            state
-                            (give-taunt state (:id ida)))))
+                        (give-taunt state id))
     :set              :custom
     :description      "Whenever a minion takes damage, gain taunt."}
 

@@ -1355,20 +1355,6 @@
   [state minion-id name-source]
   (update-minion state minion-id :deathrattle name-source))
 
-
-(defn ida-present?
-  {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Ida" :id "i")]}])
-                    (ida-present?)
-                    (:name))
-                "Ida")
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
-                    (ida-present?))
-                nil))}
-  [state]
-  (some (fn [m] (when (= (:name m) "Ida") m))
-        (get-minions state)))
-
 (defn get-minion-stats
   "Gets the stats of a minion"
   {:test (fn []

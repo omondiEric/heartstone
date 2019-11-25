@@ -29,7 +29,6 @@
                                          has-divine-shield?
                                          has-taunt?
                                          has-windfury?
-                                         ida-present?
                                          modify-minion-attack
                                          modify-minion-stats
                                          minion?
@@ -313,18 +312,18 @@
          (on-play-fn state player-id card-id target-id)))
      state)))
 
-(defn has-deathrattle
+(defn has-deathrattle?
   {:test (fn []
            ;without state and with card
            (is (-> (create-card "Madicken" :id "m")
-                   (has-deathrattle)))
+                   (has-deathrattle?)))
            (is-not (-> (create-card "Mio")
-                       (has-deathrattle)))
+                       (has-deathrattle?)))
            ;with state and card-id
            (is (-> (create-game [{:minions [(create-card "Madicken" :id "m")]}])
-                   (has-deathrattle "m")))
+                   (has-deathrattle? "m")))
            (is-not (-> (create-game [{:minions [(create-card "Mio" :id "m")]}])
-                       (has-deathrattle "m")))
+                       (has-deathrattle? "m")))
            )}
   ([card]
    (let [permanent-set (get-in (get-definition card) [:properties :permanent])]
@@ -350,7 +349,7 @@
            )}
   [state]
   (->> (get-minions state)
-       (filter has-deathrattle)))
+       (filter has-deathrattle?)))
 
 (defn get-dead-minions-with-deathrattle
   {:test (fn []
@@ -369,7 +368,7 @@
            )}
   [state]
   (let [dead-minions (get-dead-minions state)]
-    (filter has-deathrattle dead-minions)))
+    (filter has-deathrattle? dead-minions)))
 
 
 ;performs deathrattle for a minion that has a deathrattle
