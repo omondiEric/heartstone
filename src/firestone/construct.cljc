@@ -674,6 +674,25 @@
                             (update minion key function-or-value)
                             (assoc minion key function-or-value)))))
 
+(defn decrement-minions-pos
+  "Decrements positions of all the minions on the board after a specific position"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e")
+                                             (create-minion "Annika" :id "a")]}])
+                    (decrement-minions-pos 1)
+                    (get-minion "a")
+                    (:position))
+                1))}
+  [state minion-pos]
+  (reduce (fn [state minion]
+            (if (> (:position minion) minion-pos)
+              (update-minion state (:id minion) :position (- (:position minion) 1))
+              state))
+          state
+          (get-minions state))
+  )
+
 (defn remove-minion
   "Removes a minion with the given id from the state."
   {:test (fn []
@@ -682,11 +701,13 @@
                     (get-minions))
                 []))}
   [state id]
-  (let [owner-id (:owner-id (get-minion state id))]
-    (update-in state
+  (let [owner-id (:owner-id (get-minion state id))
+        minion-pos (:position (get-minion state id))]
+    (as-> (decrement-minions-pos state minion-pos) $
+          (update-in $
                [:players owner-id :minions]
                (fn [minions]
-                 (remove (fn [m] (= (:id m) id)) minions)))))
+                 (remove (fn [m] (= (:id m) id)) minions))))))
 
 (defn remove-minions
   "Removes the minions with the given ids from the state."
@@ -701,10 +722,8 @@
                 ["m2" "m3"])
            )}
   [state & ids]
-  (reduce remove-minion state ids)
-  )
+  (reduce remove-minion state ids))
 
-;TODO what if player has max minions?
 (defn switch-minion-side
   "Switches a minion from one player to the other"
   {:test (fn []
@@ -732,7 +751,6 @@
         (remove-minion minion-id)
         (add-minion-to-board player-id minion 0))))
 
-;TODO allow multiple minions
 (defn friendly-minions?
   "Returns whether minions are friendly"
   {:test (fn []
@@ -1104,7 +1122,6 @@
 
 (defn give-property
   "Gives a property (temporary or permanent) to a minion. Temporary properties must have no spaces because it is a map key"
-  ;TODO make sure that if temporary buff is overwritten, it keeps the higher duration
   {:test (fn []
            (is (-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}])
                    (give-property "j" "divine-shield")

@@ -439,16 +439,6 @@
         (as-> state $
               (reduce do-deathrattles $ dead-deathrattle-minions)
               (reduce remove-minions $ dead-minions)))))
-  ;            (reduce remove-minions $ dead-minions)
-  ;(let [dead-minions (map :id (get-dead-minions state))]
-  ;  (let [dead-deathrattle-minions (map :id (get-dead-minions-with-deathrattle state))]
-  ;    (if (empty? dead-deathrattle-minions)
-  ;      (reduce remove-minions state dead-minions)
-  ;      (as-> state $
-  ;            (reduce do-deathrattles $ dead-deathrattle-minions)
-  ;            (reduce remove-minions $ dead-minions)
-  ;            (remove-dead-minions $)
-  ;            )))))
 
 ;deal damage to a character and remove dead minions
 (defn deal-damage

@@ -242,17 +242,6 @@
     state
     (give-property state minion-id "poisoned")))
 
-;TODO Maybe rename
-(defn kill-minion-fn
-  {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Ronja" :id "r")]}])
-                    (kill-minion-fn "r")
-                    (get-minion "r"))
-                nil))}
-  [state minion-id]
-  (let [minion-health (get-health state minion-id)]
-    (deal-damage state minion-id minion-health)))
-
 (defn attack-minion
   "Attacks the enemy minion"
   {:test (fn []
