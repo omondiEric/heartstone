@@ -9,6 +9,7 @@
                                     decrement-all-player-minion-temporary-durations
                                     get-attack
                                     get-health
+                                    on-secret-played-fns
                                     refresh-minion-attacks
                                     pay-mana
                                     valid-attack?]]
@@ -24,6 +25,7 @@
                                          do-game-event-functions
                                          draw-card-to-hand
                                          fatigue-hero
+                                         has-property?
                                          inc-max-mana
                                          get-card
                                          get-character
@@ -43,7 +45,8 @@
                                          get-players
                                          get-other-player-id
                                          give-divine-shield
-                                         has-poisonous
+                                         give-property
+                                         poisonous?
                                          minion?
                                          modify-minion-stats
                                          remove-card-from-deck
@@ -163,6 +166,7 @@
         (restore-mana other-player-id)
         (draw-card other-player-id))))
 
+
 (defn play-minion-card
   {:test (fn []
            ; A minion should appear at the board
@@ -244,16 +248,20 @@
          (modify-minion-stats card-id attack-buff health-buff)
          (do-battlecry player-id card-id (get-definition (get-card state card-id)) target-id)))))
 
-;TODO Maybe rename
-(defn kill-minion-fn
+(defn poison-minion
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Ronja" :id "r")]}])
-                    (kill-minion-fn "r")
-                    (get-minion "r"))
-                nil))}
+                    (poison-minion "r")
+                    (has-property? "r" "poisoned"))
+                true)
+           (is= (-> (create-game [{:minions [(create-minion "Uncle Melker" :id "u")]}])
+                    (poison-minion "u")
+                    (has-property? "u" "poisoned"))
+                false))}
   [state minion-id]
-  (let [minion-health (get-health state minion-id)]
-    (deal-damage state minion-id minion-health)))
+  (if (has-property? state minion-id "divine-shield")
+    state
+    (give-property state minion-id "poisoned")))
 
 (defn attack-minion
   "Attacks the enemy minion"
@@ -294,8 +302,8 @@
         target-attack-val (get-attack state target-id)]
     (if (valid-attack? state player-id attacker-id target-id) (as-> (update-minion state attacker-id :attacks-performed-this-turn inc) $
                                                                     ;if attacker is poisonous, kill target minion
-                                                                    (if (has-poisonous $ attacker-id)
-                                                                      (kill-minion-fn $ target-id)
+                                                                    (if (poisonous? $ attacker-id)
+                                                                      (poison-minion $ target-id)
                                                                       (deal-damage $ target-id attacker-attack-val))
                                                                     (deal-damage $ attacker-id target-attack-val))
                                                               (error "Invalid attack"))))

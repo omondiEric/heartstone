@@ -2,10 +2,9 @@
   (:require [firestone.definitions :as definitions]
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [add-minion-to-board
+                                         add-minions-to-board
                                          buff-minion-card
                                          character?
-                                         create-game
-                                         create-card
                                          create-minion
                                          friendly-minions?
                                          get-all-played-cards-with-property
@@ -15,14 +14,19 @@
                                          get-minion
                                          get-random-minion
                                          get-random-minion-conditional
+                                         get-active-secrets
+                                         get-minion
+                                         get-random-minion
+                                         get-random-secret-minion
                                          get-other-player-id
                                          give-deathrattle
                                          give-taunt
                                          minion?
                                          modify-minion-stats
                                          replace-minion
-                                         ida-present?
+                                         remove-secret
                                          switch-minion-side
+                                         switch-secret-side
                                          update-minion
                                          update-seed
                                          valid-minion-effect-target?]]
@@ -169,10 +173,7 @@
     :mana-cost        3
     :type             :minion
     :on-minion-damage (fn [state id]
-                        (let [ida (ida-present? state)]
-                          (if (nil? ida)
-                            state
-                            (give-taunt state (:id ida)))))
+                        (give-taunt state id))
     :set              :custom
     :description      "Whenever a minion takes damage, gain taunt."}
 
@@ -272,6 +273,9 @@
     :health      5
     :mana-cost   8
     :type        :minion
+    :properties    {:permanent     #{"windfury", "taunt", "divine-shield" "charge"}
+                    :temporary     {}
+                    :stats         {}}
     :set         :classic
     :rarity      :legendary
     :description "Windfury, Charge, Divine Shield, Taunt"}
@@ -284,6 +288,8 @@
     :type        :minion
     :set         :classic
     :rarity      :rare
+    :secret-played  (fn [state minion-id]
+                      (modify-minion-stats state minion-id 1 1))
     :description "Whenever a Secret is played, gain +1/+1."}
 
    "Mad Scientist"
@@ -304,6 +310,12 @@
     :type        :minion
     :set         :whispers-of-the-old-gods
     :rarity      :rare
+    :battlecry     (fn [state player-id minion-id]
+                   (reduce (fn [state secret-id]
+                             (-> (remove-secret state secret-id)
+                             (modify-minion-stats minion-id 1 1)))
+                           state
+                           (map :id (get-active-secrets state (get-other-player-id player-id)))))
     :description "Battlecry: Destroy all enemy Secrets. Gain +1/+1 for each."}
 
    "Kezan Mystic"
@@ -314,6 +326,11 @@
     :type        :minion
     :set         :goblins-vs-gnomes
     :rarity      :rare
+    :battlecry     (fn [state player-id minion-id]
+                   (let [random-result (get-random-secret-minion state (get-other-player-id player-id))]
+                     (let [state (first random-result)
+                           random-minion (last random-result)]
+                       (switch-secret-side state (:id (last random-result))))))
     :description "Battlecry: Take control of a random enemy Secret."}
 
    "Stormwind Knight"
@@ -323,6 +340,9 @@
     :mana-cost   4
     :set         :basic
     :type        :minion
+    :properties    {:permanent     #{"charge"}
+                    :temporary     {}
+                    :stats         {}}
     :description "Charge"}
 
    "Leeroy Jenkins"
@@ -331,9 +351,15 @@
     :health      2
     :mana-cost   5
     :type        :minion
+    :properties    {:permanent     #{"charge"}
+                    :temporary     {}
+                    :stats         {}}
     :set         :classic
     :rarity      :legendary
-    :description "Charge. Battlecry: Summon two 1/1 Whelps for your opponent."}
+    :description "Charge. Battlecry: Summon two 1/1 Whelps for your opponent."
+    :battlecry   (fn [state player-id minion-id]
+                 (add-minions-to-board state (get-other-player-id player-id) [(create-minion "Whelp")
+                                                        (create-minion "Whelp")]))}
 
    "The Mistcaller"
    {:name        "The Mistcaller"
@@ -406,7 +432,11 @@
     :sub-type    :secret
     :set         :classic
     :rarity      :common
-    :description "Secret: When your hero is attacked deal 2 damage to all enemies."}
+    :description "Secret: When your hero is attacked deal 2 damage to all enemies."
+    :on-attack   (fn [state this {,,,}]
+                   ;(when (and (hero? target)
+                   ;           (attacker an enemy )
+                              )}
 
    "Venomstrike Trap"
    {:name        "Venomstrike Trap"

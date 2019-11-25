@@ -74,8 +74,8 @@
                                  player (get-player game "p1")
                                  hero (:hero player)
                                  hero-power (:hero-power (get-definition (:name hero)))]
-                             (get-client-hero-power game player hero hero-power)))))}
-  [state player hero hero-power]
+                             (get-client-hero-power game hero hero-power)))))}
+  [state hero hero-power]
   (let [hero-power-def (get-definition hero-power)]
     {:can-use            true
      :owner-id           (:id hero)
@@ -106,7 +106,7 @@
    :max-mana         (:max-mana player)
    :name             (:name hero)
    :states           []
-   :hero-power       (get-client-hero-power state player hero (:hero-power (get-definition (:name hero))))
+   :hero-power       (get-client-hero-power state hero (:hero-power (get-definition (:name hero))))
    :valid-attack-ids []})
 
 
@@ -170,6 +170,7 @@
        (map (fn [c]
               (get-client-card state c)))))
 
+;todo currently does not get deathrattle or effects or others
 (defn get-minion-states
   {:test (fn []
            (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}]) $
@@ -191,7 +192,6 @@
                                     (conj curr-set (name key)))
                                   #{}
                                   (reduce conj #{} (clojure.core/keys (:temporary minion-properties))))
-          ;aura-properties ()
           other-properties (cond
                              (some? (:deathrattle minion-def))
                              #{"deathrattle"}

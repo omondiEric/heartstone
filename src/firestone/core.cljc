@@ -23,16 +23,15 @@
                                          get-minion-properties
                                          get-minion-stats
                                          get-other-player-id
-                                         get-minion-properties
                                          get-random-minion
                                          get-random-minion-conditional
                                          give-divine-shield
                                          give-property
                                          give-taunt
+                                         has-property?
                                          has-divine-shield?
                                          has-taunt?
                                          has-windfury?
-                                         ida-present?
                                          modify-minion-attack
                                          modify-minion-stats
                                          minion?
@@ -129,11 +128,14 @@
            (is (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]
                                 :minion-ids-summoned-this-turn ["m"])
                    (sleepy? "m")))
+           (is-not (-> (create-game [{:minions [(create-minion "Stormwind Knight" :id "a")]}])
+                   (sleepy? "a")))
            (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]
                                     :minion-ids-summoned-this-turn [])
                        (sleepy? "m"))))}
   [state id]
-  (seq-contains? (:minion-ids-summoned-this-turn state) id))
+  (and (seq-contains? (:minion-ids-summoned-this-turn state) id)
+      (not (has-property? state id "charge"))))
 
 (defn refresh-minion-attacks
   "Changes attacks-performed-this-turn for all friendly minions to 0"
@@ -179,7 +181,8 @@
                 ["m2" "m3"]))}
   [state]
   (->> (get-minions state)
-       (filter (fn [m] (<= (->> (:id m) (get-health state)) 0)))))
+       (filter (fn [m] (or (<= (->> (:id m) (get-health state)) 0)
+                           (has-property? state (:id m) "poisoned"))))))
 
 (defn valid-attack?
   "Checks if the attack is valid"
@@ -250,6 +253,22 @@
          (> (get-attack state attacker-id) 0)
          (not= (:owner-id attacker) (:owner-id target)))))
 
+(defn on-secret-played-fns
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")
+                                             (create-minion "Secretkeeper" :id "s")]}])
+                    (on-secret-played-fns)
+                    (get-minion-stats "s"))
+                [2, 3]))}
+  [state]
+  (reduce (fn [state minion]
+            (if (contains? (get-definition minion) :secret-played)
+              (let [secret-played-fn (:secret-played (get-definition minion))]
+                (secret-played-fn state (:id minion)))
+              state))
+          state
+          (get-minions state)))
+
 (defn do-battlecry
   "Returns the on-play function of a minion or nil"
   {:test (fn []
@@ -296,18 +315,18 @@
        (battlecry-fn state player-id card-id target-id))
      state)))
 
-(defn has-deathrattle
+(defn has-deathrattle?
   {:test (fn []
            ;without state and with card
            (is (-> (create-card "Madicken" :id "m")
-                   (has-deathrattle)))
+                   (has-deathrattle?)))
            (is-not (-> (create-card "Mio")
-                       (has-deathrattle)))
-           ;with state and minion-id
+                       (has-deathrattle?)))
+           ;with state and card-id
            (is (-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}])
-                   (has-deathrattle "m")))
-           (is-not (-> (create-game [{:minions [(create-card "Mio" :id "m")]}])
-                       (has-deathrattle "m")))
+                   (has-deathrattle? "m")))
+           (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                       (has-deathrattle? "m")))
            )}
   ([card]
      (some? (:deathrattle (get-definition card))))
@@ -332,7 +351,7 @@
            )}
   [state]
   (->> (map :id (get-minions state))
-       (filter (fn [minion-id] (has-deathrattle state minion-id)))))
+       (filter (fn [minion-id] (has-deathrattle? state minion-id)))))
 
 (defn get-dead-minion-ids-with-deathrattles
   {:test (fn []
@@ -349,7 +368,7 @@
            )}
   [state]
   (let [dead-minion-ids (map :id (get-dead-minions state))]
-    (filter (fn [minion-id] (has-deathrattle state minion-id)) dead-minion-ids)))
+    (filter (fn [minion-id] (has-deathrattle? state minion-id)) dead-minion-ids)))
 
 
 ;performs deathrattle for a minion that has a deathrattle
@@ -454,6 +473,12 @@
                     (get-minion "r")
                     (:damage-taken))
                 0)
+           ;test that deathrattles get called
+           (is= (-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}])
+                    (deal-damage "m" 2)
+                    (get-minion "m2")
+                    (:name))
+                "Elisabeth")
            ;test to see that Ida gets taunt when a minion is damaged
            (is= (-> (create-game [{:minions [(create-minion "Pippi" :id "p")
                                              (create-minion "Ida" :id "i")]}])
@@ -490,6 +515,7 @@
                (remove-divine-shield $ character-id))
              ;when character is hero
              (update-in $ [:players (:owner-id character) :hero :damage-taken] (fn [x] (+ x damage-amount))))))))
+
 
 (defn deal-damage-to-all-heroes
   "Deals damage to all heroes"
