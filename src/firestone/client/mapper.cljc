@@ -35,17 +35,36 @@
       (do (spec/explain spec value)
           false))))
 
-(defn get-client-hero-power-target-ids
+(defn get-target-ids
   {:test (fn []
            (is (check-spec :firestone.client.spec/valid-target-ids
                            (let [game (create-game)
                                  player (get-player game "p1")
-                                 player-id (:id player)]
-                             (get-client-hero-power-target-ids game player-id))))
+                                 hero (:hero player)
+                                 hero-power (:hero-power (get-definition (:name hero)))]
+                             (get-target-ids game hero-power))))
+           (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]
+                                     :hand    [(create-card "Radar Raid" :id "rr")
+                                               (create-card "Insect Swarm" :id "is")]}
+                                    {:minions [(create-minion "Emil" :id "e")
+                                               (create-minion "Ronja" :id "r")]}]) $
+                      (get-target-ids $ (get-card $ "rr")))
+                ["h1" "h2" "j" "e" "r"])
+           (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]
+                                     :hand    [(create-card "Annika" :id "a")]}
+                                    {:minions [(create-minion "Emil" :id "e")
+                                               (create-minion "Ronja" :id "r")]}]) $
+                      (get-target-ids $ (get-card $ "a")))
+                ["j" "e" "r"])
            )}
-  [state player-id]
-  (->> (get-minions state player-id)
-       (map :id)))
+  [state card-or-hero-power]
+  (when (some? (:valid-target? (get-definition card-or-hero-power)))
+    (let [valid-target-function (:valid-target? (get-definition card-or-hero-power))
+          valid-targets
+          (filter (fn [character]
+                    (valid-target-function state character))
+                  (get-characters state))]
+      (map :id valid-targets))))
 
 (defn get-client-hero-power
   {:test (fn []
@@ -63,9 +82,7 @@
      :has-used-your-turn (:hero-power-used hero)
      :name               (:name hero-power-def)
      :description        (:description hero-power-def)
-     ;TODO generalize
-     :valid-target-ids   (when (= (:name hero-power-def) "Blessing")
-                           (get-client-hero-power-target-ids state (:id player)))
+     :valid-target-ids   (get-target-ids state hero-power)
      :type               (name (:type hero-power-def))}))
 
 (defn get-client-hero
@@ -99,42 +116,23 @@
                                                (create-card "Insect Swarm" :id "is")]}
                                     {:minions [(create-minion "Emil" :id "e")
                                                (create-minion "Ronja" :id "r")]}]) $
-                      (get-valid-target-ids-for-card $ (get-card $ "rr") "p1"))
+                      (get-valid-target-ids-for-card $ (get-card $ "rr")))
                 ["h1" "h2" "j" "e" "r"])
            (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]
                                      :hand    [(create-card "Annika" :id "a")]}
                                     {:minions [(create-minion "Emil" :id "e")
                                                (create-minion "Ronja" :id "r")]}]) $
-                      (get-valid-target-ids-for-card $ (get-card $ "a") "p1"))
+                      (get-valid-target-ids-for-card $ (get-card $ "a")))
                 ["j" "e" "r"])
            )}
-  [state card player-id]
-  (if (= (:type (get-definition card)) :spell)
-    ;TODO generalize this
-    (when (= (:name (get-definition card)) "Radar Raid")
-      (let [spell-function (:spell-fn (get-definition card))
-            valid-targets
-            (filter (fn [c]
-                      (spell-function state (:id c)))
-                    (get-characters state))]
-        (map :id valid-targets)))
-
-    ;(when-let [valid-target-fn (:valid-target (get-definition card))]
-    ;  (let [spell-function (:spell-fn (get-definition card))
-    ;        valid-targets
-    ;        (filter (fn [c]
-    ;                  (valid-target-fn state card c))
-    ;                (get-characters state))]
-    ;    (map :id valid-targets)))
-    ;TODO generalize this too
-    (when (or (= (:name (get-definition card)) "Annika") (= (:name (get-definition card)) "Astrid"))
-      (let [on-play-function (:on-play (get-definition card))
-            valid-targets
-            (when on-play-function
-              (filter (fn [c]
-                        (on-play-function state player-id (:id card) (:id c)))
-                      (get-characters state)))]
-        (map :id valid-targets)))))
+  [state card]
+  (when (some? (:valid-target? (get-definition card)))
+    (let [valid-target-function (:valid-target? (get-definition card))
+          valid-targets
+          (filter (fn [character]
+                    (valid-target-function state character))
+                  (get-characters state))]
+      (map :id valid-targets))))
 
 (defn get-client-card
   {:test (fn []
@@ -157,7 +155,7 @@
      :health             (:health card-definition)
      :original-attack    (:attack card-definition)
      :original-health    (:health card-definition)
-     ::valid-target-ids  (first (conj [] (get-valid-target-ids-for-card state card (:owner-id card))))}))
+     ::valid-target-ids  (first (conj [] (get-target-ids state card)))}))
 
 (defn get-client-hand
   {:test (fn []

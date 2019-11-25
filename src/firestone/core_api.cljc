@@ -2,7 +2,7 @@
   (:require [ysera.test :refer [is is= error?]]
             [ysera.error :refer [error]]
             [firestone.definitions :refer [get-definition]]
-            [firestone.core :refer [do-on-play
+            [firestone.core :refer [do-battlecry
                                     deal-damage
                                     deal-damage-to-all-heroes
                                     deal-damage-to-all-minions
@@ -13,7 +13,8 @@
                                     refresh-minion-attacks
                                     pay-mana
                                     valid-attack?]]
-            [firestone.construct :refer [add-card-to-hand
+            [firestone.construct :refer [add-card-to-cards-played
+                                         add-card-to-hand
                                          add-minion-to-board
                                          add-secret-to-player
                                          add-secrets-to-player
@@ -37,6 +38,7 @@
                                          get-max-mana
                                          get-minion
                                          get-minions
+                                         get-minion-card-stat-buffs
                                          get-minion-stats
                                          get-mana
                                          get-mana-cost
@@ -48,6 +50,7 @@
                                          give-divine-shield
                                          has-poisonous
                                          minion?
+                                         modify-minion-stats
                                          remove-card-from-deck
                                          remove-card-from-hand
                                          restore-mana
@@ -200,7 +203,18 @@
            (error? (-> (create-game [{:hand [(create-card "Emil" :id "e1")]}
                                      {:hand [(create-card "Emil" :id "e2")]}])
                        (play-minion-card "p1" "e2" 0)))
+           ;card buffs get transferred to minion
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e" :attack-buff 1 :health-buff 1)]}])
+                    (play-minion-card "p1" "e" 0)
+                    (get-minion-stats "e"))
+                [3, 6])
+           ;card added to cards-played-this-turn
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (play-minion-card "p1" "e" 0)
+                    (get-in [:cards-played-this-game]))
+                [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}])
            )}
+  ;TODO Think about keyword vs overloading
   ([state player-id card-id position]
    ;check if player has less than 7 minions on the board
    (when (or (>= (count (get-minions state player-id)) 7)
@@ -208,12 +222,16 @@
      (error "Cannot play card: the board is full or insufficient mana"))
    (if-not (= (:owner-id (get-card state card-id)) player-id)
      (error "Card does not belong to player"))
-   (let [card (get-card state card-id)]
+   (let [card (get-card state card-id)
+         attack-buff (first (get-minion-card-stat-buffs state card-id))
+         health-buff (last (get-minion-card-stat-buffs state card-id))]
      (-> state
          (pay-mana player-id card-id)
+         (add-card-to-cards-played (get-card state card-id))
          (remove-card-from-hand player-id card-id)
          (add-minion-to-board player-id (create-minion (:name card) :id card-id) position)
-         (do-on-play player-id card-id (get-definition (get-card state card-id))))))
+         (modify-minion-stats card-id attack-buff health-buff)
+         (do-battlecry player-id card-id (get-definition (get-card state card-id))))))
 
   ([state player-id card-id position target-id]
    ;check if player has less than 7 minions on the board
@@ -222,12 +240,16 @@
      (error "Cannot play card: the board is full or insufficient mana"))
    (if-not (= (:owner-id (get-card state card-id)) player-id)
      (error "Card does not belong to player"))
-   (let [card (get-card state card-id)]
+   (let [card (get-card state card-id)
+         attack-buff (first (get-minion-card-stat-buffs state card-id))
+         health-buff (last (get-minion-card-stat-buffs state card-id))]
      (-> state
          (pay-mana player-id card-id)
+         (add-card-to-cards-played (get-card state card-id))
          (remove-card-from-hand player-id card-id)
          (add-minion-to-board player-id (create-minion (:name card) :id card-id) position)
-         (do-on-play player-id card-id (get-definition (get-card state card-id)) target-id)))))
+         (modify-minion-stats card-id attack-buff health-buff)
+         (do-battlecry player-id card-id (get-definition (get-card state card-id)) target-id)))))
 
 ;TODO Maybe rename
 (defn kill-minion-fn
@@ -348,7 +370,7 @@
                     (get-mana "p1"))
                 8)
 
-           ; Testing Insect Swarm
+           ; Testing spell without a target
            (is= (-> (create-game [{:hand [(create-card "Insect Swarm" :id "i")] :deck [(create-card "Mio" :id "m")]}
                                   {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}
                                   {:hero (create-hero "Carl" :id "h1")}])
@@ -356,20 +378,29 @@
                     (get-hero "h1")
                     (:damage-taken))
                 2)
-           ; Testing Radar Raid
+           ; Testings spell with a target
            (is= (-> (create-game [{:hand [(create-card "Radar Raid" :id "r")] :deck [(create-card "Mio" :id "m")]}
                                   {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}])
                     (play-spell-card "p1" "r" "a")
                     (get-minion "a")
                     (:damage-taken))
-                3))}
+                3)
+           ; spell card should be added to cards-played-this-game
+           (is= (-> (create-game [{:hand [(create-card "Radar Raid" :id "r")] :deck [(create-card "Mio" :id "m")]}
+                                  {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}])
+                    (play-spell-card "p1" "r" "a")
+                    (get-in [:cards-played-this-game]))
+                [{:name "Radar Raid", :entity-type :card, :id "r", :owner-id "p1"}])
+           )}
   ([state player-id card-id character-id]
    (-> ((:spell-fn (get-definition (get-card state card-id))) state character-id)
        (pay-mana player-id card-id)
+       (add-card-to-cards-played (get-card state card-id))
        (remove-card-from-hand player-id card-id)))
   ([state player-id card-id]
    (-> ((:spell-fn (get-definition (get-card state card-id))) state)
        (pay-mana player-id card-id)
+       (add-card-to-cards-played (get-card state card-id))
        (remove-card-from-hand player-id card-id))))
 
 (defn play-secret-card-fn
