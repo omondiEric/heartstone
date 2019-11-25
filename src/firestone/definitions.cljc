@@ -23,9 +23,6 @@
                  :attack 1
                  :health 2
                  :mana-cost 1
-                 :properties {:permanent #{}
-                              :temporary {}
-                              :stats {}}
                  :type :minion})
            ; The name can be present in a map with :name as a key
            (is= (get-definition {:name "Mio"})

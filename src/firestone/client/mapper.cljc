@@ -1,20 +1,24 @@
 (ns firestone.client.mapper
   (:require [ysera.test :refer [is is-not is=]]
             [firestone.client.spec]
-            [firestone.construct :refer [create-game
-                                         create-card
+            [firestone.construct :refer [create-card
+                                         create-game
                                          create-minion
+                                         create-secret
+                                         get-active-secrets
                                          get-card
                                          get-characters
                                          get-deck-size
                                          get-hand
-                                         get-player
-                                         get-players
                                          get-mana-cost
                                          get-minion
                                          get-minions
+                                         get-minion-card-stat-buffs
                                          get-minion-properties
-                                         minion?]]
+                                         get-secret
+                                         minion?
+                                         get-player
+                                         get-players]]
             [firestone.core :refer [get-attack
                                     get-health
                                     get-minion-max-health
@@ -35,17 +39,36 @@
       (do (spec/explain spec value)
           false))))
 
-(defn get-client-hero-power-target-ids
+(defn get-target-ids
   {:test (fn []
            (is (check-spec :firestone.client.spec/valid-target-ids
                            (let [game (create-game)
                                  player (get-player game "p1")
-                                 player-id (:id player)]
-                             (get-client-hero-power-target-ids game player-id))))
+                                 hero (:hero player)
+                                 hero-power (:hero-power (get-definition (:name hero)))]
+                             (get-target-ids game hero-power))))
+           (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]
+                                     :hand    [(create-card "Radar Raid" :id "rr")
+                                               (create-card "Insect Swarm" :id "is")]}
+                                    {:minions [(create-minion "Emil" :id "e")
+                                               (create-minion "Ronja" :id "r")]}]) $
+                      (get-target-ids $ (get-card $ "rr")))
+                ["h1" "h2" "j" "e" "r"])
+           (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]
+                                     :hand    [(create-card "Annika" :id "a")]}
+                                    {:minions [(create-minion "Emil" :id "e")
+                                               (create-minion "Ronja" :id "r")]}]) $
+                      (get-target-ids $ (get-card $ "a")))
+                ["j" "e" "r"])
            )}
-  [state player-id]
-  (->> (get-minions state player-id)
-       (map :id)))
+  [state card-or-hero-power]
+  (when (some? (:valid-target? (get-definition card-or-hero-power)))
+    (let [valid-target-function (:valid-target? (get-definition card-or-hero-power))
+          valid-targets
+          (filter (fn [character]
+                    (valid-target-function state character))
+                  (get-characters state))]
+      (map :id valid-targets))))
 
 (defn get-client-hero-power
   {:test (fn []
@@ -54,30 +77,17 @@
                                  player (get-player game "p1")
                                  hero (:hero player)
                                  hero-power (:hero-power (get-definition (:name hero)))]
-                             (get-client-hero-power game player hero hero-power)))))}
-  [state player hero hero-power]
+                             (get-client-hero-power game hero hero-power)))))}
+  [state hero hero-power]
   (let [hero-power-def (get-definition hero-power)]
-<<<<<<< HEAD
-  {:can-use true
-   :owner-id (:id hero)
-   :entity-type (name (:type hero-power-def))
-   :has-used-your-turn (:hero-power-used hero)
-   :name (:name hero-power-def)
-   :description (:description hero-power-def)
-   :valid-target-ids (when (= (:name hero-power-def) "Blessing")
-                       (get-client-hero-power-target-ids state (:id player)))
-   :type (name (:type hero-power-def))}))
-=======
     {:can-use            true
      :owner-id           (:id hero)
      :entity-type        (name (:type hero-power-def))
      :has-used-your-turn (:hero-power-used hero)
      :name               (:name hero-power-def)
      :description        (:description hero-power-def)
-     :valid-target-ids   (when (= (:name hero-power-def) "Blessing")
-                           (get-client-hero-power-target-ids state (:id player)))
+     :valid-target-ids   (get-target-ids state hero-power)
      :type               (name (:type hero-power-def))}))
->>>>>>> 059977805c50f7e66f58faf1d15d69c10244fb9f
 
 (defn get-client-hero
   {:test (fn []
@@ -99,7 +109,7 @@
    :max-mana         (:max-mana player)
    :name             (:name hero)
    :states           []
-   :hero-power       (get-client-hero-power state player hero (:hero-power (get-definition (:name hero))))
+   :hero-power       (get-client-hero-power state hero (:hero-power (get-definition (:name hero))))
    :valid-attack-ids []})
 
 
@@ -110,34 +120,23 @@
                                                (create-card "Insect Swarm" :id "is")]}
                                     {:minions [(create-minion "Emil" :id "e")
                                                (create-minion "Ronja" :id "r")]}]) $
-                      (get-valid-target-ids-for-card $ (get-card $ "rr") "p1"))
+                      (get-valid-target-ids-for-card $ (get-card $ "rr")))
                 ["h1" "h2" "j" "e" "r"])
            (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]
                                      :hand    [(create-card "Annika" :id "a")]}
                                     {:minions [(create-minion "Emil" :id "e")
                                                (create-minion "Ronja" :id "r")]}]) $
-                      (get-valid-target-ids-for-card $ (get-card $ "a") "p1"))
+                      (get-valid-target-ids-for-card $ (get-card $ "a")))
                 ["j" "e" "r"])
            )}
-  [state card player-id]
-  (if (= (:type (get-definition card)) :spell)
-    ;TODO generalize this
-    (when (= (:name (get-definition card)) "Radar Raid")
-      (let [spell-function (:spell-fn (get-definition card))
-            valid-targets
-              (filter (fn [c]
-                        (spell-function state (:id c)))
-                      (get-characters state))]
-          (map :id valid-targets)))
-    ;TODO generalize this too
-    (when (or (= (:name (get-definition card)) "Annika") (= (:name (get-definition card)) "Astrid"))
-      (let [on-play-function (:on-play (get-definition card))
-            valid-targets
-            (when on-play-function
-              (filter (fn [c]
-                        (on-play-function state player-id (:id card) (:id c)))
-                      (get-characters state)))]
-            (map :id valid-targets)))))
+  [state card]
+  (when (some? (:valid-target? (get-definition card)))
+    (let [valid-target-function (:valid-target? (get-definition card))
+          valid-targets
+          (filter (fn [character]
+                    (valid-target-function state character))
+                  (get-characters state))]
+      (map :id valid-targets))))
 
 (defn get-client-card
   {:test (fn []
@@ -146,21 +145,23 @@
                                  card (get-card game "e")]
                              (get-client-card game card)))))}
   [state card]
-  (let [card-definition (get-definition card)]              ;lets us get mana-cost
+  (let [card-definition (get-definition card)]
     {:entity-type        "card"
      :name               (:name card)
-     :mana-cost          (:mana-cost card-definition)       ;(get-mana-cost state (:id card))
+     :mana-cost          (:mana-cost card-definition)
      :original-mana-cost (:mana-cost card-definition)
      :id                 (:id card)
      :playable           true
      :description        (:description card-definition)
      :type               (name (:type card-definition))
      :owner-id           (:owner-id card)
-     :attack             (:attack card-definition)
-     :health             (:health card-definition)
+     :attack             (when (= (:type card-definition) :minion)
+                           (+ (:attack card-definition) (first (get-minion-card-stat-buffs state (:id card)))))
+     :health             (when (= (:type card-definition) :minion)
+                           (+ (:health card-definition) (last (get-minion-card-stat-buffs state (:id card)))))
      :original-attack    (:attack card-definition)
      :original-health    (:health card-definition)
-     ::valid-target-ids  (first (conj [] (get-valid-target-ids-for-card state card (:owner-id card))))}))
+     ::valid-target-ids  (first (conj [] (get-target-ids state card)))}))
 
 (defn get-client-hand
   {:test (fn []
@@ -176,15 +177,32 @@
   {:test (fn []
            (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}]) $
                       (get-minion-states $ (get-minion $ "j")))
-                #{"taunt"}))}
+                #{"taunt"})
+           (is= (as-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}]) $
+                      (get-minion-states $ (get-minion $ "m")))
+                #{"deathrattle"})
+           (is= (as-> (create-game [{:minions [(create-minion "Ida" :id "i")]}]) $
+
+                      (get-minion-states $ (get-minion $ "i")))
+                #{"effect"})
+           )}
   [state minion]
-  (let [minion-properties (get-minion-properties state (:id minion))]
+  (let [minion-properties (get-minion-properties state (:id minion))
+        minion-def (get-definition minion)]
     (let [permanent-properties (:permanent minion-properties)
           temp-properties (reduce (fn [curr-set key]
                                     (conj curr-set (name key)))
                                   #{}
-                                  (reduce conj #{} (clojure.core/keys (:temporary minion-properties))))]
-      (clojure.set/union temp-properties permanent-properties))))
+                                  (reduce conj #{} (clojure.core/keys (:temporary minion-properties))))
+          other-properties (cond
+                             (some? (:deathrattle minion-def))
+                             #{"deathrattle"}
+                             (not-empty (filter (fn [property] (clojure.string/starts-with? (name (first property)) "on")) minion-def))
+                             #{"effect"}
+                             :else
+                             #{})]
+      (clojure.set/union temp-properties permanent-properties other-properties))))
+
 
 (defn get-valid-target-ids-for-minion
   {:test (fn []
@@ -220,7 +238,6 @@
                                  (get-client-minion minion))))))}
   [state minion]
   (let [minion-defn (get-definition (:name minion))
-        minion-permanent-set (get-in minion [:properties :permanent])
         valid-attack-ids (first (conj [] (get-valid-target-ids-for-minion state minion (:owner-id minion))))]
     {:attack           (get-attack state (:id minion))
      :can-attack       (not (empty? valid-attack-ids))
@@ -237,7 +254,9 @@
      :sleepy           (sleepy? state (:id minion))
      :states           (get-minion-states state minion)
      :valid-attack-ids valid-attack-ids
-     :description      (:description minion-defn)}))
+     :description      (if-not (:description minion-defn)
+                         ""
+                         (:description minion-defn))}))
 
 (defn get-client-minions
   {:test (fn []
@@ -250,19 +269,49 @@
        (map (fn [m]
               (get-client-minion state m)))))
 
+(defn get-client-secret
+  {:test (fn []
+           (is (check-spec :firestone.client.spec/secret
+                           (let [game (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]}])]
+                             (get-client-secret game "v"))))
+           )}
+  [state secret-id]
+  (let [secret (get-secret state secret-id)
+        secret-def (get-definition (:name secret))]
+    {:name (:name secret-def)
+     :owner-id (:owner-id secret)
+     :id (:id secret)
+     :entity-type "secret"
+     :original-mana-cost (:mana-cost secret-def)
+     :description (:description secret-def)
+     })
+  )
+
+(defn get-client-secrets
+  {:test (fn []
+           (is (check-spec :firestone.client.spec/active-secrets
+                           (as-> (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]}]) $
+                             (get-client-secrets $ (get-player $ "p1")))))
+           )}
+  [state player]
+  (->> (get-active-secrets state (:id player))
+       (map (fn [s]
+              (get-client-secret state (:id s))))))
+
 
 (defn get-client-player
   {:test (fn []
            (is (check-spec :firestone.client.spec/player
-                           (as-> (create-game [{:deck [(create-minion "Mio" :id "m1")
+                           (as-> (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]
+                                                :minion [(create-minion "Mio" :id "m1")
                                                        (create-minion "Emil" :id "e1")]}
-                                               {:deck [(create-minion "Mio" :id "m2")
+                                               {:minion [(create-minion "Mio" :id "m2")
                                                        (create-minion "Emil" :id "e2")]}]) $
                                  (get-client-player $ (get-player $ "p1")))
                            )))}
   [state player]
   {:board-entities (get-client-minions state player)
-   :active-secrets []
+   :active-secrets (get-client-secrets state player)
    :deck-size      (get-deck-size state (:id player))
    :hand           (get-client-hand state player)
    :hero           (get-client-hero state player (:hero player))
@@ -272,7 +321,11 @@
 (defn get-client-state
   {:test (fn []
            (is (check-spec :firestone.client.spec/game-states
-                           (-> (create-game)
+                           (-> (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]
+                                              :minion [(create-minion "Mio" :id "m1")
+                                                       (create-minion "Emil" :id "e1")]}
+                                             {:minion [(create-minion "Mio" :id "m2")
+                                                       (create-minion "Emil" :id "e2")]}])
                                (get-client-state)))))}
   [state]
   [{:id             "the-game-id"

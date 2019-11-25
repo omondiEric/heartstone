@@ -40,13 +40,13 @@
       card
       (apply assoc card kvs))))
 
-(def game-event-fn-names #{:end-of-turn, :on-minion-damage, :deathrattle :on-divine-shield-removal})
+(def game-event-fn-names #{:on-end-of-turn, :on-minion-damage, :deathrattle :on-divine-shield-removal})
 
 (defn get-additional-minion-field
   {:test (fn []
-           (is= (get-additional-minion-field "Pippi" :end-of-turn)
-                {:end-of-turn "Pippi"})
-           (is-not (get-additional-minion-field "Mio" :end-of-turn)))}
+           (is= (get-additional-minion-field "Pippi" :on-end-of-turn)
+                {:on-end-of-turn "Pippi"})
+           (is-not (get-additional-minion-field "Mio" :on-end-of-turn)))}
   [minion-name game-event-key]
   (let [game-event-from-defn (if (contains? (get-definition minion-name) game-event-key)
                                minion-name
@@ -96,13 +96,19 @@
                  :on-minion-damage            "Ida"})
            )}
   [name & kvs]
-  (let [properties (-> (get-definition name) (:properties)) ; Will be used later
+  (let [permanent (:properties (get-definition name))
         minion (merge
                  {:damage-taken                0
-                  :properties                  properties
                   :entity-type                 :minion
                   :name                        name
-                  :attacks-performed-this-turn 0}
+                  :attacks-performed-this-turn 0
+                  :properties                  (if (empty? permanent)
+                                                 {:permanent #{}
+                                                  :temporary {}
+                                                  :stats     {}}
+                                                 {:permanent permanent
+                                                  :temporary {}
+                                                  :stats     {}})}
                  (get-all-additional-minion-fields name)
                  )]
     (if (empty? kvs)
@@ -119,35 +125,38 @@
            (is= (create-empty-state [(create-hero "Carl" :id "c")
                                      (create-hero "Gustaf")])
                 {:player-id-in-turn             "p1"
-                 :players                       {"p1" {:id            "p1"
-                                                       :mana          10
-                                                       :max-mana      10
-                                                       :deck          []
-                                                       :hand          []
-                                                       :minions       []
-                                                       :fatigue-level 0
-                                                       :hero          {:name            "Carl"
-                                                                       :id              "c"
-                                                                       :owner-id        "p1"
-                                                                       :damage-taken    0
-                                                                       :hero-power-used false
-                                                                       :entity-type     :hero}}
-                                                 "p2" {:id            "p2"
-                                                       :mana          10
-                                                       :max-mana      10
-                                                       :deck          []
-                                                       :hand          []
-                                                       :minions       []
-                                                       :fatigue-level 0
-                                                       :hero          {:name            "Gustaf"
-                                                                       :id              "h2"
-                                                                       :owner-id        "p2"
-                                                                       :damage-taken    0
-                                                                       :hero-power-used false
-                                                                       :entity-type     :hero}}}
+                 :players                       {"p1" {:id             "p1"
+                                                       :mana           10
+                                                       :max-mana       10
+                                                       :deck           []
+                                                       :hand           []
+                                                       :minions        []
+                                                       :active-secrets []
+                                                       :fatigue-level  0
+                                                       :hero           {:name            "Carl"
+                                                                        :id              "c"
+                                                                        :owner-id        "p1"
+                                                                        :damage-taken    0
+                                                                        :hero-power-used false
+                                                                        :entity-type     :hero}}
+                                                 "p2" {:id             "p2"
+                                                       :mana           10
+                                                       :max-mana       10
+                                                       :deck           []
+                                                       :hand           []
+                                                       :minions        []
+                                                       :active-secrets []
+                                                       :fatigue-level  0
+                                                       :hero           {:name            "Gustaf"
+                                                                        :id              "h2"
+                                                                        :owner-id        "p2"
+                                                                        :damage-taken    0
+                                                                        :hero-power-used false
+                                                                        :entity-type     :hero}}}
                  :counter                       1
                  :seed                          0
-                 :minion-ids-summoned-this-turn []}))}
+                 :minion-ids-summoned-this-turn []
+                 :cards-played-this-game        []}))}
   ([heroes]
    ; Creates Carl heroes if heroes are missing.
    (let [heroes (->> (concat heroes [(create-hero "Carl")
@@ -156,23 +165,25 @@
      {:player-id-in-turn             "p1"
       :players                       (->> heroes
                                           (map-indexed (fn [index hero]
-                                                         {:id            (str "p" (inc index))
-                                                          :mana          10
-                                                          :max-mana      10
-                                                          :deck          []
-                                                          :hand          []
-                                                          :minions       []
-                                                          :fatigue-level 0
-                                                          :hero          (if (contains? hero :id)
-                                                                           (assoc hero :owner-id (str "p" (inc index)))
-                                                                           (assoc hero :id (str "h" (inc index))
-                                                                                       :owner-id (str "p" (inc index))))}))
+                                                         {:id             (str "p" (inc index))
+                                                          :mana           10
+                                                          :max-mana       10
+                                                          :deck           []
+                                                          :hand           []
+                                                          :minions        []
+                                                          :active-secrets []
+                                                          :fatigue-level  0
+                                                          :hero           (if (contains? hero :id)
+                                                                            (assoc hero :owner-id (str "p" (inc index)))
+                                                                            (assoc hero :id (str "h" (inc index))
+                                                                                        :owner-id (str "p" (inc index))))}))
                                           (reduce (fn [a v]
                                                     (assoc a (:id v) v))
                                                   {}))
       :counter                       1
       :seed                          0
-      :minion-ids-summoned-this-turn []}))
+      :minion-ids-summoned-this-turn []
+      :cards-played-this-game        []}))
   ([]
    (create-empty-state [])))
 
@@ -306,15 +317,15 @@
                                    :id id
                                    :added-to-board-time-id time-id)]
     (-> (update-in state
-               [:players player-id :minions]
-               (fn [minions]
-                 (conj (->> minions
-                            (mapv (fn [m]
-                                    (if (< (:position m) position)
-                                      m
-                                      (update m :position inc)))))
-                       ready-minion)))
-        (update-in [:minion-ids-summoned-this-turn] (fn [list] (conj list (:id minion)))))))
+                   [:players player-id :minions]
+                   (fn [minions]
+                     (conj (->> minions
+                                (mapv (fn [m]
+                                        (if (< (:position m) position)
+                                          m
+                                          (update m :position inc)))))
+                           ready-minion)))
+        (update-in [:minion-ids-summoned-this-turn] (fn [list] (conj list id))))))
 
 
 (defn add-minions-to-board
@@ -434,6 +445,38 @@
     (update-in state [:players player-id :max-mana] fn-or-value)
     (assoc-in state [:players player-id :max-mana] fn-or-value)))
 
+; Creates an active-secret for a player, needs a name an an owner id
+(defn create-secret
+  {:test (fn []
+           (is= (create-secret "Vaporize" "p1" :id "v")
+                {:name            "Vaporize"
+                 :type            :spell
+                 :sub-type        :secret
+                 :damage-taken    0
+                 :owner-id        "p1"
+                 :hero-power-used false
+                 :id              "v"}))}
+  [name owner-id & kvs]
+  (let [secret {:name            name
+                :type            :spell
+                :sub-type        :secret
+                :damage-taken    0
+                :owner-id        owner-id
+                :hero-power-used false}]
+    (if (empty? kvs)
+      secret
+      (apply assoc secret kvs))))
+
+(defn add-secret-to-player
+  [state player-id secret]
+  (update-in state [:players player-id :active-secrets] conj secret))
+
+(defn add-secrets-to-player
+  [state player-id secrets]
+  (reduce (fn [state secret]
+            (add-secret-to-player state player-id secret))
+          state
+          secrets))
 
 (defn create-game
   "Creates a game with the given deck, hand, minions (placed on the board), and heroes."
@@ -453,51 +496,54 @@
                               {:hero "Carl"}]
                              :player-id-in-turn "p2")
                 {:player-id-in-turn             "p2"
-                 :players                       {"p1" {:id            "p1"
-                                                       :mana          3
-                                                       :max-mana      3
-                                                       :deck          [{:entity-type :card
-                                                                        :id          "c3"
-                                                                        :name        "Ronja"
-                                                                        :owner-id    "p1"}]
-                                                       :hand          [{:entity-type :card
-                                                                        :id          "c4"
-                                                                        :name        "Emil"
-                                                                        :owner-id    "p1"}]
-                                                       :minions       [{:damage-taken                0
-                                                                        :attacks-performed-this-turn 0
-                                                                        :added-to-board-time-id      2
-                                                                        :entity-type                 :minion
-                                                                        :properties                  {:permanent #{}
-                                                                                                      :temporary {}
-                                                                                                      :stats     {}}
-                                                                        :name                        "Mio"
-                                                                        :id                          "m1"
-                                                                        :position                    0
-                                                                        :owner-id                    "p1"}]
-                                                       :fatigue-level 0
-                                                       :hero          {:name            "Carl"
-                                                                       :id              "h1"
-                                                                       :owner-id        "p1"
-                                                                       :entity-type     :hero
-                                                                       :damage-taken    0
-                                                                       :hero-power-used false}}
-                                                 "p2" {:id            "p2"
-                                                       :mana          10
-                                                       :max-mana      10
-                                                       :deck          []
-                                                       :hand          []
-                                                       :minions       []
-                                                       :fatigue-level 0
-                                                       :hero          {:name            "Carl"
-                                                                       :id              "h2"
-                                                                       :owner-id        "p2"
-                                                                       :entity-type     :hero
-                                                                       :damage-taken    0
-                                                                       :hero-power-used false}}}
+                 :players                       {"p1" {:id             "p1"
+                                                       :mana           3
+                                                       :max-mana       3
+                                                       :deck           [{:entity-type :card
+                                                                         :id          "c3"
+                                                                         :name        "Ronja"
+                                                                         :owner-id    "p1"}]
+                                                       :hand           [{:entity-type :card
+                                                                         :id          "c4"
+                                                                         :name        "Emil"
+                                                                         :owner-id    "p1"}]
+                                                       :minions        [{:damage-taken                0
+                                                                         :attacks-performed-this-turn 0
+                                                                         :added-to-board-time-id      2
+                                                                         :entity-type                 :minion
+                                                                         :properties                  {:permanent #{}
+                                                                                                       :temporary {}
+                                                                                                       :stats     {}}
+                                                                         :name                        "Mio"
+                                                                         :id                          "m1"
+                                                                         :position                    0
+                                                                         :owner-id                    "p1"}]
+                                                       :active-secrets []
+                                                       :fatigue-level  0
+                                                       :hero           {:name            "Carl"
+                                                                        :id              "h1"
+                                                                        :owner-id        "p1"
+                                                                        :entity-type     :hero
+                                                                        :damage-taken    0
+                                                                        :hero-power-used false}}
+                                                 "p2" {:id             "p2"
+                                                       :mana           10
+                                                       :max-mana       10
+                                                       :deck           []
+                                                       :hand           []
+                                                       :minions        []
+                                                       :active-secrets []
+                                                       :fatigue-level  0
+                                                       :hero           {:name            "Carl"
+                                                                        :id              "h2"
+                                                                        :owner-id        "p2"
+                                                                        :entity-type     :hero
+                                                                        :damage-taken    0
+                                                                        :hero-power-used false}}}
                  :counter                       5
                  :seed                          0
-                 :minion-ids-summoned-this-turn []}))}
+                 :minion-ids-summoned-this-turn []
+                 :cards-played-this-game        []}))}
   ([data & kvs]
    (let [players-data (map-indexed (fn [index player-data]
                                      (assoc player-data :player-id (str "p" (inc index))))
@@ -512,17 +558,19 @@
                                                       :else
                                                       (:hero player-data)))
                                               data)) $
-                     (reduce (fn [state {player-id :player-id
-                                         mana      :mana
-                                         minions   :minions
-                                         deck      :deck
-                                         hand      :hand}]
+                     (reduce (fn [state {player-id      :player-id
+                                         mana           :mana
+                                         minions        :minions
+                                         active-secrets :active-secrets
+                                         deck           :deck
+                                         hand           :hand}]
                                (-> (if mana
                                      (-> state
                                          (update-mana player-id mana)
                                          (update-max-mana player-id mana))
                                      state)
                                    (add-minions-to-board player-id minions)
+                                   (add-secrets-to-player player-id active-secrets)
                                    (add-cards-to-deck player-id deck)
                                    (add-cards-to-hand player-id hand)
                                    (assoc-in [:minion-ids-summoned-this-turn] [])))
@@ -588,7 +636,7 @@
                                              (create-minion "Emil" :id "e2")]}
                                   {:minions [(create-minion "Emil" :id "e3")]
                                    :deck    [(create-minion "Emil" :id "e4")
-                                            (create-minion "Emil" :id "e5")]}])
+                                             (create-minion "Emil" :id "e5")]}])
                     (get-deck-size "p1"))
                 2)
            )}
@@ -599,7 +647,7 @@
   "Replaces a minion with the same id as the given new-minion."
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
-                    (replace-minion (create-minion "Ronja" :id "m"))
+                    (replace-minion (create-minion "Ronja" :id "m" :position 0 :added-to-board-time-id 2 :owner-id "p1"))
                     (get-minion "m")
                     (:name))
                 "Ronja"))}
@@ -635,19 +683,49 @@
                             (update minion key function-or-value)
                             (assoc minion key function-or-value)))))
 
+(defn decrement-minions-position
+  "Decrements positions of all the minions on the board after a specific position"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")
+                                             (create-minion "Emil" :id "e")
+                                             (create-minion "Annika" :id "a")]}])
+                    (decrement-minions-position 1)
+                    (get-minion "a")
+                    (:position))
+                1))}
+  [state minion-pos]
+  (reduce (fn [state minion]
+            (if (> (:position minion) minion-pos)
+              (update-minion state (:id minion) :position (dec (:position minion)))
+              state))
+          state
+          (get-minions state)))
+
 (defn remove-minion
   "Removes a minion with the given id from the state."
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
                     (remove-minion "m")
                     (get-minions))
-                []))}
+                [])
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m")
+                                          (create-minion "Ronja" :id "r1")
+                                          (create-minion "Ronja" :id "r2")]}
+                               {:minions [(create-minion "Emil" :id "e")]}]) $
+                 (remove-minion $ "m")
+                 (do (is= (:position (get-minion $ "r1"))
+                          0)
+                     (is= (:position (get-minion $ "r2"))
+                          1)))
+           )}
   [state id]
-  (let [owner-id (:owner-id (get-minion state id))]
-    (update-in state
-               [:players owner-id :minions]
-               (fn [minions]
-                 (remove (fn [m] (= (:id m) id)) minions)))))
+  (let [owner-id (:owner-id (get-minion state id))
+        minion-pos (:position (get-minion state id))]
+    (as-> (update-in state
+                     [:players owner-id :minions]
+                     (fn [minions]
+                       (remove (fn [m] (= (:id m) id)) minions))) $
+          (decrement-minions-position $ minion-pos))))
 
 (defn remove-minions
   "Removes the minions with the given ids from the state."
@@ -662,10 +740,8 @@
                 ["m2" "m3"])
            )}
   [state & ids]
-  (reduce remove-minion state ids)
-  )
+  (reduce remove-minion state ids))
 
-;TODO what if player has max minions?
 (defn switch-minion-side
   "Switches a minion from one player to the other"
   {:test (fn []
@@ -693,7 +769,6 @@
         (remove-minion minion-id)
         (add-minion-to-board player-id minion 0))))
 
-;TODO allow multiple minions
 (defn friendly-minions?
   "Returns whether minions are friendly"
   {:test (fn []
@@ -732,6 +807,96 @@
   (->> (get-cards state)
        (filter (fn [c] (= (:id c) card-id)))
        (first)))
+
+(defn card-in-hand?
+  "Returns whether a card is in the hand"
+  {:test (fn []
+           (is (as-> (create-game [{:hand [(create-card "Mio" :id "m")]}]) $
+                     (card-in-hand? $ "m")))
+           (is-not (-> (create-game [{:deck [(create-card "Mio" :id "m")]}])
+                       (card-in-hand? "m")))
+           )}
+  [state card-id]
+  (let [owner-id (:owner-id (get-card state card-id))
+        hand-ids (map :id (get-hand state owner-id))]
+    (not (nil? (some (fn [item] (= card-id item)) hand-ids)))))
+
+
+(defn card-in-deck?
+  "Returns whether a card is in the deck"
+  {:test (fn []
+           (is-not (as-> (create-game [{:hand [(create-card "Mio" :id "m")]}]) $
+                         (card-in-deck? $ "m")))
+           (is (-> (create-game [{:deck [(create-card "Mio" :id "m")]}])
+                   (card-in-deck? "m")))
+           )}
+  [state card-id]
+  (let [owner-id (:owner-id (get-card state card-id))
+        deck-ids (map :id (get-deck state owner-id))]
+    (not (nil? (some (fn [item] (= card-id item)) deck-ids)))))
+
+(defn replace-card
+  "Replaces a card with the same id as the given new-card."
+  {:test (fn []
+           ;card in hand
+           (is= (-> (create-game [{:hand [(create-card "Mio" :id "m")]}])
+                    (replace-card (create-card "Ronja" :id "m"))
+                    (get-card "m")
+                    (:name))
+                "Ronja")
+           ;card in deck
+           (is= (-> (create-game [{:deck [(create-card "Mio" :id "m")]}])
+                    (replace-card (create-card "Ronja" :id "m"))
+                    (get-card "m")
+                    (:name))
+                "Ronja")
+           ;card not in hand or deck
+           (error? (-> (create-game [{:hand [(create-card "Mio" :id "m")]}])
+                       (replace-card (create-card "Ronja" :id "e"))))
+           )}
+  [state new-card]
+  (let [owner-id (or (:owner-id new-card)
+                     (:owner-id (get-card state (:id new-card))))]
+    (cond
+      (card-in-hand? state (:id new-card))
+      (update-in state
+                 [:players owner-id :hand]
+                 (fn [card]
+                   (map (fn [m]
+                          (if (= (:id m) (:id new-card))
+                            new-card
+                            m))
+                        card)))
+      (card-in-deck? state (:id new-card))
+      (update-in state
+                 [:players owner-id :deck]
+                 (fn [card]
+                   (map (fn [m]
+                          (if (= (:id m) (:id new-card))
+                            new-card
+                            m))
+                        card)))
+      :else (error "Card not found"))))
+
+(defn update-card
+  "Like update-minion but for cards"
+  {:test (fn []
+           (is= (-> (create-game [{:hand [(create-card "Mio" :id "m" :attack-buff 1)]}])
+                    (update-card "m" :attack-buff inc)
+                    (get-card "m")
+                    (:attack-buff))
+                2)
+           (is= (-> (create-game [{:hand [(create-card "Mio" :id "m")]}])
+                    (update-card "m" :attack-buff 2)
+                    (get-card "m")
+                    (:attack-buff))
+                2)
+           )}
+  [state id key function-or-value]
+  (let [card (get-card state id)]
+    (replace-card state (if (fn? function-or-value)
+                          (update card key function-or-value)
+                          (assoc card key function-or-value)))))
 
 (defn remove-card-from-hand
   {:test (fn []
@@ -1028,6 +1193,127 @@
    (let [minions-collection (last (shuffle-with-seed state (get-minions state player-id)))]
      (take number minions-collection))))
 
+(defn get-random-minion-conditional
+  "Gets a random minion from a list filtered by supplied function"
+  {:test (fn []
+           ;get a random minion from all
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")
+                                          (create-minion "Mio" :id "m2")
+                                          (create-minion "Emil" :id "e1")
+                                          (create-minion "Emil" :id "e2")]}
+                               {:minions [(create-minion "Mio" :id "m3")
+                                          (create-minion "Mio" :id "m4")
+                                          (create-minion "Emil" :id "e3")
+                                          (create-minion "Emil" :id "e4")]}]) $
+                 (get-random-minion-conditional $ (fn [state minion-id]
+                                                    (some? (:battlecry (get-definition (get-minion state minion-id))))))
+                 (do (is= (:id (last $)) "e1")
+                     (is (not= (:seed (first $)) 0))))
+           ;get a random minion from specific player
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")
+                                          (create-minion "Mio" :id "m2")
+                                          (create-minion "Emil" :id "e1")
+                                          (create-minion "Emil" :id "e2")]}
+                               {:minions [(create-minion "Mio" :id "m3")
+                                          (create-minion "Mio" :id "m4")
+                                          (create-minion "Emil" :id "e3")
+                                          (create-minion "Emil" :id "e4")]}]) $
+                 (get-random-minion-conditional $ (fn [state minion-id]
+                                                    (some? (:battlecry (get-definition (get-minion state minion-id)))))
+                                                "p2")
+                 (do (is= (:id (last $)) "e3")
+                     (is (not= (:seed (first $)) 0))))
+           )}
+  ([state condition-function]
+   (->> (filter (fn [minion]
+                  (condition-function state (:id minion))) (get-minions state))
+        (random-nth state)))
+  ([state condition-function player-id]
+   (->> (filter (fn [minion]
+                  (condition-function state (:id minion))) (get-minions state player-id))
+        (random-nth state))))
+
+; Creates an active-secret for a player, needs a name an an owner id
+(defn create-secret
+  {:test (fn []
+           (is= (create-secret "Vaporize" "p1" :id "v")
+                {:name         "Vaporize"
+                 :type         :spell
+                 :sub-type     :secret
+                 :damage-taken 0
+                 :owner-id     "p1"
+                 :id           "v"}))}
+  [name owner-id & kvs]
+  (let [secret {:name         name
+                :type         :spell
+                :sub-type     :secret
+                :damage-taken 0
+                :owner-id     owner-id}]
+    (if (empty? kvs)
+      secret
+      (apply assoc secret kvs))))
+
+; Gets all the active secrets
+(defn get-active-secrets
+  {:test (fn []
+           (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}]) $
+                      (get-active-secrets $ "p1")
+                      (map :name $))
+                ["Explosive Trap"])
+           (is= (-> (create-empty-state)
+                    (get-active-secrets))
+                []))}
+  ([state player-id]
+   (:active-secrets (get-player state player-id)))
+  ([state]
+   (->> (:players state)
+        (vals)
+        (map :active-secrets)
+        (apply concat))))
+
+; Gets a secret with a given id
+(defn get-secret
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
+                    (get-secret "e")
+                    (:name))
+                "Explosive Trap"))}
+  [state id]
+  (->> (get-active-secrets state)
+       (filter (fn [s] (= (:id s) id)))
+       (first)))
+
+; Removes a secret
+(defn remove-secret
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
+                    (remove-secret "e")
+                    (get-active-secrets))
+                []))}
+  [state id]
+  (let [owner-id (:owner-id (get-secret state id))]
+    (update-in state
+               [:players owner-id :active-secrets]
+               (fn [secrets]
+                 (remove (fn [s] (= (:id s) id)) secrets)))))
+
+(defn switch-secret-side
+  "Switches a secret from one player to the other"
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                                  {:hand [(create-card "Kezan Mystic" :id "s")]}])
+                    (switch-secret-side "e")
+                    (get-active-secrets "p2")
+                    (count))
+                1))}
+  [state secret-id]
+  (let [secret (get-secret state secret-id)
+        player-id (get-other-player-id (secret :owner-id))]
+    (-> state
+        (remove-secret secret-id)
+        (add-secret-to-player player-id secret))))
+
 ; call all the functions of active minions corresponding to a game event eg. end-of-turn, on-minion-damage
 (defn do-game-event-functions
   {:test (fn []
@@ -1036,12 +1322,10 @@
                                              (create-minion "Mio" :id "m")
                                              (create-minion "Emil" :id "e1")
                                              (create-minion "Emil" :id "e2")]}])
-                    (do-game-event-functions :end-of-turn :player-id "p1")
+                    (do-game-event-functions :on-end-of-turn :player-id "p1")
                     (get-minion "e1")
                     (:damage-taken))
                 1)
-           ; testing on minion damage function: Note for steve: this currently doesnt work because "give-taunt"
-           ; doesnt work  - but once that is fixed, this should work
            (is= (as-> (create-game [{:minions [(create-minion "Ida" :id "i")
                                                (create-minion "Mio" :id "m")
                                                (create-minion "Emil" :id "e1")
@@ -1063,9 +1347,31 @@
        (get-minions state player-id)
        (get-minions state)))))
 
+;todo trying to generalize do-game-event-fn to apply to all cards
+(defn do-secret-game-event-functions
+  {:test (fn []
+           (is= (-> (create-game [{:minions        [(create-minion "Mio" :id "m")]
+                                   :active-secrets [(create-secret "Vaporize" "p1" :id "v")]}
+                                  {:minions [(create-minion "Kato" :id "k")]}])
+                    (do-secret-game-event-functions :on-attack :player-id "p1" :attacker-id "k" :target-id "h1")
+                    (get-minions "p2"))
+                ()))}
+  [state game-event-key & {:keys [player-id attacker-id target-id]}]
+  (reduce
+    (fn [state secret]
+      (let [secret-def (get-definition (:name secret))]
+        (if (game-event-key secret-def)
+          (-> state
+              ((game-event-key secret-def) player-id attacker-id target-id)
+              (remove-secret (:id secret)))
+          state)))
+    state
+    (if player-id
+      (get-active-secrets state player-id)
+      (get-active-secrets state))))
+
 (defn give-property
   "Gives a property (temporary or permanent) to a minion. Temporary properties must have no spaces because it is a map key"
-  ;TODO make sure that if temporary buff is overwritten, it keeps the higher duration
   {:test (fn []
            (is (-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}])
                    (give-property "j" "divine-shield")
@@ -1144,6 +1450,22 @@
                                              (update-in properties-map [:temporary] (fn [temporary-set]
                                                                                       (dissoc temporary-set (keyword property))))))))
 
+(defn remove-all-properties
+  {:test (fn []
+           (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}]) $
+                 (give-property $ "j" "windfury" 1)
+                 (remove-all-properties $ "j")
+                 (do (is-not (has-property? $ "j" "taunt"))
+                     (is-not (has-property? $ "j" "windfury"))))
+           )}
+  [state minion-id]
+  (-> state
+      (update-minion minion-id :properties (fn [properties-map]
+                                             (assoc-in properties-map [:permanent] #{})))
+      (update-minion minion-id :properties (fn [properties-map]
+                                             (assoc-in properties-map [:temporary] {})))
+      ))
+
 (defn give-taunt
   "Gives taunt to a minion"
   {:test (fn []
@@ -1173,10 +1495,10 @@
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Tjorven" :id "t")
                                              (create-minion "Madicken" :id "m")]}])
-                    (player-has-active-aura-buff? "p1" "Friendly-windfury"))
+                    (player-has-active-aura-buff? "p1" "windfury"))
                 true)
            (is= (-> (create-game [{:minions [(create-minion "Astrid" :id "a")]}])
-                    (player-has-active-aura-buff? "p1" "Friendly-windfury"))
+                    (player-has-active-aura-buff? "p1" "windfury"))
                 nil)
            )}
   [state player-id aura-buff]
@@ -1196,7 +1518,7 @@
            )}
   [state minion-id player-id]
   (or (has-property? state minion-id "windfury")
-      (player-has-active-aura-buff? state player-id "Friendly-windfury")))
+      (player-has-active-aura-buff? state player-id "windfury")))
 
 (defn has-taunt?
   "Checks if minion has taunt"
@@ -1216,14 +1538,14 @@
   [state minion-id]
   (has-property? state minion-id "taunt"))
 
-(defn has-poisonous
-  "Checks if minion has taunt"
+(defn poisonous?
+  "Checks if minion is poisonous"
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Herr Nilsson" :id "hn")]}])
-                    (has-poisonous "hn"))
+                    (poisonous? "hn"))
                 true)
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
-                    (has-poisonous "k"))
+                    (poisonous? "k"))
                 false))}
   [state minion-id]
   (has-property? state minion-id "poisonous"))
@@ -1276,7 +1598,6 @@
         (do-game-event-functions :on-divine-shield-removal :target-id minion-id))
     (error "No divine shield to be removed")))
 
-
 (defn get-character
   "Returns the character with the given id from the state."
   {:test (fn []
@@ -1294,15 +1615,45 @@
       (some (fn [h] (when (= (:id h) id) h))
             (get-heroes state))))
 
+(defn get-card-or-character
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (get-card-or-character "e")
+                    (:name))
+                "Emil")
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (get-card-or-character "e")
+                    (:name))
+                "Emil")
+           )}
+  [state id]
+  (if (card? state id)
+    (get-card state id)
+    (get-character state id)))
+
 (defn minion?
   {:test (fn []
-           (is= ((create-game [{:hero (create-hero "Carl" :id "h1")}])
-                 (minion? "Carl"))
-                nil))}
+           (is (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
+                     (minion? (get-minion $ "e"))))
+           (is-not (as-> (create-game [{:hand [(create-card "Emil" :id "e")]}]) $
+                         (minion? (get-card $ "e"))))
+           (is-not ((create-game [{:hero (create-hero "Carl" :id "h1")}])
+                    (minion? "Carl")))
+           )}
   [character]
-  (if (= (:entity-type character) :minion)
-    true))
+  (= (:entity-type character) :minion))
 
+(defn character?
+  {:test (fn []
+           (is (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
+                     (character? (get-minion $ "e"))))
+           (is-not (as-> (create-game [{:hand [(create-card "Emil" :id "e")]}]) $
+                         (character? (get-card $ "e"))))
+           (is (as-> (create-game [{:hero (create-hero "Carl" :id "h1")}]) $
+                     (character? (get-character $ "h1"))))
+           )}
+  [character]
+  (or (= (:entity-type character) :minion) (= (:entity-type character) :hero)))
 
 (defn give-deathrattle
   "Gives a minion deathrattle from another minion"
@@ -1315,20 +1666,6 @@
            )}
   [state minion-id name-source]
   (update-minion state minion-id :deathrattle name-source))
-
-
-(defn ida-present?
-  {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Ida" :id "i")]}])
-                    (ida-present?)
-                    (:name))
-                "Ida")
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
-                    (ida-present?))
-                nil))}
-  [state]
-  (some (fn [m] (when (= (:name m) "Ida") m))
-        (get-minions state)))
 
 (defn get-minion-stats
   "Gets the stats of a minion"
@@ -1479,3 +1816,306 @@
    (-> state
        (modify-minion-attack minion-id attack duration)
        (modify-minion-max-health minion-id health duration))))
+
+(defn get-random-secret-minion
+  {:test (fn []
+           ;get a random minion from specific player
+           (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                 (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                               {:hand [(create-card "Kezan Mystic" :id "s")]}]) $
+                 (get-random-secret-minion $ "p1")
+                 (do (is= (:id (last $)) "e")
+                     (is (not= (:seed (first $)) 0)))))}
+  ([state]
+   (->> (get-active-secrets state)
+        (random-nth state)))
+  ([state player-id]
+   (->> (get-active-secrets state player-id)
+        (random-nth state))))
+
+(defn remove-minion-stat-buffs
+  "Resets minion's stats to original"
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (modify-minion-stats "e" 3 3)
+                    (modify-minion-stats "e" 1 1 1)
+                    (remove-minion-stat-buffs "e")
+                    (get-minion-stats "e"))
+                [1, 1])
+           ;can add buffs after removal
+           (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")]}])
+                    (modify-minion-stats "e" 3 3)
+                    (modify-minion-stats "e" 1 1 1)
+                    (remove-minion-stat-buffs "e")
+                    (modify-minion-stats "e" 3 3)
+                    (get-minion-stats "e"))
+                [4, 4])
+           )}
+  [state minion-id]
+  (update-minion state minion-id :properties (fn [properties-map]
+                                               (assoc-in properties-map [:stats] {}))))
+
+(defn remove-minion-effects
+  "Remove all deathrattle, on-turn, etc effects from a minion"
+  {:test (fn []
+           (is-not (-> (create-game [{:minions [(create-minion "Madicken" :id "e")]}])
+                       (remove-minion-effects "e")
+                       (get-minion "e")
+                       (:deathrattle)))
+           )}
+  [state minion-id]
+  (let [minion (get-minion state minion-id)
+        standard-minion-keys (map first
+                                  (filter (fn [x] (not (contains? game-event-fn-names (key x)))) minion))]
+    (replace-minion state (select-keys minion standard-minion-keys))))
+
+
+(defn get-minion-card-stat-buffs
+  "Gets the stat buffs applied to a minion card"
+  {:test (fn []
+           (is= (-> (create-game [{:hand [(create-card "Madicken" :id "e")]}])
+                    (get-minion-card-stat-buffs "e"))
+                [0 0])
+           (is= (-> (create-game [{:hand [(create-card "Madicken" :id "e" :attack-buff 2 :health-buff 2)]}])
+                    (get-minion-card-stat-buffs "e"))
+                [2 2])
+           )}
+  [state card-id]
+  (let [attack-buff (:attack-buff (get-card state card-id))
+        health-buff (:health-buff (get-card state card-id))]
+    (let [attack-buff (if (nil? attack-buff) 0 attack-buff)
+          health-buff (if (nil? health-buff) 0 health-buff)]
+      [attack-buff, health-buff])))
+
+(defn buff-minion-card
+  "Gives a minion card a stat buff"
+  {:test (fn []
+           ;card in hand
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 2 2)
+                    (get-minion-card-stat-buffs "e"))
+                [2 2])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 2 0)
+                    (get-minion-card-stat-buffs "e"))
+                [2 0])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 0 2)
+                    (get-minion-card-stat-buffs "e"))
+                [0 2])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 0 0)
+                    (get-minion-card-stat-buffs "e"))
+                [0 0])
+           ;card in deck
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 2 2)
+                    (get-minion-card-stat-buffs "e"))
+                [2 2])
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 2 0)
+                    (get-minion-card-stat-buffs "e"))
+                [2 0])
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 0 2)
+                    (get-minion-card-stat-buffs "e"))
+                [0 2])
+           (is= (-> (create-game [{:deck [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 0 0)
+                    (get-minion-card-stat-buffs "e"))
+                [0 0])
+           ;multiple buffs
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 2 2)
+                    (buff-minion-card "e" 2 2)
+                    (get-minion-card-stat-buffs "e"))
+                [4 4])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 2 0)
+                    (buff-minion-card "e" 2 0)
+                    (get-minion-card-stat-buffs "e"))
+                [4 0])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 0 2)
+                    (buff-minion-card "e" 0 2)
+                    (get-minion-card-stat-buffs "e"))
+                [0 4])
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (buff-minion-card "e" 0 2)
+                    (buff-minion-card "e" 2 0)
+                    (get-minion-card-stat-buffs "e"))
+                [2 2])
+           )}
+  [state card-id attack health]
+  (cond
+    (and (> attack 0) (> health 0))
+    (as-> state $
+          (if (nil? (:attack-buff (get-card $ card-id)))
+            (update-card $ card-id :attack-buff attack)
+            (update-card $ card-id :attack-buff (fn [x] (+ attack x))))
+          (if (nil? (:health-buff (get-card $ card-id)))
+            (update-card $ card-id :health-buff health)
+            (update-card $ card-id :health-buff (fn [x] (+ health x)))))
+    (> attack 0)
+    (if (nil? (:attack-buff (get-card state card-id)))
+      (update-card state card-id :attack-buff attack)
+      (update-card state card-id :attack-buff (fn [x] (+ attack x))))
+    (> health 0)
+    (if (nil? (:health-buff (get-card state card-id)))
+      (update-card state card-id :health-buff health)
+      (update-card state card-id :health-buff (fn [x] (+ health x))))
+    :else state))
+
+(defn add-card-to-cards-played
+  "Adds a card to the state field"
+  {:test (fn []
+           (is= (as-> (create-game [{:hand [(create-card "Emil" :id "e")]}]) $
+                      (add-card-to-cards-played $ (get-card $ "e"))
+                      (get-in $ [:cards-played-this-game]))
+                [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}])
+           (is= (as-> (create-game [{:hand [(create-card "Emil" :id "e")
+                                            (create-card "Ronja" :id "r")]}]) $
+                      (add-card-to-cards-played $ (get-card $ "e"))
+                      (add-card-to-cards-played $ (get-card $ "r"))
+                      (get-in $ [:cards-played-this-game]))
+                [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}
+                 {:name "Ronja", :entity-type :card, :id "r", :owner-id "p1"}])
+           )}
+  [state card]
+  (let [cards-played-this-game (get-in state [:cards-played-this-game])]
+    (assoc-in state [:cards-played-this-game] (conj cards-played-this-game card))))
+
+(defn get-all-played-cards-with-property
+  "Returns list of all cards played this game with a certain property, e.g. battlecry"
+  {:test (fn []
+           (is= (as-> (create-game []
+                                   :cards-played-this-game [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}
+                                                            {:name "Ronja", :entity-type :card, :id "r", :owner-id "p1"}
+                                                            {:name "Spellbreaker", :entity-type :card, :id "s", :owner-id "p2"}
+                                                            {:name "Radar Raid", :entity-type :card, :id "rr", :owner-id "p2"}
+                                                            ]) $
+                      (get-all-played-cards-with-property $ :battlecry))
+                [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}
+                 {:name "Spellbreaker", :entity-type :card, :id "s", :owner-id "p2"}])
+           (is= (as-> (create-game []
+                                   :cards-played-this-game [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}
+                                                            {:name "Ronja", :entity-type :card, :id "r", :owner-id "p1"}
+                                                            {:name "Spellbreaker", :entity-type :card, :id "s", :owner-id "p2"}
+                                                            {:name "Radar Raid", :entity-type :card, :id "rr", :owner-id "p2"}
+                                                            ]) $
+                      (get-all-played-cards-with-property $ :battlecry "p1"))
+                [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}])
+           )}
+  ([state property]
+   (let [cards-played-this-game (get-in state [:cards-played-this-game])]
+     (filter
+       (fn [card] (some? ((keyword property) (get-definition card))))
+       cards-played-this-game)))
+  ([state property player-id]
+   (let [cards-played-this-game (get-in state [:cards-played-this-game])]
+     (filter
+       (fn [card] (and
+                    (some? ((keyword property) (get-definition card)))
+                    (= (:owner-id card) player-id)))
+       cards-played-this-game))))
+
+(defn valid-minion-effect-target?
+  "Checks whether target is valid"
+  {:test (fn []
+           (is (as-> (create-game [{:minions [(create-minion "Astrid" :id "a")
+                                              (create-minion "Madicken" :id "m")]}]) $
+                     (valid-minion-effect-target? $ "a" "m")))
+           (is (as-> (create-game [{:hand [(create-minion "Astrid" :id "a")]}
+                                   {:minions [(create-minion "Madicken" :id "m")]}]) $
+                     (valid-minion-effect-target? $ "a" "m")))
+           (is-not (-> (create-game [{:minions [(create-minion "Astrid" :id "a")
+                                                (create-minion "Emil" :id "e")]}])
+                       (valid-minion-effect-target? "a" "e")))
+           (is (as-> (create-game [{:minions [(create-minion "Astrid" :id "a")
+                                              (create-minion "Madicken" :id "m")]}]) $
+                     (valid-minion-effect-target? $ (get-definition "Astrid") "m")))
+           )}
+  [state id-or-def target-id]
+  (let [valid-target-function (if (some? (:description id-or-def))
+                                (:valid-target? id-or-def)
+                                (:valid-target? (get-definition (get-card-or-character state id-or-def))))]
+    (if (some? valid-target-function)
+      (valid-target-function state (get-character state target-id))
+      (error "No valid target function found"))))
+
+; Gets all the active secrets
+(defn get-active-secrets
+  {:test (fn []
+           (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}]) $
+                      (get-active-secrets $ "p1")
+                      (map :name $))
+                ["Explosive Trap"])
+           (is= (-> (create-empty-state)
+                    (get-active-secrets))
+                []))}
+  ([state player-id]
+   (:active-secrets (get-player state player-id)))
+  ([state]
+   (->> (:players state)
+        (vals)
+        (map :active-secrets)
+        (apply concat))))
+
+; Gets a secret with a given id
+(defn get-secret
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
+                    (get-secret "e")
+                    (:name))
+                "Explosive Trap"))}
+  [state id]
+  (->> (get-active-secrets state)
+       (filter (fn [s] (= (:id s) id)))
+       (first)))
+
+(defn get-random-secret
+  {:test (fn []
+           ;get a random minion from specific player
+           (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                 (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                               {:hand [(create-card "Kezan Mystic" :id "s")]}]) $
+                 (get-random-secret $ "p1")
+                 (do (is= (:id (last $)) "e")
+                     (is (not= (:seed (first $)) 0)))))}
+  ([state]
+   (->> (get-active-secrets state)
+        (random-nth state)))
+  ([state player-id]
+   (->> (get-active-secrets state player-id)
+        (random-nth state))))
+
+; Removes a secret
+(defn remove-secret
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
+                    (remove-secret "e")
+                    (get-active-secrets))
+                []))}
+  [state id]
+  (let [owner-id (:owner-id (get-secret state id))]
+    (update-in state
+               [:players owner-id :active-secrets]
+               (fn [secrets]
+                 (remove (fn [s] (= (:id s) id)) secrets)))))
+
+(defn switch-secret-side
+  "Switches a secret from one player to the other"
+  {:test (fn []
+           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
+                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
+                                  {:hand [(create-card "Kezan Mystic" :id "s")]}])
+                    (switch-secret-side "e")
+                    (get-active-secrets "p2")
+                    (count))
+                1))}
+  [state secret-id]
+  (let [secret (get-secret state secret-id)
+        player-id (get-other-player-id (secret :owner-id))]
+    (-> state
+        (remove-secret secret-id)
+        (add-secret-to-player player-id secret))))
