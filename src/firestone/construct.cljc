@@ -1255,14 +1255,14 @@
   [state minion-id]
   (has-property? state minion-id "taunt"))
 
-(defn has-poisonous
-  "Checks if minion has taunt"
+(defn poisonous?
+  "Checks if minion is poisonous"
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Herr Nilsson" :id "hn")]}])
-                    (has-poisonous "hn"))
+                    (poisonous? "hn"))
                 true)
            (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]}])
-                    (has-poisonous "k"))
+                    (poisonous? "k"))
                 false))}
   [state minion-id]
   (has-property? state minion-id "poisonous"))

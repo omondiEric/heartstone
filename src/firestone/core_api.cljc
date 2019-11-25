@@ -24,6 +24,7 @@
                                          do-game-event-functions
                                          draw-card-to-hand
                                          fatigue-hero
+                                         has-property?
                                          inc-max-mana
                                          get-card
                                          get-character
@@ -42,7 +43,8 @@
                                          get-players
                                          get-other-player-id
                                          give-divine-shield
-                                         has-poisonous
+                                         give-property
+                                         poisonous?
                                          minion?
                                          remove-card-from-deck
                                          remove-card-from-hand
@@ -225,6 +227,21 @@
          (add-minion-to-board player-id (create-minion (:name card) :id card-id) position)
          (do-on-play player-id card-id (get-definition (get-card state card-id)) target-id)))))
 
+(defn poison-minion
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Ronja" :id "r")]}])
+                    (poison-minion "r")
+                    (has-property? "r" "poisoned"))
+                true)
+           (is= (-> (create-game [{:minions [(create-minion "Uncle Melker" :id "u")]}])
+                    (poison-minion "u")
+                    (has-property? "u" "poisoned"))
+                false))}
+  [state minion-id]
+  (if (has-property? state minion-id "divine-shield")
+    state
+    (give-property state minion-id "poisoned")))
+
 ;TODO Maybe rename
 (defn kill-minion-fn
   {:test (fn []
@@ -275,8 +292,8 @@
         target-attack-val (get-attack state target-id)]
     (if (valid-attack? state player-id attacker-id target-id) (as-> (update-minion state attacker-id :attacks-performed-this-turn inc) $
                                                                     ;if attacker is poisonous, kill target minion
-                                                                    (if (has-poisonous $ attacker-id)
-                                                                      (kill-minion-fn $ target-id)
+                                                                    (if (poisonous? $ attacker-id)
+                                                                      (poison-minion $ target-id)
                                                                       (deal-damage $ target-id attacker-attack-val))
                                                                     (deal-damage $ attacker-id target-attack-val))
                                                               (error "Invalid attack"))))

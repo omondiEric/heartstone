@@ -174,7 +174,8 @@
                 ["m2" "m3"]))}
   [state]
   (->> (get-minions state)
-       (filter (fn [m] (<= (->> (:id m) (get-health state)) 0)))))
+       (filter (fn [m] (or (<= (->> (:id m) (get-health state)) 0)
+                           (has-property? state (:id m) "poisoned"))))))
 
 (defn valid-attack?
   "Checks if the attack is valid"
