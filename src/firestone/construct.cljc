@@ -96,13 +96,19 @@
                  :on-minion-damage            "Ida"})
            )}
   [name & kvs]
-  (let [properties (-> (get-definition name) (:properties)) ; Will be used later
+  (let [permanent (:properties (get-definition name))
         minion (merge
                  {:damage-taken                0
-                  :properties                  properties
                   :entity-type                 :minion
                   :name                        name
-                  :attacks-performed-this-turn 0}
+                  :attacks-performed-this-turn 0
+                  :properties                  (if (empty? permanent)
+                                                 {:permanent #{}
+                                                   :temporary {}
+                                                   :stats     {}}
+                                                 {:permanent permanent
+                                                   :temporary {}
+                                                   :stats     {}})}
                  (get-all-additional-minion-fields name)
                  )]
     (if (empty? kvs)
@@ -316,7 +322,7 @@
                                           m
                                           (update m :position inc)))))
                            ready-minion)))
-        (update-in [:minion-ids-summoned-this-turn] (fn [list] (conj list (:id minion)))))))
+        (update-in [:minion-ids-summoned-this-turn] (fn [list] (conj list id))))))
 
 
 (defn add-minions-to-board
@@ -668,7 +674,6 @@
   (reduce remove-minion state ids)
   )
 
-;TODO what if player has max minions?
 (defn switch-minion-side
   "Switches a minion from one player to the other"
   {:test (fn []
@@ -1459,11 +1464,11 @@
 (defn minion?
   {:test (fn []
            (is (as-> (create-game [{:minions [(create-minion "Emil" :id "e")]}]) $
-                    (minion? (get-minion $ "e"))))
+                     (minion? (get-minion $ "e"))))
            (is-not (as-> (create-game [{:hand [(create-card "Emil" :id "e")]}]) $
-                     (minion? (get-card $ "e"))))
+                         (minion? (get-card $ "e"))))
            (is-not ((create-game [{:hero (create-hero "Carl" :id "h1")}])
-                 (minion? "Carl")))
+                    (minion? "Carl")))
            )}
   [character]
   (= (:entity-type character) :minion))
@@ -1475,7 +1480,7 @@
            (is-not (as-> (create-game [{:hand [(create-card "Emil" :id "e")]}]) $
                          (character? (get-card $ "e"))))
            (is (as-> (create-game [{:hero (create-hero "Carl" :id "h1")}]) $
-                    (character? (get-character $ "h1"))))
+                     (character? (get-character $ "h1"))))
            )}
   [character]
   (or (= (:entity-type character) :minion) (= (:entity-type character) :hero)))

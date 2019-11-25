@@ -280,19 +280,20 @@
                       (count $))
                 1)
            )}
-  ;TODO use the new get-card-or-character function
-
   ;definition is required because it gets around the problem of here card-id is for a card, but in play-minion-card
   ;the card will be played and becomes a minion
   ([state player-id card-id minion-def]
    (if (contains? minion-def :battlecry)
-     (let [on-play-fn (:battlecry minion-def)]
-       (on-play-fn state player-id card-id))
+     (let [battlecry-fn (:battlecry minion-def)]
+       ;if a battlecry wants a target-id but doesn't get one
+       (if (some? (:valid-target? minion-def))
+         state
+       (battlecry-fn state player-id card-id)))
      state))
   ([state player-id card-id minion-def target-id]
    (if (contains? minion-def :battlecry)
-     (let [on-play-fn (:battlecry minion-def)]
-       (on-play-fn state player-id card-id target-id))
+     (let [battlecry-fn (:battlecry minion-def)]
+       (battlecry-fn state player-id card-id target-id))
      state)))
 
 (defn has-deathrattle
@@ -358,7 +359,7 @@
            (is= (-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}])
                     (do-deathrattle "m")
                     (get-minions "p1")
-                    (first)
+                    (last)
                     (:name))
                 "Elisabeth")
            ;check Uncle Nilsson
@@ -371,21 +372,21 @@
            )}
 
   [state card-id]
-  (let [deathrattle (:deathrattle (get-definition (:name (get-minion state card-id))))]
+  (let [deathrattle (:deathrattle (get-definition (:deathrattle (get-minion state card-id))))]
     (deathrattle state card-id)))
 
 (defn do-deathrattles
   {:test (fn []
            ;check madicken summons elisabeth
-           (is= (as-> (create-game [{:minions [(create-card "Madicken" :id "m1")
-                                               (create-card "Madicken" :id "m2")]}]) $
+           (is= (as-> (create-game [{:minions [(create-minion "Madicken" :id "m1")
+                                               (create-minion "Madicken" :id "m2")]}]) $
                       (do-deathrattles $ "m1" "m2")
                       (get-minions $ "p1")
                       (map :name $))
-                ["Elisabeth" "Elisabeth"])
+                ["Madicken" "Madicken" "Elisabeth" "Elisabeth"])
            ;check Uncle Nilsson
-           (is= (-> (create-game [{:minions [(create-card "Uncle Nilsson" :id "n")]}
-                                  {:minions [(create-card "Mio" :id "m")]}])
+           (is= (-> (create-game [{:minions [(create-minion "Uncle Nilsson" :id "n")]}
+                                  {:minions [(create-minion "Mio" :id "m")]}])
                     (do-deathrattles "n")
                     (get-minions "p2")
                     (count))

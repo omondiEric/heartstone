@@ -208,7 +208,6 @@
                     (get-in [:cards-played-this-game]))
                 [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}])
            )}
-  ;TODO Think about keyword vs overloading
   ([state player-id card-id position]
    ;check if player has less than 7 minions on the board
    (when (or (>= (count (get-minions state player-id)) 7)

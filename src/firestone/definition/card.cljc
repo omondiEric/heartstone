@@ -1,7 +1,8 @@
 (ns firestone.definition.card
   (:require [firestone.definitions :as definitions]
             [firestone.definitions :refer [get-definition]]
-            [firestone.construct :refer [buff-minion-card
+            [firestone.construct :refer [add-minion-to-board
+                                         buff-minion-card
                                          character?
                                          create-game
                                          create-card
@@ -41,9 +42,6 @@
     :attack     1
     :health     2
     :mana-cost  1
-    :properties {:permanent #{}
-                 :temporary {}
-                 :stats     {}}
     :type       :minion}
 
    "Ronja"
@@ -51,9 +49,6 @@
     :attack     3
     :health     2
     :mana-cost  2
-    :properties {:permanent #{}
-                 :temporary {}
-                 :stats     {}}
     :type       :minion}
 
    "Kato"
@@ -62,9 +57,6 @@
     :health      1
     :mana-cost   4
     :type        :minion
-    :properties  {:permanent #{}
-                  :temporary {}
-                  :stats     {}}
     :description "Battlecry: Deal 4 damage to the enemy hero."
     :battlecry   (fn [state player-id minion-id]
                    (let [target-hero-id (get-in state [:players (get-other-player-id player-id) :hero :id])]
@@ -76,9 +68,6 @@
     :health      5
     :mana-cost   4
     :type        :minion
-    :properties  {:permanent #{}
-                  :temporary {}
-                  :stats     {}}
     :description "Battlecry: Draw a card."
     :battlecry   (fn [state player-id minion-id]
                    (draw-card state player-id))}
@@ -89,9 +78,7 @@
     :health      6
     :mana-cost   4
     :type        :minion
-    :properties  {:permanent #{"taunt"}
-                  :temporary {}
-                  :stats     {}}
+    :properties  #{"taunt"}
     :set         :custom
     :description "Taunt."}
 
@@ -101,9 +88,7 @@
     :health      5
     :mana-cost   2
     :type        :minion
-    :properties  {:permanent #{"NoAttack"}
-                  :temporary {}
-                  :stats     {}}
+    :properties  #{"NoAttack"}
     :set         :custom
     :description "Can't Attack."}
 
@@ -113,9 +98,7 @@
     :health      5
     :mana-cost   5
     :type        :minion
-    :properties  {:permanent #{"divine-shield"}
-                  :temporary {}
-                  :stats     {}}
+    :properties  #{"divine-shield"}
     :set         :custom
     :description "Divine Shield."}
 
@@ -125,9 +108,6 @@
     :health      4
     :mana-cost   3
     :type        :minion
-    :properties  {:permanent #{}
-                  :temporary {}
-                  :stats     {}}
     :on-end-of-turn (fn [state minion-id]
                    (deal-damage-to-other-minions state minion-id 1))
     :set         :custom
@@ -139,9 +119,6 @@
     :health      4
     :mana-cost   3
     :type        :minion
-    :properties  {:permanent #{}
-                  :temporary {}
-                  :stats     {}}
     :on-end-of-turn (fn [state id]
                    (let [random-result (get-random-minion state)]
                      (let [state (first random-result)
@@ -156,9 +133,6 @@
     :health      5
     :mana-cost   6
     :type        :minion
-    :properties  {:permanent #{}
-                  :temporary {}
-                  :stats     {}}
     :set         :custom
     :description "Deathrattle: Take control of a random enemy minion."
     :deathrattle (fn [state minion-id]
@@ -171,9 +145,7 @@
     :health      1
     :mana-cost   1
     :type        :minion
-    :properties  {:permanent #{"taunt", "divine-shield"}
-                  :temporary {}
-                  :stats     {}}
+    :properties  #{"taunt", "divine-shield"}
     :set         :custom
     :description "Taunt. Divine Shield."}
 
@@ -183,15 +155,12 @@
     :health      2
     :mana-cost   2
     :type        :minion
-    :properties  {:permanent #{}
-                  :temporary {}
-                  :stats     {}}
     :set         :custom
     :description "Deathrattle: Summon Elisabeth."
     :deathrattle (fn [state minion-id]
                    (let [position (:position (get-minion state minion-id))
                          owner-id (:owner-id (get-minion state minion-id))]
-                     (replace-minion state (create-minion "Elisabeth" :id minion-id :position position :owner-id owner-id))))}
+                     (add-minion-to-board state owner-id (create-minion "Elisabeth") position)))}
 
    "Ida"
    {:name             "Ida"
@@ -199,9 +168,6 @@
     :health           4
     :mana-cost        3
     :type             :minion
-    :properties       {:permanent #{}
-                       :temporary {}
-                       :stats     {}}
     :on-minion-damage (fn [state id]
                         (let [ida (ida-present? state)]
                           (if (nil? ida)
@@ -237,9 +203,7 @@
     :health      3
     :mana-cost   3
     :type        :minion
-    :properties  {:permanent #{"poisonous"}
-                  :temporary {}
-                  :stats     {}}
+    :properties  #{"poisonous"}
     :set         :custom
     :description "Poisonous"}
 
@@ -249,9 +213,7 @@
     :health      5
     :mana-cost   5
     :type        :minion
-    :properties  {:permanent #{"windfury"}
-                  :temporary {}
-                  :stats     {}}
+    :properties  #{"windfury"}
     :set         :custom
     :description "Windfury"}
 
@@ -261,9 +223,6 @@
     :health      2
     :mana-cost   5
     :type        :minion
-    :properties  {:permanent #{}
-                  :temporary {}
-                  :stats     {}}
     :set         :custom
     :description "Your other minions has windfury."
     :aura        #{"windfury"}}
@@ -274,14 +233,11 @@
     :health        3
     :mana-cost     4
     :type          :minion
-    :properties    {:permanent #{}
-                    :temporary {}
-                    :stats     {}}
     :set           :custom
     :description   "Battlecry: Copy another minions deathrattle."
     :valid-target? (fn [state target]
                      (and (minion? target)
-                          (some? (:deathrattle (get-definition target)))))
+                          (some? (:deathrattle (get-minion state (:id target))))))
     :battlecry     (fn [state player-id minion-id target-id]
                      (give-deathrattle state minion-id (:name (get-minion state target-id))))}
 
@@ -291,9 +247,6 @@
     :health                   2
     :mana-cost                3
     :type                     :minion
-    :properties               {:permanent #{}
-                               :temporary {}
-                               :stats     {}}
     :set                      :custom
     :description              "After a friendly minion loses Divine Shield, gain +2/+2."
     :on-divine-shield-removal (fn [state minion-id other-minion-id]
@@ -307,9 +260,6 @@
     :health        2
     :mana-cost     3
     :type          :minion
-    :properties    {:permanent #{}
-                    :temporary {}
-                    :stats     {}}
     :set           :custom
     :description   "Battlecry: Give a minion +2 Attack this turn."
     :valid-target? (fn [state target] (minion? target))
@@ -391,9 +341,6 @@
     :health      4
     :mana-cost   6
     :type        :minion
-    :properties  {:permanent #{}
-                  :temporary {}
-                  :stats     {}}
     :set         :the-grand-tournament
     :rarity      :legendary
     :description "Battlecry: Give all minions in your hand and deck +1/+1."
@@ -407,9 +354,6 @@
     :health        3
     :mana-cost     4
     :type          :minion
-    :properties    {:permanent #{}
-                    :temporary {}
-                    :stats     {}}
     :set           :classic
     :rarity        :common
     :description   "Battlecry: Silence a minion."
@@ -423,9 +367,6 @@
     :health      6
     :mana-cost   9
     :type        :minion
-    :properties  {:permanent #{}
-                  :temporary {}
-                  :stats     {}}
     :set         :the-witchwood
     :rarity      :legendary
     :description "Battlecry: Repeat all other Battlecries from cards you played this game (targets chosen randomly)."
@@ -438,7 +379,6 @@
                            (reduce (fn [state minion-def]
                                      (do-battlecry state player-id minion-id minion-def)) $ minion-defs-without-target)
                            ;;do battlecries that require a target
-                           ;TODO what if no valid minions
                            (reduce (fn [state minion-def]
                                      (let [random-result
                                            (get-random-minion-conditional state
@@ -491,9 +431,6 @@
     :attack     1
     :health     1
     :mana-cost  1
-    :properties {:permanent #{}
-                 :temporary {}
-                 :stats     {}}
     :set        :classic
     :type       :minion
     :rarity     :common}
@@ -503,9 +440,7 @@
     :attack      2
     :health      3
     :mana-cost   3
-    :properties  {:permanent #{"poisonous"}
-                  :temporary {}
-                  :stats     {}}
+    :properties  #{"poisonous"}
     :type        :minion
     :set         :classic
     :rarity      :rare

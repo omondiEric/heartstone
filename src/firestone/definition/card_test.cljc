@@ -158,17 +158,18 @@
               [5 6])
          (is (as-> (create-game [{:minions [(create-minion "Madicken" :id "m")]
                                   :hand    [(create-card "Annika" :id "a")]}]) $
-                   (valid-minion-effect-target? $ "a" "m")))
-         )
+                   (valid-minion-effect-target? $ "a" "m"))))
 
 (deftest Astrid
          "Battlecry: copy another minion's deathrattle"
          (is= (as-> (create-game [{:minions [(create-minion "Madicken" :id "m")]
                                    :hand    [(create-card "Astrid" :id "a")]}]) $
                     (play-minion-card $ "p1" "a" 0 "m")
-                    (get-minion $ "a")
-                    (:deathrattle $))
-              "Madicken")
+                    (do (is= (:deathrattle (get-minion $ "a")) "Madicken")
+                        (deal-damage $ "a" 3))
+                    (get-minion $ "m3")
+                    (:name $))
+              "Elisabeth")
          (is (as-> (create-game [{:minions [(create-minion "Madicken" :id "m")]
                                   :hand    [(create-card "Astrid" :id "a")]}]) $
                    (valid-minion-effect-target? $ "a" "m")))
