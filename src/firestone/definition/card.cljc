@@ -128,7 +128,7 @@
     :properties  {:permanent #{}
                   :temporary {}
                   :stats     {}}
-    :end-of-turn (fn [state minion-id]
+    :on-end-of-turn (fn [state minion-id]
                    (deal-damage-to-other-minions state minion-id 1))
     :set         :custom
     :description "At the end of your turn deal 1 damage to all other minions."}
@@ -142,7 +142,7 @@
     :properties  {:permanent #{}
                   :temporary {}
                   :stats     {}}
-    :end-of-turn (fn [state id]
+    :on-end-of-turn (fn [state id]
                    (let [random-result (get-random-minion state)]
                      (let [state (first random-result)
                            random-minion (last random-result)]
@@ -266,7 +266,7 @@
                   :stats     {}}
     :set         :custom
     :description "Your other minions has windfury."
-    :aura        #{"Friendly-windfury"}}
+    :aura        #{"windfury"}}
 
    "Astrid"
    {:name          "Astrid"
@@ -438,6 +438,7 @@
                            (reduce (fn [state minion-def]
                                      (do-battlecry state player-id minion-id minion-def)) $ minion-defs-without-target)
                            ;;do battlecries that require a target
+                           ;TODO what if no valid minions
                            (reduce (fn [state minion-def]
                                      (let [random-result
                                            (get-random-minion-conditional state

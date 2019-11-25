@@ -153,7 +153,7 @@
 
   (let [other-player-id (get-other-player-id player-id)]
     (-> state
-        (do-game-event-functions :end-of-turn :player-id player-id)
+        (do-game-event-functions :on-end-of-turn :player-id player-id)
         (assoc-in [:players player-id :hero :hero-power-used] false)
         (decrement-all-player-minion-temporary-durations player-id)
         (change-player-in-turn)

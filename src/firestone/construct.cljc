@@ -40,13 +40,13 @@
       card
       (apply assoc card kvs))))
 
-(def game-event-fn-names #{:end-of-turn, :on-minion-damage, :deathrattle :on-divine-shield-removal})
+(def game-event-fn-names #{:on-end-of-turn, :on-minion-damage, :deathrattle :on-divine-shield-removal})
 
 (defn get-additional-minion-field
   {:test (fn []
-           (is= (get-additional-minion-field "Pippi" :end-of-turn)
-                {:end-of-turn "Pippi"})
-           (is-not (get-additional-minion-field "Mio" :end-of-turn)))}
+           (is= (get-additional-minion-field "Pippi" :on-end-of-turn)
+                {:on-end-of-turn "Pippi"})
+           (is-not (get-additional-minion-field "Mio" :on-end-of-turn)))}
   [minion-name game-event-key]
   (let [game-event-from-defn (if (contains? (get-definition minion-name) game-event-key)
                                minion-name
@@ -1169,7 +1169,7 @@
                                              (create-minion "Mio" :id "m")
                                              (create-minion "Emil" :id "e1")
                                              (create-minion "Emil" :id "e2")]}])
-                    (do-game-event-functions :end-of-turn :player-id "p1")
+                    (do-game-event-functions :on-end-of-turn :player-id "p1")
                     (get-minion "e1")
                     (:damage-taken))
                 1)
@@ -1196,7 +1196,6 @@
 
 (defn give-property
   "Gives a property (temporary or permanent) to a minion. Temporary properties must have no spaces because it is a map key"
-  ;TODO make sure that if temporary buff is overwritten, it keeps the higher duration
   {:test (fn []
            (is (-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}])
                    (give-property "j" "divine-shield")
@@ -1320,10 +1319,10 @@
   {:test (fn []
            (is= (-> (create-game [{:minions [(create-minion "Tjorven" :id "t")
                                              (create-minion "Madicken" :id "m")]}])
-                    (player-has-active-aura-buff? "p1" "Friendly-windfury"))
+                    (player-has-active-aura-buff? "p1" "windfury"))
                 true)
            (is= (-> (create-game [{:minions [(create-minion "Astrid" :id "a")]}])
-                    (player-has-active-aura-buff? "p1" "Friendly-windfury"))
+                    (player-has-active-aura-buff? "p1" "windfury"))
                 nil)
            )}
   [state player-id aura-buff]
@@ -1343,7 +1342,7 @@
            )}
   [state minion-id player-id]
   (or (has-property? state minion-id "windfury")
-      (player-has-active-aura-buff? state player-id "Friendly-windfury")))
+      (player-has-active-aura-buff? state player-id "windfury")))
 
 (defn has-taunt?
   "Checks if minion has taunt"

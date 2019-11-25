@@ -224,7 +224,7 @@
                                    :hand    [(create-card "Silence" :id "s")]}]) $
                     (play-spell-card $ "p1" "s" "j")
                     (get-minion-properties $ "j"))
-              {:permanent #{}, :temporary {}, :stats {}})
+              {:permanent #{"silenced"}, :temporary {}, :stats {}})
          )
 
 (deftest Spellbreaker
@@ -233,7 +233,7 @@
                                   {:hand [(create-card "Spellbreaker" :id "s")]}]) $
                     (play-minion-card $ "p2" "s" 0 "j")
                     (get-minion-properties $ "j"))
-              {:permanent #{}, :temporary {}, :stats {}})
+              {:permanent #{"silenced"}, :temporary {}, :stats {}})
          )
 
 (deftest The-Mistcaller

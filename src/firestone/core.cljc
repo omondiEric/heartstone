@@ -11,6 +11,7 @@
                                          do-game-event-functions
                                          get-all-played-cards-with-property
                                          get-card
+                                         get-card-or-character
                                          get-character
                                          get-heroes
                                          get-hero
@@ -296,22 +297,19 @@
 
 (defn has-deathrattle
   {:test (fn []
-           ;;without state and with card
-           ;(is (-> (create-card "Madicken" :id "m")
-           ;        (has-deathrattle)))
-           ;(is-not (-> (create-card "Mio")
-           ;            (has-deathrattle)))
+           ;without state and with card
+           (is (-> (create-card "Madicken" :id "m")
+                   (has-deathrattle)))
+           (is-not (-> (create-card "Mio")
+                       (has-deathrattle)))
            ;with state and minion-id
            (is (-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}])
                    (has-deathrattle "m")))
            (is-not (-> (create-game [{:minions [(create-card "Mio" :id "m")]}])
                        (has-deathrattle "m")))
            )}
-  ;TODO fix this because permanent set does not contain "deathrattle"
-
-  ;([card]
-  ; (let [permanent-set (get-in (get-definition card) [:properties :permanent])]
-  ;   (contains? permanent-set "deathrattle")))
+  ([card]
+     (some? (:deathrattle (get-definition card))))
   ([state minion-id]
    (-> (get-minion state minion-id)
        (contains? :deathrattle))))
@@ -713,7 +711,7 @@
                     (silence-minion "m")
                     (get-minion-properties "m")
                     (:permanent))
-                #{})
+                #{"silenced"})
            ;Remove temporary buffs
            (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
                     (give-property "m" "taunt" 1)
@@ -738,4 +736,5 @@
   (-> state
       (remove-all-properties minion-id)
       (remove-minion-stat-buffs minion-id)
-      (remove-minion-effects minion-id)))
+      (remove-minion-effects minion-id)
+      (give-property minion-id "silenced")))

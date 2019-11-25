@@ -6,7 +6,9 @@
             [firestone.core-api]
             [firestone.definitions-loader]
             [firestone.definitions]
-            [firestone.definition.card_test]))
+            [firestone.definition.card_test]
+            [firestone.definition.hero_power_test]
+            [firestone.client.mapper]))
 
 (deftest test-all
          "Bootstrapping with the required namespaces, finds all the firestone.* namespaces (except this one),

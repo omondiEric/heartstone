@@ -8,13 +8,14 @@
                                          get-characters
                                          get-deck-size
                                          get-hand
-                                         get-player
-                                         get-players
                                          get-mana-cost
                                          get-minion
                                          get-minions
+                                         get-minion-card-stat-buffs
                                          get-minion-properties
-                                         minion?]]
+                                         minion?
+                                         get-player
+                                         get-players]]
             [firestone.core :refer [get-attack
                                     get-health
                                     get-minion-max-health
@@ -151,8 +152,10 @@
      :description        (:description card-definition)
      :type               (name (:type card-definition))
      :owner-id           (:owner-id card)
-     :attack             (:attack card-definition)
-     :health             (:health card-definition)
+     :attack             (when (= (:type card-definition) :minion)
+                           (+ (:attack card-definition) (first (get-minion-card-stat-buffs state (:id card)))))
+     :health             (when (= (:type card-definition) :minion)
+                           (+ (:health card-definition) (last (get-minion-card-stat-buffs state (:id card)))))
      :original-attack    (:attack card-definition)
      :original-health    (:health card-definition)
      ::valid-target-ids  (first (conj [] (get-target-ids state card)))}))
@@ -171,15 +174,33 @@
   {:test (fn []
            (is= (as-> (create-game [{:minions [(create-minion "Jonatan" :id "j")]}]) $
                       (get-minion-states $ (get-minion $ "j")))
-                #{"taunt"}))}
+                #{"taunt"})
+           (is= (as-> (create-game [{:minions [(create-minion "Madicken" :id "m")]}]) $
+                      (get-minion-states $ (get-minion $ "m")))
+                #{"deathrattle"})
+           (is= (as-> (create-game [{:minions [(create-minion "Ida" :id "i")]}]) $
+
+                      (get-minion-states $ (get-minion $ "i")))
+                #{"effect"})
+           )}
   [state minion]
-  (let [minion-properties (get-minion-properties state (:id minion))]
+  (let [minion-properties (get-minion-properties state (:id minion))
+        minion-def (get-definition minion)]
     (let [permanent-properties (:permanent minion-properties)
           temp-properties (reduce (fn [curr-set key]
                                     (conj curr-set (name key)))
                                   #{}
-                                  (reduce conj #{} (clojure.core/keys (:temporary minion-properties))))]
-      (clojure.set/union temp-properties permanent-properties))))
+                                  (reduce conj #{} (clojure.core/keys (:temporary minion-properties))))
+          ;aura-properties ()
+          other-properties (cond
+                             (some? (:deathrattle minion-def))
+                             #{"deathrattle"}
+                             (not-empty (filter (fn [property] (clojure.string/starts-with? (name (first property)) "on")) minion-def))
+                             #{"effect"}
+                             :else
+                             #{})]
+      (clojure.set/union temp-properties permanent-properties other-properties))))
+
 
 (defn get-valid-target-ids-for-minion
   {:test (fn []
