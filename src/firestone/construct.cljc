@@ -1314,6 +1314,78 @@
         (remove-secret secret-id)
         (add-secret-to-player player-id secret))))
 
+
+(defn get-character
+  "Returns the character with the given id from the state."
+  {:test (fn []
+           (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
+                    (get-character "h1")
+                    (:name))
+                "Carl")
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (get-character "m")
+                    (:name))
+                "Mio"))}
+  [state id]
+  (or (some (fn [m] (when (= (:id m) id) m))
+            (get-minions state))
+      (some (fn [h] (when (= (:id h) id) h))
+            (get-heroes state))))
+
+(defn get-card-or-character
+  {:test (fn []
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
+                    (get-card-or-character "e")
+                    (:name))
+                "Emil")
+           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
+                    (get-card-or-character "e")
+                    (:name))
+                "Emil")
+           )}
+  [state id]
+  (if (card? state id)
+    (get-card state id)
+    (get-character state id)))
+
+(defn valid-minion-effect-target?
+  "Checks whether target is valid"
+  {:test (fn []
+           (is (as-> (create-game [{:minions [(create-minion "Astrid" :id "a")
+                                              (create-minion "Madicken" :id "m")]}]) $
+                     (valid-minion-effect-target? $ "a" "m")))
+           (is (as-> (create-game [{:hand [(create-minion "Astrid" :id "a")]}
+                                   {:minions [(create-minion "Madicken" :id "m")]}]) $
+                     (valid-minion-effect-target? $ "a" "m")))
+           (is-not (-> (create-game [{:minions [(create-minion "Astrid" :id "a")
+                                                (create-minion "Emil" :id "e")]}])
+                       (valid-minion-effect-target? "a" "e")))
+           (is (as-> (create-game [{:minions [(create-minion "Astrid" :id "a")
+                                              (create-minion "Madicken" :id "m")]}]) $
+                     (valid-minion-effect-target? $ (get-definition "Astrid") "m")))
+           )}
+  [state id-or-def target-id]
+  (let [valid-target-function (if (some? (:description id-or-def))
+                                (:valid-target? id-or-def)
+                                (:valid-target? (get-definition (get-card-or-character state id-or-def))))]
+    (if (some? valid-target-function)
+      (valid-target-function state (get-character state target-id))
+      (error "No valid target function found"))))
+
+(defn valid-secret-trigger?
+  "Checks if a given attack should trigger a secret"
+  {:test (fn []
+           (is (as-> (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]
+                                    :minions        [(create-minion "Madicken" :id "m")]}
+                                   {:minions        [(create-minion "Emil" :id "e")]}]) $
+                     (valid-secret-trigger? $ "v" "p1" "e" "h1")))
+           )}
+  [state secret-id player-id attacker-id target-id]
+  (let [valid-target-function (:valid-trigger? (get-definition (get-secret state secret-id)))]
+    (if (some? valid-target-function)
+      (valid-target-function state player-id attacker-id target-id)
+      (error "No valid target function found"))))
+
 ; call all the functions of active minions corresponding to a game event eg. end-of-turn, on-minion-damage
 (defn do-game-event-functions
   {:test (fn []
@@ -1360,7 +1432,8 @@
   (reduce
     (fn [state secret]
       (let [secret-def (get-definition (:name secret))]
-        (if (game-event-key secret-def)
+        (if
+          (and (game-event-key secret-def) (valid-secret-trigger? state (:id secret) player-id attacker-id target-id))
           (-> state
               ((game-event-key secret-def) player-id attacker-id target-id)
               (remove-secret (:id secret)))
@@ -1598,38 +1671,6 @@
         (do-game-event-functions :on-divine-shield-removal :target-id minion-id))
     (error "No divine shield to be removed")))
 
-(defn get-character
-  "Returns the character with the given id from the state."
-  {:test (fn []
-           (is= (-> (create-game [{:hero (create-hero "Carl" :id "h1")}])
-                    (get-character "h1")
-                    (:name))
-                "Carl")
-           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
-                    (get-character "m")
-                    (:name))
-                "Mio"))}
-  [state id]
-  (or (some (fn [m] (when (= (:id m) id) m))
-            (get-minions state))
-      (some (fn [h] (when (= (:id h) id) h))
-            (get-heroes state))))
-
-(defn get-card-or-character
-  {:test (fn []
-           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]}])
-                    (get-card-or-character "e")
-                    (:name))
-                "Emil")
-           (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
-                    (get-card-or-character "e")
-                    (:name))
-                "Emil")
-           )}
-  [state id]
-  (if (card? state id)
-    (get-card state id)
-    (get-character state id)))
 
 (defn minion?
   {:test (fn []
@@ -2019,59 +2060,6 @@
                     (= (:owner-id card) player-id)))
        cards-played-this-game))))
 
-(defn valid-minion-effect-target?
-  "Checks whether target is valid"
-  {:test (fn []
-           (is (as-> (create-game [{:minions [(create-minion "Astrid" :id "a")
-                                              (create-minion "Madicken" :id "m")]}]) $
-                     (valid-minion-effect-target? $ "a" "m")))
-           (is (as-> (create-game [{:hand [(create-minion "Astrid" :id "a")]}
-                                   {:minions [(create-minion "Madicken" :id "m")]}]) $
-                     (valid-minion-effect-target? $ "a" "m")))
-           (is-not (-> (create-game [{:minions [(create-minion "Astrid" :id "a")
-                                                (create-minion "Emil" :id "e")]}])
-                       (valid-minion-effect-target? "a" "e")))
-           (is (as-> (create-game [{:minions [(create-minion "Astrid" :id "a")
-                                              (create-minion "Madicken" :id "m")]}]) $
-                     (valid-minion-effect-target? $ (get-definition "Astrid") "m")))
-           )}
-  [state id-or-def target-id]
-  (let [valid-target-function (if (some? (:description id-or-def))
-                                (:valid-target? id-or-def)
-                                (:valid-target? (get-definition (get-card-or-character state id-or-def))))]
-    (if (some? valid-target-function)
-      (valid-target-function state (get-character state target-id))
-      (error "No valid target function found"))))
-
-; Gets all the active secrets
-(defn get-active-secrets
-  {:test (fn []
-           (is= (as-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}]) $
-                      (get-active-secrets $ "p1")
-                      (map :name $))
-                ["Explosive Trap"])
-           (is= (-> (create-empty-state)
-                    (get-active-secrets))
-                []))}
-  ([state player-id]
-   (:active-secrets (get-player state player-id)))
-  ([state]
-   (->> (:players state)
-        (vals)
-        (map :active-secrets)
-        (apply concat))))
-
-; Gets a secret with a given id
-(defn get-secret
-  {:test (fn []
-           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
-                    (get-secret "e")
-                    (:name))
-                "Explosive Trap"))}
-  [state id]
-  (->> (get-active-secrets state)
-       (filter (fn [s] (= (:id s) id)))
-       (first)))
 
 (defn get-random-secret
   {:test (fn []
@@ -2088,34 +2076,3 @@
   ([state player-id]
    (->> (get-active-secrets state player-id)
         (random-nth state))))
-
-; Removes a secret
-(defn remove-secret
-  {:test (fn []
-           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")]}])
-                    (remove-secret "e")
-                    (get-active-secrets))
-                []))}
-  [state id]
-  (let [owner-id (:owner-id (get-secret state id))]
-    (update-in state
-               [:players owner-id :active-secrets]
-               (fn [secrets]
-                 (remove (fn [s] (= (:id s) id)) secrets)))))
-
-(defn switch-secret-side
-  "Switches a secret from one player to the other"
-  {:test (fn []
-           (is= (-> (create-game [{:active-secrets [(create-secret "Explosive Trap" "p1" :id "e")
-                                                    (create-secret "Venomstrike Trap" "p1" :id "v")]}
-                                  {:hand [(create-card "Kezan Mystic" :id "s")]}])
-                    (switch-secret-side "e")
-                    (get-active-secrets "p2")
-                    (count))
-                1))}
-  [state secret-id]
-  (let [secret (get-secret state secret-id)
-        player-id (get-other-player-id (secret :owner-id))]
-    (-> state
-        (remove-secret secret-id)
-        (add-secret-to-player player-id secret))))
