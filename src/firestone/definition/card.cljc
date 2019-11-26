@@ -9,6 +9,7 @@
                                          create-game
                                          create-card
                                          create-minion
+                                         create-secret
                                          friendly-minions?
                                          get-active-secrets
                                          get-card
@@ -309,16 +310,12 @@
     :set         :curse-of-naxxramas
     :rarity      :common
     :description "Deathrattle: Put a Secret from your deck into the battlefield."
-    :deathrattle (fn [state card-id]
-                   (let [owner-id (:owner-id (get-minion state card-id))
-                         the-secret (->> (get-deck state owner-id)
-                                         (filter (fn [s] (= (:sub-type s) :secret)))
-                                         (first))
-                         secret-id (:id the-secret)]
+    :deathrattle (fn [state minion-id]
+                   (let [owner-id (:owner-id (get-minion state minion-id))
+                         secret-id (first (filter (fn [s] (= (:sub-type (get-definition (get-card state s))) :secret)) (map :id (get-deck state owner-id))))]
                      (as-> state $
-                           (remove-card-from-deck $ owner-id secret-id)
-                           (add-secret-to-player $ owner-id the-secret))))}
-   ;(play-card state $ owner-id secret-id 0))))}
+                           (add-secret-to-player $ owner-id (create-secret (:name (get-card $ secret-id)) owner-id))
+                           (remove-card-from-deck $ owner-id secret-id))))}
 
    "Eater of Secrets"
    {:name        "Eater of Secrets"
@@ -442,82 +439,88 @@
                      (silence-minion state minion-id))}
 
    "Explosive Trap"
-   {:name        "Explosive Trap"
-    :mana-cost   2
-    :type        :spell
-    :sub-type    :secret
-    :set         :classic
-    :rarity      :common
-    :description "Secret: When your hero is attacked deal 2 damage to all enemies."
-    :on-attack   (fn [state player-id attacker-id target-id]
-                   (let [attacker-owner-id (:owner-id (get-character state attacker-id))
-                         victim-hero (get-hero state target-id)
-                         enemy-player (get-player state attacker-owner-id)
-                         enemy-hero (get-hero state (get-in state [:players (:id enemy-player) :hero :id]))
-                         enemy-minions (get-minions state attacker-owner-id)]
-                     (if (= target-id (:id victim-hero))
-                       (as-> state $
-                             (reduce (fn [state minion]
-                                       (deal-damage state (:id minion) 2))
-                                     $
-                                     enemy-minions)
-                             (deal-damage $ (:id enemy-hero) 2))
-                       state)))}
+   {:name          "Explosive Trap"
+    :mana-cost     2
+    :type          :spell
+    :sub-type      :secret
+    :set           :classic
+    :rarity        :common
+    :description   "Secret: When your hero is attacked deal 2 damage to all enemies."
+    :valid-trigger? (fn [state player-id attacker-id victim-id]
+                     (= player-id (:owner-id (get-character state victim-id)))
+                     (= (:entity-type (get-character state victim-id)) :hero))
+    :on-attack     (fn [state player-id attacker-id target-id]
+                     (let [attacker-owner-id (:owner-id (get-character state attacker-id))
+                           victim-hero (get-hero state target-id)
+                           enemy-player (get-player state attacker-owner-id)
+                           enemy-hero (get-hero state (get-in state [:players (:id enemy-player) :hero :id]))
+                           enemy-minions (get-minions state attacker-owner-id)]
+                         (as-> state $
+                               (reduce (fn [state minion]
+                                         (deal-damage state (:id minion) 2))
+                                       $
+                                       enemy-minions)
+                               (deal-damage $ (:id enemy-hero) 2))))}
 
    "Venomstrike Trap"
-   {:name        "Venomstrike Trap"
-    :mana-cost   2
-    :type        :spell
-    :sub-type    :secret
-    :set         :knights-of-the-frozen-throne
+   {:name           "Venomstrike Trap"
+    :mana-cost      2
+    :type           :spell
+    :sub-type       :secret
+    :set            :knights-of-the-frozen-throne
+    :rarity         :rare
+    :description    "Secret: When one of your minions is attacked summon a 2/3 Poisonous Cobra."
+    :valid-trigger? (fn [state player-id attacker-id victim-id]
+                      (and
+                        (= player-id (:owner-id (get-character state victim-id)))
+                        (= (:entity-type (get-character state victim-id)) :minion)))
+    :on-attack      (fn [state player-id attacker-id target-id]
+                        (let [target-owner-id (:owner-id (get-character state target-id))]
+                          (add-minion-to-board state target-owner-id (create-minion "Emperor Cobra") 0)))}
+
+   "Vaporize"
+   {:name           "Vaporize"
+    :mana-cost      3
+    :type           :spell
+    :sub-type       :secret
+    :set            :classic
+    :rarity         :rare
+    :description    "Secret: When a minion attacks your hero destroy it."
+    :valid-trigger? (fn [state player-id attacker-id victim-id]
+                      (and
+                        (= player-id (:owner-id (get-character state victim-id)))
+                        (= (:entity-type (get-character state victim-id)) :hero)
+                        (= (:entity-type (get-character state attacker-id)) :minion)))
+    :on-attack      (fn [state player-id attacker-id target-id]
+                        (as-> state $
+                              (let [victim-owner-id (:owner-id (get-character $ target-id))
+                                    victim-player (get-player $ victim-owner-id)
+                                    victim-hero (:hero victim-player)]
+                                (if (= target-id (:id victim-hero))
+                                  (remove-minion $ attacker-id)
+                                  $))))}
+
+   "Whelp"
+   {:name      "Whelp"
+    :attack    1
+    :health    1
+    :mana-cost 1
+    :set       :classic
+    :type      :minion
+    :rarity    :common}
+
+   "Emperor Cobra"
+   {:name        "Emperor Cobra"
+    :attack      2
+    :health      3
+    :mana-cost   3
+    :properties  #{"poisonous"}
+    :type        :minion
+    :set         :classic
     :rarity      :rare
-    :description "Secret: When one of your minions is attacked summon a 2/3 Poisonous Cobra."
-    :on-attack   (fn [state player-id attacker-id target-id]
-                   (if (minion? (get-character state target-id))
-                     (let [target-owner-id (:owner-id (get-character state target-id))]
-                       (add-minion-to-board state target-owner-id (create-minion "Emperor Cobra") 0))
-                   state)) }
+    :description "Poisonous."}
 
-"Vaporize"
-{:name        "Vaporize"
- :mana-cost   3
- :type        :spell
- :sub-type    :secret
- :set         :classic
- :rarity      :rare
- :description "Secret: When a minion attacks your hero destroy it."
- :on-attack   (fn [state player-id attacker-id target-id]
-                (if (minion? (get-character state attacker-id))
-                  (as-> state $
-                        (let [victim-owner-id (:owner-id (get-character $ target-id))
-                              victim-player (get-player $ victim-owner-id)
-                              victim-hero (:hero victim-player)]
-                          (if (= target-id (:id victim-hero))
-                            (remove-minion $ attacker-id)
-                            $)))
-                  state))}
-
-"Whelp"
-{:name      "Whelp"
- :attack    1
- :health    1
- :mana-cost 1
- :set       :classic
- :type      :minion
- :rarity    :common}
-
-"Emperor Cobra"
-{:name        "Emperor Cobra"
- :attack      2
- :health      3
- :mana-cost   3
- :properties  #{"poisonous"}
- :type        :minion
- :set         :classic
- :rarity      :rare
- :description "Poisonous."}
-
-} )
+   })
 
 
 (definitions/add-definitions! card-definitions)

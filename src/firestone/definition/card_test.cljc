@@ -3,6 +3,7 @@
             [ysera.error :refer [error]]
             [firestone.definitions :refer [get-definition]]
             [firestone.construct :refer [add-minion-to-board
+                                         add-secret-to-player
                                          create-game
                                          create-card
                                          create-secret
@@ -12,6 +13,7 @@
                                          get-card
                                          get-character
                                          get-characters
+                                         get-deck
                                          get-hand
                                          get-hero
                                          get-minion
@@ -20,10 +22,12 @@
                                          get-minion-properties
                                          get-minion-stats
                                          get-other-player-id
+                                         get-secret
                                          give-deathrattle
                                          has-divine-shield?
                                          has-taunt?
                                          minion?
+                                         remove-card-from-deck
                                          update-mana
                                          update-minion
                                          valid-minion-effect-target?]]
@@ -281,11 +285,13 @@
 
 (deftest Mad-Scientist
          "Deathrattle: Put a Secret from your deck into the battlefield."
-         (is= (as-> (create-game [{:deck    [(create-secret "Vaporize" "p1" :id "v")]
+         (is= (as-> (create-game [{:deck    [(create-card "Vaporize" :id "v")
+                                             (create-card "Radar Raid" :id "r")]
                                    :minions [(create-minion "Mad Scientist" :id "ms")]}]) $
-                    ((:deathrattle (get-definition "Mad Scientist")) $ "ms")
+                    (deal-damage $ "ms" 4)
                     (:name (first (get-active-secrets $ "p1"))))
-              "Vaporize"))
+              "Vaporize")
+         )
 
 (deftest Venomstrike-Trap
          "Secret: When one of your minions is attacked summon a 2/3 Poisonous Cobra."
