@@ -365,7 +365,7 @@
   [state player-id card-id]
   (let [secret-card (get-card state card-id)
         secret-name (:name secret-card)
-        secret (create-secret secret-name player-id)]
+        secret (create-secret secret-name player-id :id card-id)]
     (as-> state $
           (add-secret-to-player $ player-id secret)
           (remove-card-from-hand $ player-id card-id)
