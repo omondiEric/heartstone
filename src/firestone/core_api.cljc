@@ -304,15 +304,18 @@
                     (:attacks-performed-this-turn))
                 1))}
   [state player-id attacker-id target-id]
-  (let [attacker-attack-val (get-attack state attacker-id)
-        target-attack-val (get-attack state target-id)]
-    (if (valid-attack? state player-id attacker-id target-id) (as-> (update-minion state attacker-id :attacks-performed-this-turn inc) $
-                                                                    ;if attacker is poisonous, kill target minion
-                                                                    (if (poisonous? $ attacker-id)
-                                                                      (poison-minion $ target-id)
-                                                                      (deal-damage $ target-id attacker-attack-val))
-                                                                    (deal-damage $ attacker-id target-attack-val))
-                                                              (error "Invalid attack"))))
+  (if-not (= (get-minion state attacker-id)
+             nil)
+    (let [attacker-attack-val (get-attack state attacker-id)
+          target-attack-val (get-attack state target-id)]
+      (if (valid-attack? state player-id attacker-id target-id) (as-> (update-minion state attacker-id :attacks-performed-this-turn inc) $
+                                                                      ;if attacker is poisonous, kill target minion
+                                                                      (if (poisonous? $ attacker-id)
+                                                                        (poison-minion $ target-id)
+                                                                        (deal-damage $ target-id attacker-attack-val))
+                                                                      (deal-damage $ attacker-id target-attack-val))
+                                                                (error "Invalid attack")))
+    state))
 
 (defn attack-hero
   "Attacks the enemy hero"
@@ -330,11 +333,14 @@
                     (:attacks-performed-this-turn))
                 1))}
   [state player-id attacker-id target-hero-id]
-  (let [attacker-attack-val (get-attack state attacker-id)]
-    (when (valid-attack? state player-id attacker-id target-hero-id)
-      (-> (deal-damage state target-hero-id attacker-attack-val)
-          (update-minion attacker-id :attacks-performed-this-turn inc)
-          ))))
+  (if-not (= (get-minion state attacker-id)
+             nil)
+    (let [attacker-attack-val (get-attack state attacker-id)]
+      (when (valid-attack? state player-id attacker-id target-hero-id)
+        (-> (deal-damage state target-hero-id attacker-attack-val)
+            (update-minion attacker-id :attacks-performed-this-turn inc)
+            )))
+    state))
 
 (defn attack-hero-or-minion
   {:test (fn []
@@ -352,12 +358,12 @@
                 1))}
   [state player-id attacker-id target-id]
   (cond (minion? (get-character state target-id))
-        (-> (attack-minion state player-id attacker-id target-id)
-            (do-game-event-functions :on-attack :player-id player-id :attacker-id attacker-id :target-id target-id)
-            (do-secret-game-event-functions :on-attack :player-id (get-other-player-id player-id) :attacker-id attacker-id :target-id target-id))
-        :else (-> (attack-hero state player-id attacker-id target-id)
-                  (do-game-event-functions :on-attack :player-id player-id :attacker-id attacker-id :target-id target-id)
-                  (do-secret-game-event-functions :on-attack :player-id (get-other-player-id player-id) :attacker-id attacker-id :target-id target-id))))
+        (-> (do-game-event-functions state :on-attack :player-id player-id :attacker-id attacker-id :target-id target-id)
+            (do-secret-game-event-functions :on-attack :player-id (get-other-player-id player-id) :attacker-id attacker-id :target-id target-id)
+            (attack-minion player-id attacker-id target-id))
+        :else (-> (do-game-event-functions state :on-attack :player-id player-id :attacker-id attacker-id :target-id target-id)
+                  (do-secret-game-event-functions :on-attack :player-id (get-other-player-id player-id) :attacker-id attacker-id :target-id target-id)
+                  (attack-hero player-id attacker-id target-id))))
 
 (defn play-secret-card-fn
   {:test (fn []

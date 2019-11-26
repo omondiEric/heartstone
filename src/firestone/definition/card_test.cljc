@@ -297,9 +297,9 @@
          "Secret: When one of your minions is attacked summon a 2/3 Poisonous Cobra."
          (is= (as-> (create-game [{:active-secrets [(create-secret "Venomstrike Trap" "p1" :id "vt")]
                                    :minions        [(create-minion "Ronja" :id "r")]}
-                                  {:minions        [(create-minion "Mio" :id "m")]}]) $
+                                  {:minions        [(create-minion "Leeroy Jenkins" :id "l")]}]) $
                     (end-turn $ "p1")
-                    (attack-hero-or-minion $ "p2" "m" "r")
+                    (attack-hero-or-minion $ "p2" "l" "r")
                     (:name (get-minion $ "m3")))
               "Emperor Cobra"))
 
