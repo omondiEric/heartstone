@@ -575,7 +575,17 @@
     :set                :classic
     :rarity             :epic
     :sub-type           :secret
-    :description        "Secret: When one of your minions is attacked summon three 1/1 Snakes."}
+    :description        "Secret: When one of your minions is attacked summon three 1/1 Snakes."
+    :valid-trigger? (fn [state player-id attacker-id victim-id]
+                      (and
+                        (= player-id (:owner-id (get-character state victim-id)))
+                        (= (:entity-type (get-character state victim-id)) :minion)))
+    :on-attack      (fn [state player-id attacker-id target-id]
+                      (let [target-owner-id (:owner-id (get-character state target-id))]
+                        (as-> state $
+                        (add-minion-to-board $ target-owner-id (create-minion "Snake") (count (get-minions $ target-owner-id)))
+                        (add-minion-to-board $ target-owner-id (create-minion "Snake") (count (get-minions $ target-owner-id)))
+                        (add-minion-to-board $ target-owner-id (create-minion "Snake") (count (get-minions $ target-owner-id))))))}
 
    })
 
