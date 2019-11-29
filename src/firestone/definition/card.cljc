@@ -520,6 +520,63 @@
     :rarity      :rare
     :description "Poisonous."}
 
+   "Acolyte of Pain"
+   {:name        "Acolyte of Pain"
+    :attack      1
+    :health      3
+    :mana-cost   3
+    :type        :minion
+    :rarity      :common
+    :set         :classic
+    :description "Whenever this minion takes damage, draw a card."}
+
+   "Flesheating Ghoul"
+   {:name           "Flesheating Ghoul"
+    :attack         2
+    :health         3
+    :mana-cost      3
+    :set            :classic
+    :rarity         :common
+    :type           :minion
+    :description    "Whenever a minion dies, gain +1 Attack."}
+
+   "Hadronox"
+   {:name        "Hadronox"
+    :attack      3
+    :health      7
+    :mana-cost   9
+    :type        :minion
+    :set         :knights-of-the-frozen-throne
+    :rarity      :legendary
+    :description "Deathrattle: Summon your Taunt minions that died this game."}
+
+   "Knife Juggler"
+   {:name                  "Knife Juggler"
+    :attack                2
+    :health                2
+    :mana-cost             2
+    :type                  :minion
+    :set                   :classic
+    :rarity                :rare
+    :description           "After you summon a minion, deal 1 damage to a random enemy."}
+
+   "Snake"
+   {:name          "Snake"
+    :attack        1
+    :health        1
+    :mana-cost     1
+    :type          :minion
+    :set           :classic}
+
+   "Snake Trap"
+   {:name               "Snake Trap"
+    :type               :spell
+    :mana-cost          2
+    :set                :classic
+    :rarity             :epic
+    :sub-type           :secret
+    :description        "Secret: When one of your minions is attacked summon three 1/1 Snakes."}
+
    })
 
 
