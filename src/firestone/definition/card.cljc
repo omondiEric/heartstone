@@ -538,7 +538,9 @@
     :set            :classic
     :rarity         :common
     :type           :minion
-    :description    "Whenever a minion dies, gain +1 Attack."}
+    :description    "Whenever a minion dies, gain +1 Attack."
+    :on-minion-death (fn [state id]
+                       (modify-minion-stats state id 1 0))}
 
    "Hadronox"
    {:name        "Hadronox"

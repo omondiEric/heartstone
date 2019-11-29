@@ -506,6 +506,10 @@
                     (get-hero "h1")
                     (:damage-taken))
                 1)
+           ;Test Flesheating Ghoul
+           (let [$ (create-game [{:minions [(create-minion "Mio" :id "m"),(create-minion "Flesheating Ghoul" :id "f")]}])
+                 $2 (deal-damage $ "m" 4)]
+             (is= (get-attack $2 "f") 3))
            )}
   ([state character-id]
    (deal-damage state character-id 1))
@@ -518,6 +522,7 @@
              (if-not (has-divine-shield? $ character-id)
                (-> (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
                    (do-game-event-functions :on-minion-damage)
+                   (do-game-event-functions :on-minion-death)
                    (remove-dead-minions))
                ;minion has divine shield
                (remove-divine-shield $ character-id))

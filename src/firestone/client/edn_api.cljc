@@ -17,7 +17,7 @@
                                                       :mana    10
                                                       :hero "Carl"}
                                                      {:deck    ["Pippi", "Kato", "Alfred", "Vaporize"]
-                                                      :hand    ["Vaporize", "Kato", "Explosive Trap", "Al'Akir the Windlord", "Snake Trap"]
+                                                      :hand    ["Vaporize", "Kato", "Explosive Trap", "Al'Akir the Windlord", "Snake Trap","Flesheating Ghoul"]
                                                       :mana    10
                                                       :hero "Gustaf"}]))))
 
