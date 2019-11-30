@@ -40,7 +40,7 @@
       card
       (apply assoc card kvs))))
 
-(def game-event-fn-names #{:on-end-of-turn, :on-minion-damage, :deathrattle :on-divine-shield-removal, :on-minion-death})
+(def game-event-fn-names #{:on-end-of-turn, :on-minion-damage, :deathrattle :on-divine-shield-removal, :on-minion-death, :on-minion-summon})
 
 (defn get-additional-minion-field
   {:test (fn []

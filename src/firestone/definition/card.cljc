@@ -13,6 +13,7 @@
                                          friendly-minions?
                                          get-active-secrets
                                          get-card
+                                         get-player-id-in-turn
                                          get-deck
                                          get-all-played-cards-with-property
                                          get-character
@@ -560,7 +561,14 @@
     :type                  :minion
     :set                   :classic
     :rarity                :rare
-    :description           "After you summon a minion, deal 1 damage to a random enemy."}
+    :description           "After you summon a minion, deal 1 damage to a random enemy."
+    :on-minion-summon      (fn [state id]
+                             (let [random-enemy (get-random-minion state (get-other-player-id (:owner-id (get-minion state id))))]
+                               (if (and (= (get-player-id-in-turn state) (:owner-id (get-minion state id)))
+                                        (> (count (get-minions state (get-other-player-id (:owner-id (get-minion state id))))) 0)
+                                        (> (count (get-minions state (:owner-id (get-minion state id)))) 1))
+                                 (deal-damage (first random-enemy) (:id (last random-enemy)) 1)
+                                  state)))}
 
    "Snake"
    {:name          "Snake"

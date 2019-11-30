@@ -441,3 +441,10 @@
                     (play-minion-card $ "p2" "s" 0)
                     (get-minion-stats $ "s"))
               [4,6]))
+(deftest Knife-Juggler
+         "After you summon a minion, deal 1 damage to a random enemy."
+         (let [state (create-game [{:hand [(create-card "Eater of Secrets" :id "s")]
+                                    :minions [(create-minion "Knife Juggler" :id "k")]}
+                                   {:minions [(create-minion "Mio" :id "m")]}])
+               summon-state (play-minion-card state "p1" "s" (count (get-minions state "p1")))]
+           (is= (get-health summon-state "m") 1)))

@@ -234,7 +234,8 @@
          (remove-card-from-hand player-id card-id)
          (add-minion-to-board player-id (create-minion (:name card) :id card-id) position)
          (modify-minion-stats card-id attack-buff health-buff)
-         (do-battlecry player-id card-id (get-definition (get-card state card-id))))))
+         (do-battlecry player-id card-id (get-definition (get-card state card-id)))
+         (do-game-event-functions :on-minion-summon))))
 
   ([state player-id card-id position target-id]
    ;check if player has less than 7 minions on the board
@@ -252,7 +253,8 @@
          (remove-card-from-hand player-id card-id)
          (add-minion-to-board player-id (create-minion (:name card) :id card-id) position)
          (modify-minion-stats card-id attack-buff health-buff)
-         (do-battlecry player-id card-id (get-definition (get-card state card-id)) target-id)))))
+         (do-battlecry player-id card-id (get-definition (get-card state card-id)) target-id)
+         (do-game-event-functions :on-minion-summon)))))
 
 (defn poison-minion
   {:test (fn []
