@@ -87,7 +87,9 @@
      :name               (:name hero-power-def)
      :description        (:description hero-power-def)
      :valid-target-ids   (get-target-ids state hero-power)
-     :type               (name (:type hero-power-def))}))
+     :type               (name (:type hero-power-def))
+     :mana-cost          (:mana-cost hero-power-def)
+     :original-mana-cost (:mana-cost hero-power-def)}))
 
 (defn get-client-hero
   {:test (fn []
