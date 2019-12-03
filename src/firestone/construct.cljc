@@ -156,7 +156,9 @@
                  :counter                       1
                  :seed                          0
                  :minion-ids-summoned-this-turn []
-                 :cards-played-this-game        []}))}
+                 :cards-played-this-game        []
+                 :turn-number                   1
+                 :player-actions-performed      1}))}
   ([heroes]
    ; Creates Carl heroes if heroes are missing.
    (let [heroes (->> (concat heroes [(create-hero "Carl")
@@ -183,7 +185,9 @@
       :counter                       1
       :seed                          0
       :minion-ids-summoned-this-turn []
-      :cards-played-this-game        []}))
+      :cards-played-this-game        []
+      :turn-number                   1
+      :player-actions-performed      1}))
   ([]
    (create-empty-state [])))
 
@@ -543,7 +547,9 @@
                  :counter                       5
                  :seed                          0
                  :minion-ids-summoned-this-turn []
-                 :cards-played-this-game        []}))}
+                 :cards-played-this-game        []
+                 :turn-number                   1
+                 :player-actions-performed      1}))}
   ([data & kvs]
    (let [players-data (map-indexed (fn [index player-data]
                                      (assoc player-data :player-id (str "p" (inc index))))
@@ -1409,11 +1415,18 @@
    (reduce
      (fn [state minion]
        (if-not (game-event-key minion)
+<<<<<<< Updated upstream
            state
          (if target-id
            ((game-event-key (get-definition minion)) state (:id minion) target-id)
            ((game-event-key (get-definition minion)) state (:id minion)))
          ))
+=======
+         state
+         ((game-event-key (get-definition minion)) state (:id minion) (if kvs
+                                                                        kvs
+                                                                        nil))))
+>>>>>>> Stashed changes
      state
      (if player-id
        (get-minions state player-id)

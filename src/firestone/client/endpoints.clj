@@ -63,5 +63,19 @@
                 target-id (:targetId params)]
             (create-response (use-hero-power! player-id target-id)))
 
+          (starts-with? uri "/undo")
+          (let [params (read-json (slurp (:body request)))]
+            (println "Request uri: " (:uri request))
+            (println "params: " params)
+            ;todo call to undo here
+            )
+
+          (starts-with? uri "/redo")
+          (let [params (read-json (slurp (:body request)))]
+            (println "Request uri: " (:uri request))
+            (println "params: " params)
+            ;todo call to redo here
+            )
+
           :else (create-response (clojure.string/lower-case (:uri request))))))
 

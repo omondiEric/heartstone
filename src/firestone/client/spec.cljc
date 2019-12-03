@@ -28,11 +28,6 @@
                                           "minion"
                                           "spell"
                                           "weapon"})
-(contains? #{"hero"
-             "hero-power"
-             "minion"
-             "spell"
-             "weapon"} "minion")
 
 ;; Minions
 (s/def ::position (s/and int? (fn [x] (<= 0 x 6))))
@@ -220,10 +215,18 @@
 (s/def ::players (s/and (s/coll-of ::player)
                         (fn [x] (>= (count x) 2))))
 
+(s/def ::action-index ::non-negative-int)
+(s/def ::turn-index ::non-negative-int)
+(s/def ::supports-redo boolean?)
+(s/def ::supports-undo boolean?)
+
 (s/def ::game-state (s/keys :req-un [::id
+                                     ::supports-undo
+                                     ::supports-redo
+                                     ::action-index
+                                     ::turn-index
                                      ::player-in-turn
                                      ::players]))
 
 (s/def ::game-states (s/and vector?
                             (s/coll-of ::game-state)))
-

@@ -332,4 +332,8 @@
     :player-in-turn (:player-id-in-turn state)
     :players        (->> (get-players state)
                          (map (fn [p]
-                                (get-client-player state p))))}])
+                                (get-client-player state p))))
+    :supports-undo false
+    :supports-redo false
+    :action-index (:player-actions-performed state)
+    :turn-index (:turn-number state)}])
