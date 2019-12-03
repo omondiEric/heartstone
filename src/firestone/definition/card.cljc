@@ -123,8 +123,8 @@
     :health         4
     :mana-cost      3
     :type           :minion
-    :on-end-of-turn (fn [state minion-id]
-                      (deal-damage-to-other-minions state minion-id 1))
+    :on-end-of-turn (fn [state kvs]
+                      (deal-damage-to-other-minions state {:this-minion-id kvs} 1))
     :set            :custom
     :description    "At the end of your turn deal 1 damage to all other minions."}
 
@@ -183,8 +183,9 @@
     :health           4
     :mana-cost        3
     :type             :minion
-    :on-minion-damage (fn [state id]
-                        (give-taunt state id))
+    :on-minion-damage (fn [state kvs]
+                        (println "IDA kvs = " kvs)
+                        (give-taunt state (:this-minion-id kvs)))
     :set              :custom
     :description      "Whenever a minion takes damage, gain taunt."}
 
@@ -261,9 +262,9 @@
     :type                     :minion
     :set                      :custom
     :description              "After a friendly minion loses Divine Shield, gain +2/+2."
-    :on-divine-shield-removal (fn [state minion-id other-minion-id]
-                                (if (friendly-minions? state minion-id other-minion-id)
-                                  (modify-minion-stats state minion-id 2 2)
+    :on-divine-shield-removal (fn [state kvs]
+                                (if (friendly-minions? state (:this-minion-id kvs) (:divine-shield-lost-id kvs))
+                                  (modify-minion-stats state (:this-minion-id kvs) 2 2)
                                   state))}
 
    "Annika"
@@ -530,7 +531,19 @@
     :type        :minion
     :rarity      :common
     :set         :classic
-    :description "Whenever this minion takes damage, draw a card."}
+    :description "Whenever this minion takes damage, draw a card."
+    :on-minion-damage (fn [state kvs]
+                        (println "ACOLYTE kvs = " kvs)
+                        (if kvs
+                          (let [this-minion-id (:this-minion-id kvs)
+                                this-minion (get-minion state this-minion-id)
+                                damaged-id (:damaged-id kvs)]
+                            (if (and this-minion-id
+                                     damaged-id
+                                     (= this-minion-id damaged-id))
+                              (draw-card state (:owner-id this-minion))
+                              state))
+                          state))}
 
    "Flesheating Ghoul"
    {:name        "Flesheating Ghoul"
