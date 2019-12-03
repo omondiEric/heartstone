@@ -441,6 +441,22 @@
                     (play-minion-card $ "p2" "s" 0)
                     (get-minion-stats $ "s"))
               [4,6]))
+
+(deftest acolyte-of-pain
+         "Whenever this minion takes damage, draw a card."
+         (as-> (create-game [{:deck [(create-card "Mio" :id "m")]
+                              :minions [(create-minion "Acolyte of Pain" :id "a")
+                                        (create-minion "Emil" :id "e")]}]) $
+               (deal-damage $ "e")
+               (do (is= (count (get-deck $ "p1")) 1)
+                   (is= (count (get-hand $ "p1")) 0)))
+         (as-> (create-game [{:deck [(create-card "Mio" :id "m")]
+                              :minions [(create-minion "Acolyte of Pain" :id "a")
+                                        (create-minion "Emil" :id "e")]}]) $
+               (deal-damage $ "a")
+               (do (is= (count (get-deck $ "p1")) 0)
+                   (is= (count (get-hand $ "p1")) 1))))
+
 (deftest Knife-Juggler
          "After you summon a minion, deal 1 damage to a random enemy."
          (let [state (create-game [{:hand [(create-card "Eater of Secrets" :id "s")]

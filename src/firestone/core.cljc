@@ -493,7 +493,6 @@
                     (deal-damage "p")
                     (has-taunt? "i"))
                 true)
-
            ;test to see that Ida does not get taunt when a minion with divine shield is attacked
            (is= (-> (create-game [{:minions [(create-minion "Elisabeth" :id "e")
                                              (create-minion "Ida" :id "i")]}])
@@ -521,8 +520,7 @@
              ;character has no divine shield
              (if-not (has-divine-shield? $ character-id)
                (-> (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
-                   (do-game-event-functions :on-minion-damage)
-                   (do-game-event-functions :on-minion-death)
+                   (do-game-event-functions :on-minion-damage {:damaged-id character-id})
                    (remove-dead-minions))
                ;minion has divine shield
                (remove-divine-shield $ character-id))

@@ -124,8 +124,8 @@
     :health         4
     :mana-cost      3
     :type           :minion
-    :on-end-of-turn (fn [state minion-id]
-                      (deal-damage-to-other-minions state minion-id 1))
+    :on-end-of-turn (fn [state this-minion-id kvs]
+                      (deal-damage-to-other-minions state this-minion-id 1))
     :set            :custom
     :description    "At the end of your turn deal 1 damage to all other minions."}
 
@@ -135,7 +135,7 @@
     :health         4
     :mana-cost      3
     :type           :minion
-    :on-end-of-turn (fn [state _]
+    :on-end-of-turn (fn [state _ _]
                       (let [random-result (get-random-minion state)]
                         (let [state (first random-result)
                               random-minion (last random-result)]
@@ -184,8 +184,8 @@
     :health           4
     :mana-cost        3
     :type             :minion
-    :on-minion-damage (fn [state id]
-                        (give-taunt state id))
+    :on-minion-damage (fn [state this-minion-id kvs]
+                        (give-taunt state this-minion-id))
     :set              :custom
     :description      "Whenever a minion takes damage, gain taunt."}
 
@@ -262,9 +262,9 @@
     :type                     :minion
     :set                      :custom
     :description              "After a friendly minion loses Divine Shield, gain +2/+2."
-    :on-divine-shield-removal (fn [state minion-id other-minion-id]
-                                (if (friendly-minions? state minion-id other-minion-id)
-                                  (modify-minion-stats state minion-id 2 2)
+    :on-divine-shield-removal (fn [state this-minion-id kvs]
+                                (if (friendly-minions? state this-minion-id (:target-id kvs))
+                                  (modify-minion-stats state this-minion-id 2 2)
                                   state))}
 
    "Annika"
@@ -440,28 +440,28 @@
                      (silence-minion state minion-id))}
 
    "Explosive Trap"
-   {:name          "Explosive Trap"
-    :mana-cost     2
-    :type          :spell
-    :sub-type      :secret
-    :set           :classic
-    :rarity        :common
-    :description   "Secret: When your hero is attacked deal 2 damage to all enemies."
+   {:name           "Explosive Trap"
+    :mana-cost      2
+    :type           :spell
+    :sub-type       :secret
+    :set            :classic
+    :rarity         :common
+    :description    "Secret: When your hero is attacked deal 2 damage to all enemies."
     :valid-trigger? (fn [state player-id attacker-id victim-id]
-                     (= player-id (:owner-id (get-character state victim-id)))
-                     (= (:entity-type (get-character state victim-id)) :hero))
-    :on-attack     (fn [state player-id attacker-id target-id]
-                     (let [attacker-owner-id (:owner-id (get-character state attacker-id))
-                           victim-hero (get-hero state target-id)
-                           enemy-player (get-player state attacker-owner-id)
-                           enemy-hero (get-hero state (get-in state [:players (:id enemy-player) :hero :id]))
-                           enemy-minions (get-minions state attacker-owner-id)]
-                         (as-> state $
-                               (reduce (fn [state minion]
-                                         (deal-damage state (:id minion) 2))
-                                       $
-                                       enemy-minions)
-                               (deal-damage $ (:id enemy-hero) 2))))}
+                      (= player-id (:owner-id (get-character state victim-id)))
+                      (= (:entity-type (get-character state victim-id)) :hero))
+    :on-attack      (fn [state player-id attacker-id target-id]
+                      (let [attacker-owner-id (:owner-id (get-character state attacker-id))
+                            victim-hero (get-hero state target-id)
+                            enemy-player (get-player state attacker-owner-id)
+                            enemy-hero (get-hero state (get-in state [:players (:id enemy-player) :hero :id]))
+                            enemy-minions (get-minions state attacker-owner-id)]
+                        (as-> state $
+                              (reduce (fn [state minion]
+                                        (deal-damage state (:id minion) 2))
+                                      $
+                                      enemy-minions)
+                              (deal-damage $ (:id enemy-hero) 2))))}
 
    "Venomstrike Trap"
    {:name           "Venomstrike Trap"
@@ -476,8 +476,8 @@
                         (= player-id (:owner-id (get-character state victim-id)))
                         (= (:entity-type (get-character state victim-id)) :minion)))
     :on-attack      (fn [state player-id attacker-id target-id]
-                        (let [target-owner-id (:owner-id (get-character state target-id))]
-                          (add-minion-to-board state target-owner-id (create-minion "Emperor Cobra") 0)))}
+                      (let [target-owner-id (:owner-id (get-character state target-id))]
+                        (add-minion-to-board state target-owner-id (create-minion "Emperor Cobra") 0)))}
 
    "Vaporize"
    {:name           "Vaporize"
@@ -493,13 +493,13 @@
                         (= (:entity-type (get-character state victim-id)) :hero)
                         (= (:entity-type (get-character state attacker-id)) :minion)))
     :on-attack      (fn [state player-id attacker-id target-id]
-                        (as-> state $
-                              (let [victim-owner-id (:owner-id (get-character $ target-id))
-                                    victim-player (get-player $ victim-owner-id)
-                                    victim-hero (:hero victim-player)]
-                                (if (= target-id (:id victim-hero))
-                                  (remove-minion $ attacker-id)
-                                  $))))}
+                      (as-> state $
+                            (let [victim-owner-id (:owner-id (get-character $ target-id))
+                                  victim-player (get-player $ victim-owner-id)
+                                  victim-hero (:hero victim-player)]
+                              (if (= target-id (:id victim-hero))
+                                (remove-minion $ attacker-id)
+                                $))))}
 
    "Whelp"
    {:name      "Whelp"
@@ -529,7 +529,17 @@
     :type        :minion
     :rarity      :common
     :set         :classic
-    :description "Whenever this minion takes damage, draw a card."}
+    :description "Whenever this minion takes damage, draw a card."
+    :on-minion-damage (fn [state this-minion-id kvs]
+                        (if kvs
+                          (let [this-minion (get-minion state this-minion-id)
+                                damaged-id (:damaged-id kvs)]
+                            (if (and this-minion-id
+                                     damaged-id
+                                     (= this-minion-id damaged-id))
+                              (draw-card state (:owner-id this-minion))
+                              state))
+                          state))}
 
    "Flesheating Ghoul"
    {:name           "Flesheating Ghoul"
@@ -596,7 +606,6 @@
                         (add-minion-to-board $ target-owner-id (create-minion "Snake") (count (get-minions $ target-owner-id)))
                         (add-minion-to-board $ target-owner-id (create-minion "Snake") (count (get-minions $ target-owner-id)))
                         (add-minion-to-board $ target-owner-id (create-minion "Snake") (count (get-minions $ target-owner-id))))))}
-
    })
 
 

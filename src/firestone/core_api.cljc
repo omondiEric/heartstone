@@ -162,7 +162,7 @@
 
   (let [other-player-id (get-other-player-id player-id)]
     (-> state
-        (do-game-event-functions :on-end-of-turn :player-id player-id)
+        (do-game-event-functions :on-end-of-turn {:player-id player-id})
         (assoc-in [:players player-id :hero :hero-power-used] false)
         (decrement-all-player-minion-temporary-durations player-id)
         (change-player-in-turn)
@@ -360,10 +360,10 @@
                 1))}
   [state player-id attacker-id target-id]
   (cond (minion? (get-character state target-id))
-        (-> (do-game-event-functions state :on-attack :player-id player-id :attacker-id attacker-id :target-id target-id)
+        (-> (do-game-event-functions state :on-attack {:player-id player-id :attacker-id attacker-id :target-id target-id})
             (do-secret-game-event-functions :on-attack :player-id (get-other-player-id player-id) :attacker-id attacker-id :target-id target-id)
             (attack-minion player-id attacker-id target-id))
-        :else (-> (do-game-event-functions state :on-attack :player-id player-id :attacker-id attacker-id :target-id target-id)
+        :else (-> (do-game-event-functions state :on-attack {:player-id player-id :attacker-id attacker-id :target-id target-id})
                   (do-secret-game-event-functions :on-attack :player-id (get-other-player-id player-id) :attacker-id attacker-id :target-id target-id)
                   (attack-hero player-id attacker-id target-id))))
 

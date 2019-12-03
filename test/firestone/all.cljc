@@ -19,3 +19,5 @@
                                (remove (fn [x] (= "firestone.all" x)))
                                (map symbol))]
            (is (successful? (time (apply run-tests namespaces))))))
+
+(test-all)
