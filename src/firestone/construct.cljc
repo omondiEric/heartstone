@@ -1383,7 +1383,7 @@
   {:test (fn []
            (is (as-> (create-game [{:active-secrets [(create-secret "Vaporize" "p1" :id "v")]
                                     :minions        [(create-minion "Madicken" :id "m")]}
-                                   {:minions        [(create-minion "Emil" :id "e")]}]) $
+                                   {:minions [(create-minion "Emil" :id "e")]}]) $
                      (valid-secret-trigger? $ "v" "p1" "e" "h1")))
            )}
   [state secret-id player-id attacker-id target-id]
@@ -1400,7 +1400,7 @@
                                              (create-minion "Mio" :id "m")
                                              (create-minion "Emil" :id "e1")
                                              (create-minion "Emil" :id "e2")]}])
-                    (do-game-event-functions :on-end-of-turn :player-id "p1")
+                    (do-game-event-functions :on-end-of-turn {:player-id "p1"})
                     (get-minion "e1")
                     (:damage-taken))
                 1)
@@ -1408,31 +1408,29 @@
                                                (create-minion "Mio" :id "m")
                                                (create-minion "Emil" :id "e1")
                                                (create-minion "Emil" :id "e2")]}]) $
-                      (do-game-event-functions $ :on-minion-damage)
+                      (do-game-event-functions $ :on-minion-damage "i")
                       (contains? (get-in (get-minion $ "i") [:properties :permanent]) "taunt"))
-                true))}
-  ([state game-event-key & {:keys [player-id target-id]}]
+                true)
+           (as-> (create-game [{:deck    [(create-card "Mio" :id "m")]
+                                :minions [(create-minion "Acolyte of Pain" :id "a")]}]) $
+                 (do-game-event-functions $ :on-minion-damage {:damaged-id "a"})
+                 (do (is= (count (get-hand $ "p1")) 1)
+                     (is= (count (get-deck $ "p1")) 0))))}
+  ([state game-event-key & [kvs]]
    (reduce
      (fn [state minion]
        (if-not (game-event-key minion)
-<<<<<<< Updated upstream
-           state
-         (if target-id
-           ((game-event-key (get-definition minion)) state (:id minion) target-id)
-           ((game-event-key (get-definition minion)) state (:id minion)))
-         ))
-=======
          state
          ((game-event-key (get-definition minion)) state (:id minion) (if kvs
                                                                         kvs
                                                                         nil))))
->>>>>>> Stashed changes
      state
-     (if player-id
-       (get-minions state player-id)
+     (if (:player-id kvs)
+       (get-minions state (:player-id kvs))
        (get-minions state)))))
 
 ;todo trying to generalize do-game-event-fn to apply to all cards
+;todo @jamie: bring your kvs changes from the above fn over to this one if it works
 (defn do-secret-game-event-functions
   {:test (fn []
            (is= (-> (create-game [{:minions        [(create-minion "Mio" :id "m")]
@@ -1681,7 +1679,7 @@
   (if (has-divine-shield? state minion-id)
     (-> state
         (remove-property minion-id "divine-shield")
-        (do-game-event-functions :on-divine-shield-removal :target-id minion-id))
+        (do-game-event-functions :on-divine-shield-removal {:target-id minion-id}))
     (error "No divine shield to be removed")))
 
 
