@@ -123,8 +123,8 @@
     :health         4
     :mana-cost      3
     :type           :minion
-    :on-end-of-turn (fn [state kvs]
-                      (deal-damage-to-other-minions state {:this-minion-id kvs} 1))
+    :on-end-of-turn (fn [state this-minion-id kvs]
+                      (deal-damage-to-other-minions state this-minion-id 1))
     :set            :custom
     :description    "At the end of your turn deal 1 damage to all other minions."}
 
@@ -134,7 +134,7 @@
     :health         4
     :mana-cost      3
     :type           :minion
-    :on-end-of-turn (fn [state _]
+    :on-end-of-turn (fn [state _ _]
                       (let [random-result (get-random-minion state)]
                         (let [state (first random-result)
                               random-minion (last random-result)]
@@ -183,9 +183,8 @@
     :health           4
     :mana-cost        3
     :type             :minion
-    :on-minion-damage (fn [state kvs]
-                        (println "IDA kvs = " kvs)
-                        (give-taunt state (:this-minion-id kvs)))
+    :on-minion-damage (fn [state this-minion-id kvs]
+                        (give-taunt state this-minion-id))
     :set              :custom
     :description      "Whenever a minion takes damage, gain taunt."}
 
@@ -262,9 +261,9 @@
     :type                     :minion
     :set                      :custom
     :description              "After a friendly minion loses Divine Shield, gain +2/+2."
-    :on-divine-shield-removal (fn [state kvs]
-                                (if (friendly-minions? state (:this-minion-id kvs) (:divine-shield-lost-id kvs))
-                                  (modify-minion-stats state (:this-minion-id kvs) 2 2)
+    :on-divine-shield-removal (fn [state this-minion-id kvs]
+                                (if (friendly-minions? state this-minion-id (:target-id kvs))
+                                  (modify-minion-stats state this-minion-id 2 2)
                                   state))}
 
    "Annika"
@@ -532,11 +531,9 @@
     :rarity      :common
     :set         :classic
     :description "Whenever this minion takes damage, draw a card."
-    :on-minion-damage (fn [state kvs]
-                        (println "ACOLYTE kvs = " kvs)
+    :on-minion-damage (fn [state this-minion-id kvs]
                         (if kvs
-                          (let [this-minion-id (:this-minion-id kvs)
-                                this-minion (get-minion state this-minion-id)
+                          (let [this-minion (get-minion state this-minion-id)
                                 damaged-id (:damaged-id kvs)]
                             (if (and this-minion-id
                                      damaged-id

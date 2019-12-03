@@ -1402,22 +1402,20 @@
                                                (create-minion "Mio" :id "m")
                                                (create-minion "Emil" :id "e1")
                                                (create-minion "Emil" :id "e2")]}]) $
-                      (do-game-event-functions $ :on-minion-damage {:this-minion-id "i"})
+                      (do-game-event-functions $ :on-minion-damage "i")
                       (contains? (get-in (get-minion $ "i") [:properties :permanent]) "taunt"))
                 true)
            (as-> (create-game [{:deck    [(create-card "Mio" :id "m")]
                                 :minions [(create-minion "Acolyte of Pain" :id "a")]}]) $
-                 (do-game-event-functions $ :on-minion-damage {:damaged-id "a" :this-minion-id "a"})
+                 (do-game-event-functions $ :on-minion-damage {:damaged-id "a"})
                  (do (is= (count (get-hand $ "p1")) 1)
                      (is= (count (get-deck $ "p1")) 0))))}
   ([state game-event-key & [kvs]]
-   (println "game-event-key = " game-event-key)
-   (println "kvs = " kvs)
    (reduce
      (fn [state minion]
        (if-not (game-event-key minion)
          state
-         ((game-event-key (get-definition minion)) state (if kvs
+         ((game-event-key (get-definition minion)) state (:id minion) (if kvs
                                                            kvs
                                                            nil))))
      state
