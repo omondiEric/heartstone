@@ -439,28 +439,28 @@
                      (silence-minion state minion-id))}
 
    "Explosive Trap"
-   {:name          "Explosive Trap"
-    :mana-cost     2
-    :type          :spell
-    :sub-type      :secret
-    :set           :classic
-    :rarity        :common
-    :description   "Secret: When your hero is attacked deal 2 damage to all enemies."
+   {:name           "Explosive Trap"
+    :mana-cost      2
+    :type           :spell
+    :sub-type       :secret
+    :set            :classic
+    :rarity         :common
+    :description    "Secret: When your hero is attacked deal 2 damage to all enemies."
     :valid-trigger? (fn [state player-id attacker-id victim-id]
-                     (= player-id (:owner-id (get-character state victim-id)))
-                     (= (:entity-type (get-character state victim-id)) :hero))
-    :on-attack     (fn [state player-id attacker-id target-id]
-                     (let [attacker-owner-id (:owner-id (get-character state attacker-id))
-                           victim-hero (get-hero state target-id)
-                           enemy-player (get-player state attacker-owner-id)
-                           enemy-hero (get-hero state (get-in state [:players (:id enemy-player) :hero :id]))
-                           enemy-minions (get-minions state attacker-owner-id)]
-                         (as-> state $
-                               (reduce (fn [state minion]
-                                         (deal-damage state (:id minion) 2))
-                                       $
-                                       enemy-minions)
-                               (deal-damage $ (:id enemy-hero) 2))))}
+                      (= player-id (:owner-id (get-character state victim-id)))
+                      (= (:entity-type (get-character state victim-id)) :hero))
+    :on-attack      (fn [state player-id attacker-id target-id]
+                      (let [attacker-owner-id (:owner-id (get-character state attacker-id))
+                            victim-hero (get-hero state target-id)
+                            enemy-player (get-player state attacker-owner-id)
+                            enemy-hero (get-hero state (get-in state [:players (:id enemy-player) :hero :id]))
+                            enemy-minions (get-minions state attacker-owner-id)]
+                        (as-> state $
+                              (reduce (fn [state minion]
+                                        (deal-damage state (:id minion) 2))
+                                      $
+                                      enemy-minions)
+                              (deal-damage $ (:id enemy-hero) 2))))}
 
    "Venomstrike Trap"
    {:name           "Venomstrike Trap"
@@ -475,8 +475,8 @@
                         (= player-id (:owner-id (get-character state victim-id)))
                         (= (:entity-type (get-character state victim-id)) :minion)))
     :on-attack      (fn [state player-id attacker-id target-id]
-                        (let [target-owner-id (:owner-id (get-character state target-id))]
-                          (add-minion-to-board state target-owner-id (create-minion "Emperor Cobra") 0)))}
+                      (let [target-owner-id (:owner-id (get-character state target-id))]
+                        (add-minion-to-board state target-owner-id (create-minion "Emperor Cobra") 0)))}
 
    "Vaporize"
    {:name           "Vaporize"
@@ -492,13 +492,13 @@
                         (= (:entity-type (get-character state victim-id)) :hero)
                         (= (:entity-type (get-character state attacker-id)) :minion)))
     :on-attack      (fn [state player-id attacker-id target-id]
-                        (as-> state $
-                              (let [victim-owner-id (:owner-id (get-character $ target-id))
-                                    victim-player (get-player $ victim-owner-id)
-                                    victim-hero (:hero victim-player)]
-                                (if (= target-id (:id victim-hero))
-                                  (remove-minion $ attacker-id)
-                                  $))))}
+                      (as-> state $
+                            (let [victim-owner-id (:owner-id (get-character $ target-id))
+                                  victim-player (get-player $ victim-owner-id)
+                                  victim-hero (:hero victim-player)]
+                              (if (= target-id (:id victim-hero))
+                                (remove-minion $ attacker-id)
+                                $))))}
 
    "Whelp"
    {:name      "Whelp"
@@ -519,6 +519,65 @@
     :set         :classic
     :rarity      :rare
     :description "Poisonous."}
+
+   ;; sprint 5 definitions
+
+   "Acolyte of Pain"
+   {:name        "Acolyte of Pain"
+    :attack      1
+    :health      3
+    :mana-cost   3
+    :type        :minion
+    :rarity      :common
+    :set         :classic
+    :description "Whenever this minion takes damage, draw a card."}
+
+   "Flesheating Ghoul"
+   {:name        "Flesheating Ghoul"
+    :attack      2
+    :health      3
+    :mana-cost   3
+    :set         :classic
+    :rarity      :common
+    :type        :minion
+    :description "Whenever a minion dies, gain +1 Attack."}
+
+   "Hadronox"
+   {:name        "Hadronox"
+    :attack      3
+    :health      7
+    :mana-cost   9
+    :type        :minion
+    :set         :knights-of-the-frozen-throne
+    :rarity      :legendary
+    :description "Deathrattle: Summon your Taunt minions that died this game."}
+
+   "Knife Juggler"
+   {:name        "Knife Juggler"
+    :attack      2
+    :health      2
+    :mana-cost   2
+    :type        :minion
+    :set         :classic
+    :rarity      :rare
+    :description "After you summon a minion, deal 1 damage to a random enemy."}
+
+   "Snake"
+   {:name      "Snake"
+    :attack    1
+    :health    1
+    :mana-cost 1
+    :type      :minion
+    :set       :classic}
+
+   "Snake Trap"
+   {:name        "Snake Trap"
+    :type        :spell
+    :mana-cost   2
+    :set         :classic
+    :rarity      :epic
+    :sub-type    :secret
+    :description "Secret: When one of your minions is attacked summon three 1/1 Snakes."}
 
    })
 
