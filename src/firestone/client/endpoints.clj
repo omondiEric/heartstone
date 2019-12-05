@@ -6,7 +6,8 @@
                                               end-turn!
                                               play-minion-card!
                                               play-spell-card!
-                                              use-hero-power!]]))
+                                              use-hero-power!
+                                              undo!]]))
 
 
 
@@ -67,7 +68,7 @@
           (let [params (read-json (slurp (:body request)))]
             (println "Request uri: " (:uri request))
             (println "params: " params)
-            ;todo call to undo here
+            (create-response (undo! (:gameId params)))
             )
 
           (starts-with? uri "/redo")
