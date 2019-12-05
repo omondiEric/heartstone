@@ -158,7 +158,7 @@
                  :minion-ids-summoned-this-turn []
                  :cards-played-this-game        []
                  :turn-number                   1
-                 :action-index                  1}))}
+                 :action-index                  0}))}
   ([heroes]
    ; Creates Carl heroes if heroes are missing.
    (let [heroes (->> (concat heroes [(create-hero "Carl")
@@ -187,7 +187,7 @@
       :minion-ids-summoned-this-turn []
       :cards-played-this-game        []
       :turn-number                   1
-      :action-index                  1}))
+      :action-index                  0}))
   ([]
    (create-empty-state [])))
 
@@ -549,7 +549,7 @@
                  :minion-ids-summoned-this-turn []
                  :cards-played-this-game        []
                  :turn-number                   1
-                 :action-index                  1}))}
+                 :action-index                  0}))}
   ([data & kvs]
    (let [players-data (map-indexed (fn [index player-data]
                                      (assoc player-data :player-id (str "p" (inc index))))

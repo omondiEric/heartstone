@@ -160,7 +160,7 @@
                     (:turn-number)) 2)
            (is= (-> (create-game)
                     (end-turn "p1")
-                    (:action-index)) 2)
+                    (:action-index)) 1)
            (is= (-> (create-game)
                     (end-turn "p1")
                     (end-turn "p2")
@@ -168,7 +168,7 @@
            (is= (-> (create-game)
                     (end-turn "p1")
                     (end-turn "p2")
-                    (:action-index)) 3))}
+                    (:action-index)) 2))}
   [state player-id]
   (when-not (= (get-player-id-in-turn state) player-id)
     (error "The player with id " player-id " is not in turn."))
@@ -231,7 +231,12 @@
            (is= (-> (create-game [{:hand [(create-card "Emil" :id "e")]}])
                     (play-minion-card "p1" "e" 0)
                     (get-in [:cards-played-this-game]))
-                [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}]))}
+                [{:name "Emil", :entity-type :card, :id "e", :owner-id "p1"}])
+           ;increments action-index
+           (is= (-> (create-game [{:hand [(create-card "Mio" :id "m")]}])
+                    (play-minion-card "p1" "m" 0)
+                    (:action-index))
+                1))}
   ([state player-id card-id position]
    ;check if player has less than 7 minions on the board
    (when (or (>= (count (get-minions state player-id)) 7)
@@ -249,7 +254,8 @@
          (add-minion-to-board player-id (create-minion (:name card) :id card-id) position)
          (modify-minion-stats card-id attack-buff health-buff)
          (do-battlecry player-id card-id (get-definition (get-card state card-id)))
-         (do-game-event-functions :on-minion-summon))))
+         (do-game-event-functions :on-minion-summon)
+         (update :action-index inc))))
 
   ([state player-id card-id position target-id]
    ;check if player has less than 7 minions on the board
@@ -434,7 +440,10 @@
                                   {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}])
                     (play-spell-card "p1" "r" "a")
                     (get-in [:cards-played-this-game]))
-                [{:name "Radar Raid", :entity-type :card, :id "r", :owner-id "p1"}]))}
+                [{:name "Radar Raid", :entity-type :card, :id "r", :owner-id "p1"}])
+           (is= (-> (create-game [{:hand [(create-card "Insect Swarm" :id "i")]}])
+                    (play-spell-card "p1" "i")
+                    (:action-index)) 1))}
   ([state player-id card-id character-id]
    (-> ((:spell-fn (get-definition (get-card state card-id))) state character-id)
        (pay-mana player-id card-id)
@@ -447,105 +456,92 @@
        (-> (play-secret-card-fn state player-id card-id)
            (pay-mana player-id card-id)
            (add-card-to-cards-played (get-card state card-id))
-           (remove-card-from-hand player-id card-id))
+           (remove-card-from-hand player-id card-id)
+           (update :action-index inc))
        (-> ((:spell-fn (get-definition (get-card state card-id))) state)
            (pay-mana player-id card-id)
            (add-card-to-cards-played (get-card state card-id))
-           (remove-card-from-hand player-id card-id))))))
+           (remove-card-from-hand player-id card-id)
+           (update :action-index inc))))))
 
-  ; plays either spell card or minion card
-  (defn play-card
-    {:test (fn []
-             ; Testing Insect Swarm
-             (is= (-> (create-game [{:hand [(create-card "Insect Swarm" :id "i")] :deck [(create-card "Mio" :id "m")]}
-                                    {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}
-                                    {:hero (create-hero "Carl" :id "h1")}])
-                      (play-card "p1" "i" 0)
-                      (get-hero "h1")
-                      (:damage-taken))
-                  2)
-             ; minion card
-             (is= (-> (create-game [{:hand [(create-card "Ronja" :id "r")]}])
-                      (play-card "p1" "r" 0)
-                      (get-minions "p1")
-                      (first)
-                      (:name))
-                  "Ronja")
-             (is-not (-> (create-game [{:hand [(create-card "Stormwind Knight" :id "a")]}])
-                         (sleepy? "a")))
-             (is= (-> (create-game [{:hand [(create-card "Mio" :id "m")]}])
-                      (play-card "p1" "m" 0)
-                      (:action-index))
-                  2))}
-    ([state player-id card-id position target-id]
-     (cond (= (:type (get-definition (get-card state card-id))) :minion) (-> state
-                                                                             (play-minion-card player-id card-id position target-id)
-                                                                             (update :action-index inc))
-           (= (:type (get-definition (get-card state card-id))) :spell) (-> state
-                                                                            (update :action-index inc)
-                                                                            (play-spell-card player-id card-id target-id))
-           (= (:sub-type (get-definition (get-card state card-id))) :secret) (-> state
-                                                                                 (play-secret-card-fn player-id card-id)
-                                                                                 (update :action-index inc))))
+; plays either spell card or minion card
+(defn play-card
+  {:test (fn []
+           ; Testing Insect Swarm
+           (is= (-> (create-game [{:hand [(create-card "Insect Swarm" :id "i")] :deck [(create-card "Mio" :id "m")]}
+                                  {:hand [(create-card "Emil" :id "e")] :minions [(create-minion "Alfred" :id "a")]}
+                                  {:hero (create-hero "Carl" :id "h1")}])
+                    (play-card "p1" "i" 0)
+                    (get-hero "h1")
+                    (:damage-taken))
+                2)
+           ; minion card
+           (is= (-> (create-game [{:hand [(create-card "Ronja" :id "r")]}])
+                    (play-card "p1" "r" 0)
+                    (get-minions "p1")
+                    (first)
+                    (:name))
+                "Ronja")
+           (is-not (-> (create-game [{:hand [(create-card "Stormwind Knight" :id "a")]}])
+                       (sleepy? "a"))))}
+  ([state player-id card-id position target-id]
+   (println "Action index before playing card: " (:action-index state))
+   (cond (= (:type (get-definition (get-card state card-id))) :minion) (play-minion-card state player-id card-id position target-id)
+         (= (:type (get-definition (get-card state card-id))) :spell) (play-spell-card state player-id card-id target-id)
+         (= (:sub-type (get-definition (get-card state card-id))) :secret) (play-secret-card-fn state player-id card-id)))
 
-    ([state player-id card-id position]
-     (cond (= (:type (get-definition (get-card state card-id))) :minion) (-> state
-                                                                             (play-minion-card player-id card-id position)
-                                                                             (update :action-index inc))
-           (= (:type (get-definition (get-card state card-id))) :spell) (-> state
-                                                                            (play-spell-card player-id card-id)
-                                                                            (update :action-index inc))
-           (= (:sub-type (get-definition (get-card state card-id))) :secret) (-> state
-                                                                                 (play-secret-card-fn player-id card-id)
-                                                                                 (update :action-index inc)))))
+  ([state player-id card-id position]
+   (cond (= (:type (get-definition (get-card state card-id))) :minion) (play-minion-card state player-id card-id position)
+         (= (:type (get-definition (get-card state card-id))) :spell) (play-spell-card state player-id card-id)
+         (= (:sub-type (get-definition (get-card state card-id))) :secret) (play-secret-card-fn state player-id card-id))))
 
-  (defn do-hero-power
-    {:test (fn []
-             ;Carl's Blessing gives target minion divine shield
-             (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
-                                     :hero    (create-hero "Carl")}])
-                      (do-hero-power "p1" :target-id "k")
-                      (get-minion "k")
-                      (get-in [:properties :permanent])
-                      (contains? "divine-shield"))
-                  true)
-             ;check mana is decreased
-             (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
-                                     :hero    (create-hero "Carl")}])
-                      (do-hero-power "p1" :target-id "k")
-                      (get-mana "p1"))
-                  8)
-             ;can't perform twice in a turn
-             (error? (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
-                                        :hero    (create-hero "Carl")}])
-                         (do-hero-power "p1" :target-id "k")
-                         (do-hero-power "p1" :target-id "k")))
-             ;can perform in subsequent in a turn
-             (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]
-                                     :hero    (create-hero "Gustaf")}])
-                      (do-hero-power "p1")
-                      (end-turn "p1")
-                      (end-turn "p2")
-                      (do-hero-power "p1")
-                      (get-minion "e")
-                      (:damage-taken))
-                  2)
-             ; :action-index should be incremented
-             (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
-                                     :hero    (create-hero "Carl")}])
-                      (do-hero-power "p1" :target-id "k")
-                      (:action-index))
-                  2))}
-    ;target-id is needed for some (maybe think about overloading instead)
-    ([state player-id & {:keys [target-id]}]
-     (if (get-in state [:players player-id :hero :hero-power-used])
-       (error "Hero power already used this turn")
-       (let [hero-power (:hero-power (get-definition (get-in state [:players player-id :hero])))
-             power-function (:power-fn (get-definition hero-power))]
-         (as-> state $
-               (update $ :action-index inc)
-               (pay-mana $ player-id (get-in $ [:players player-id :hero :id]))
-               (assoc-in $ [:players player-id :hero :hero-power-used] true)
-               (if (empty? target-id)
-                 (power-function $ player-id)
-                 (power-function $ target-id)))))))
+(defn do-hero-power
+  {:test (fn []
+           ;Carl's Blessing gives target minion divine shield
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
+                                   :hero    (create-hero "Carl")}])
+                    (do-hero-power "p1" :target-id "k")
+                    (get-minion "k")
+                    (get-in [:properties :permanent])
+                    (contains? "divine-shield"))
+                true)
+           ;check mana is decreased
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
+                                   :hero    (create-hero "Carl")}])
+                    (do-hero-power "p1" :target-id "k")
+                    (get-mana "p1"))
+                8)
+           ;can't perform twice in a turn
+           (error? (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
+                                      :hero    (create-hero "Carl")}])
+                       (do-hero-power "p1" :target-id "k")
+                       (do-hero-power "p1" :target-id "k")))
+           ;can perform in subsequent in a turn
+           (is= (-> (create-game [{:minions [(create-minion "Emil" :id "e")]
+                                   :hero    (create-hero "Gustaf")}])
+                    (do-hero-power "p1")
+                    (end-turn "p1")
+                    (end-turn "p2")
+                    (do-hero-power "p1")
+                    (get-minion "e")
+                    (:damage-taken))
+                2)
+           ; :action-index should be incremented
+           (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
+                                   :hero    (create-hero "Carl")}])
+                    (do-hero-power "p1" :target-id "k")
+                    (:action-index))
+                1))}
+  ;target-id is needed for some (maybe think about overloading instead)
+  ([state player-id & {:keys [target-id]}]
+   (if (get-in state [:players player-id :hero :hero-power-used])
+     (error "Hero power already used this turn")
+     (let [hero-power (:hero-power (get-definition (get-in state [:players player-id :hero])))
+           power-function (:power-fn (get-definition hero-power))]
+       (as-> state $
+             (update $ :action-index inc)
+             (pay-mana $ player-id (get-in $ [:players player-id :hero :id]))
+             (assoc-in $ [:players player-id :hero :hero-power-used] true)
+             (if (empty? target-id)
+               (power-function $ player-id)
+               (power-function $ target-id)))))))
