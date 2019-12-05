@@ -375,15 +375,26 @@
                                   {:minions [(create-minion "Ronja" :id "r")]}])
                     (attack-hero-or-minion "p1" "m" "r")
                     (get-health "r"))
+                1)
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}
+                                  {:minions [(create-minion "Ronja" :id "r")]}])
+                    (attack-hero-or-minion "p1" "m" "r")
+                    (:action-index))
+                1)
+           (is= (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}])
+                    (attack-hero-or-minion "p1" "m" "h2")
+                    (:action-index))
                 1))}
   [state player-id attacker-id target-id]
   (cond (minion? (get-character state target-id))
         (-> (do-game-event-functions state :on-attack {:player-id player-id :attacker-id attacker-id :target-id target-id})
             (do-secret-game-event-functions :on-attack :player-id (get-other-player-id player-id) :attacker-id attacker-id :target-id target-id)
-            (attack-minion player-id attacker-id target-id))
+            (attack-minion player-id attacker-id target-id)
+            (update :action-index inc))
         :else (-> (do-game-event-functions state :on-attack {:player-id player-id :attacker-id attacker-id :target-id target-id})
                   (do-secret-game-event-functions :on-attack :player-id (get-other-player-id player-id) :attacker-id attacker-id :target-id target-id)
-                  (attack-hero player-id attacker-id target-id))))
+                  (attack-hero player-id attacker-id target-id)
+                  (update :action-index inc))))
 
 (defn play-secret-card-fn
   {:test (fn []
