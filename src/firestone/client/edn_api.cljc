@@ -56,14 +56,22 @@
     (get-client-state (first (:state-history (deref state-atom))))))
 
 (defn use-hero-power!
-  ([player-id target-id]
-   (get-client-state (swap! state-atom do-hero-power player-id :target-id target-id)))
-  ([player-id]
-   (get-client-state (swap! state-atom do-hero-power player-id))))
+  [player-id target-id]
+  (let [previous-state (first (:state-history (deref state-atom)))]
+    (if-not target-id
+      (swap! state-atom update :state-history conj
+             (do-hero-power previous-state player-id))
+      (swap! state-atom update :state-history conj
+             (do-hero-power previous-state player-id :target-id target-id)))
+    (get-client-state (first (:state-history (deref state-atom))))))
 
 (defn attack-with-minion!
   [player-id minion-id target-id]
-  (get-client-state (swap! state-atom attack-hero-or-minion player-id minion-id target-id)))
+  ;(get-client-state (swap! state-atom attack-hero-or-minion player-id minion-id target-id))
+  (let [previous-state (first (:state-history (deref state-atom)))]
+    (swap! state-atom update :state-history conj
+           (attack-hero-or-minion previous-state player-id minion-id target-id))
+    (get-client-state (first (:state-history (deref state-atom))))))
 
 (defn undo!
   [_]
