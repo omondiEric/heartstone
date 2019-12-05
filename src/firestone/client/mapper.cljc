@@ -335,5 +335,5 @@
                                 (get-client-player state p))))
     :supports-undo false
     :supports-redo false
-    :action-index (:player-actions-performed state)
+    :action-index (:action-index state)
     :turn-index (:turn-number state)}])

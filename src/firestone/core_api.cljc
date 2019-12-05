@@ -160,7 +160,7 @@
                     (:turn-number)) 2)
            (is= (-> (create-game)
                     (end-turn "p1")
-                    (:player-actions-performed)) 2)
+                    (:action-index)) 2)
            (is= (-> (create-game)
                     (end-turn "p1")
                     (end-turn "p2")
@@ -168,7 +168,7 @@
            (is= (-> (create-game)
                     (end-turn "p1")
                     (end-turn "p2")
-                    (:player-actions-performed)) 3))}
+                    (:action-index)) 3))}
   [state player-id]
   (when-not (= (get-player-id-in-turn state) player-id)
     (error "The player with id " player-id " is not in turn."))
@@ -185,7 +185,7 @@
         (restore-mana other-player-id)
         (draw-card other-player-id)
         (update :turn-number inc)
-        (update :player-actions-performed inc))))
+        (update :action-index inc))))
 
 
 (defn play-minion-card
@@ -475,28 +475,28 @@
                          (sleepy? "a")))
              (is= (-> (create-game [{:hand [(create-card "Mio" :id "m")]}])
                       (play-card "p1" "m" 0)
-                      (:player-actions-performed))
+                      (:action-index))
                   2))}
     ([state player-id card-id position target-id]
      (cond (= (:type (get-definition (get-card state card-id))) :minion) (-> state
-                                                                             (update :player-actions-performed inc)
+                                                                             (update :action-index inc)
                                                                              (play-minion-card player-id card-id position target-id))
            (= (:type (get-definition (get-card state card-id))) :spell) (-> state
-                                                                            (update :player-actions-performed inc)
+                                                                            (update :action-index inc)
                                                                             (play-spell-card player-id card-id target-id))
            (= (:sub-type (get-definition (get-card state card-id))) :secret) (-> state
-                                                                                 (update :player-actions-performed inc)
+                                                                                 (update :action-index inc)
                                                                                  (play-secret-card-fn player-id card-id))))
 
     ([state player-id card-id position]
      (cond (= (:type (get-definition (get-card state card-id))) :minion) (-> state
-                                                                             (update :player-actions-performed inc)
+                                                                             (update :action-index inc)
                                                                              (play-minion-card player-id card-id position))
            (= (:type (get-definition (get-card state card-id))) :spell) (-> state
-                                                                            (update :player-actions-performed inc)
+                                                                            (update :action-index inc)
                                                                             (play-spell-card player-id card-id))
            (= (:sub-type (get-definition (get-card state card-id))) :secret) (-> state
-                                                                                 (update :player-actions-performed inc)
+                                                                                 (update :action-index inc)
                                                                                  (play-secret-card-fn player-id card-id)))))
 
   (defn do-hero-power
@@ -530,11 +530,11 @@
                       (get-minion "e")
                       (:damage-taken))
                   2)
-             ; :player-actions-performed should be incremented
+             ; :action-index should be incremented
              (is= (-> (create-game [{:minions [(create-minion "Kato" :id "k")]
                                      :hero    (create-hero "Carl")}])
                       (do-hero-power "p1" :target-id "k")
-                      (:player-actions-performed))
+                      (:action-index))
                   2))}
     ;target-id is needed for some (maybe think about overloading instead)
     ([state player-id & {:keys [target-id]}]
@@ -543,7 +543,7 @@
        (let [hero-power (:hero-power (get-definition (get-in state [:players player-id :hero])))
              power-function (:power-fn (get-definition hero-power))]
          (as-> state $
-               (update $ :player-actions-performed inc)
+               (update $ :action-index inc)
                (pay-mana $ player-id (get-in $ [:players player-id :hero :id]))
                (assoc-in $ [:players player-id :hero :hero-power-used] true)
                (if (empty? target-id)
