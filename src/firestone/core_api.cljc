@@ -479,25 +479,25 @@
                   2))}
     ([state player-id card-id position target-id]
      (cond (= (:type (get-definition (get-card state card-id))) :minion) (-> state
-                                                                             (update :action-index inc)
-                                                                             (play-minion-card player-id card-id position target-id))
+                                                                             (play-minion-card player-id card-id position target-id)
+                                                                             (update :action-index inc))
            (= (:type (get-definition (get-card state card-id))) :spell) (-> state
                                                                             (update :action-index inc)
                                                                             (play-spell-card player-id card-id target-id))
            (= (:sub-type (get-definition (get-card state card-id))) :secret) (-> state
-                                                                                 (update :action-index inc)
-                                                                                 (play-secret-card-fn player-id card-id))))
+                                                                                 (play-secret-card-fn player-id card-id)
+                                                                                 (update :action-index inc))))
 
     ([state player-id card-id position]
      (cond (= (:type (get-definition (get-card state card-id))) :minion) (-> state
-                                                                             (update :action-index inc)
-                                                                             (play-minion-card player-id card-id position))
+                                                                             (play-minion-card player-id card-id position)
+                                                                             (update :action-index inc))
            (= (:type (get-definition (get-card state card-id))) :spell) (-> state
-                                                                            (update :action-index inc)
-                                                                            (play-spell-card player-id card-id))
+                                                                            (play-spell-card player-id card-id)
+                                                                            (update :action-index inc))
            (= (:sub-type (get-definition (get-card state card-id))) :secret) (-> state
-                                                                                 (update :action-index inc)
-                                                                                 (play-secret-card-fn player-id card-id)))))
+                                                                                 (play-secret-card-fn player-id card-id)
+                                                                                 (update :action-index inc)))))
 
   (defn do-hero-power
     {:test (fn []
