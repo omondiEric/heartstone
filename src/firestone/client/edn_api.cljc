@@ -44,9 +44,16 @@
 
 (defn play-spell-card!
   [player-id card-id target-id]
-  (if-not target-id
-    (get-client-state (swap! state-atom play-spell-card player-id card-id))
-    (get-client-state (swap! state-atom play-spell-card player-id card-id target-id))))
+  ;(if-not target-id
+  ;  (get-client-state (swap! state-atom play-spell-card player-id card-id))
+  ;  (get-client-state (swap! state-atom play-spell-card player-id card-id target-id)))
+  (let [previous-state (first (:state-history (deref state-atom)))]
+    (if-not target-id
+      (swap! state-atom update :state-history conj
+             (play-spell-card previous-state player-id card-id))
+      (swap! state-atom update :state-history conj
+             (play-spell-card previous-state player-id card-id target-id)))
+    (get-client-state (first (:state-history (deref state-atom))))))
 
 (defn use-hero-power!
   ([player-id target-id]
