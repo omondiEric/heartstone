@@ -59,10 +59,19 @@
   (get-client-state (swap! state-atom attack-hero-or-minion player-id minion-id target-id)))
 
 (defn undo!
-  [state-id]
+  [_]
   (let [undo-state (peek (:state-history (deref state-atom)))]
     ; remove state from :state-history
     (swap! state-atom update :state-history pop)
     ; add to :undo-states
     (swap! state-atom update :undo-states conj undo-state)
+    (get-client-state (first (:state-history (deref state-atom))))))
+
+(defn redo!
+  [_]
+  (let [redo-state (peek (:undo-states (deref state-atom)))]
+    ; remove state from :undo-states
+    (swap! state-atom update :undo-states pop)
+    ; add to state-history
+    (swap! state-atom update :state-history conj redo-state)
     (get-client-state (first (:state-history (deref state-atom))))))
