@@ -1404,6 +1404,7 @@
                     (get-minion "e1")
                     (:damage-taken))
                 1)
+           ; testing on-minion-damage
            (is= (as-> (create-game [{:minions [(create-minion "Ida" :id "i")
                                                (create-minion "Mio" :id "m")
                                                (create-minion "Emil" :id "e1")

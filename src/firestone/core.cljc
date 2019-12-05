@@ -130,13 +130,13 @@
                                 :minion-ids-summoned-this-turn ["m"])
                    (sleepy? "m")))
            (is-not (-> (create-game [{:minions [(create-minion "Stormwind Knight" :id "a")]}])
-                   (sleepy? "a")))
+                       (sleepy? "a")))
            (is-not (-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]
                                     :minion-ids-summoned-this-turn [])
                        (sleepy? "m"))))}
   [state id]
   (and (seq-contains? (:minion-ids-summoned-this-turn state) id)
-      (not (has-property? state id "charge"))))
+       (not (has-property? state id "charge"))))
 
 (defn refresh-minion-attacks
   "Changes attacks-performed-this-turn for all friendly minions to 0"
@@ -308,7 +308,7 @@
        ;if a battlecry wants a target-id but doesn't get one
        (if (some? (:valid-target? minion-def))
          state
-       (battlecry-fn state player-id card-id)))
+         (battlecry-fn state player-id card-id)))
      state))
   ([state player-id card-id minion-def target-id]
    (if (contains? minion-def :battlecry)
@@ -330,7 +330,7 @@
                        (has-deathrattle? "m")))
            )}
   ([card]
-     (some? (:deathrattle (get-definition card))))
+   (some? (:deathrattle (get-definition card))))
   ([state minion-id]
    (-> (get-minion state minion-id)
        (contains? :deathrattle))))
@@ -521,7 +521,7 @@
              ;character has no divine shield
              (if-not (has-divine-shield? $ character-id)
                (-> (update-minion $ character-id :damage-taken (fn [x] (+ x damage-amount)))
-                   (do-game-event-functions :on-minion-damage)
+                   (do-game-event-functions :on-minion-damage {:damaged-id character-id})
                    (do-game-event-functions :on-minion-death)
                    (remove-dead-minions))
                ;minion has divine shield
@@ -605,7 +605,7 @@
                     (get-mana "p1"))
                 8)
            ; secret card
-           (is= (-> (create-game [{:hand    [(create-secret "Vaporize"  "p1" :id "v")
+           (is= (-> (create-game [{:hand    [(create-secret "Vaporize" "p1" :id "v")
                                              (create-card "Emil" :id "e")]
                                    :minions [(create-minion "Alfred" :id "a")]}])
                     (pay-mana "p1" "e")
