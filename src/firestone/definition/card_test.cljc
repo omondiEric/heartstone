@@ -35,7 +35,8 @@
                                     do-battlecry
                                     do-deathrattle
                                     get-health
-                                    silence-minion]]
+                                    silence-minion
+                                    get-attack]]
             [firestone.core-api :refer [attack-minion
                                         attack-hero-or-minion
                                         draw-card
@@ -450,7 +451,18 @@
                summon-state (play-minion-card state "p1" "s" (count (get-minions state "p1")))]
            (is= (get-health summon-state "m") 1)))
 
-(deftest acolyte-of-pain
+(deftest Flesheating-Ghoul
+         "Whenever a minion dies, gain +1 Attack."
+         (as-> (create-game [{:minions [(create-minion "Flesheating Ghoul" :id "f")
+                                        (create-minion "Mio" :id "m")]}]) $
+               (deal-damage $ "m" 10)
+               (is= (get-attack $ "f") 3))
+         (as-> (create-game [{:minions [(create-minion "Flesheating Ghoul" :id "f")]}
+                             {:minions [(create-minion "Mio" :id "m")]}]) $
+               (deal-damage $ "m" 10)
+               (is= (get-attack $ "f") 3)))
+
+(deftest Acolyte-of-Pain
          "Whenever this minion takes damage, draw a card."
          (as-> (create-game [{:deck [(create-card "Mio" :id "m")]
                               :minions [(create-minion "Acolyte of Pain" :id "a")
