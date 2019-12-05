@@ -333,7 +333,7 @@
     :players        (->> (get-players state)
                          (map (fn [p]
                                 (get-client-player state p))))
-    :supports-undo false
-    :supports-redo false
+    :supports-undo true
+    :supports-redo true
     :action-index (:action-index state)
     :turn-index (:turn-number state)}])
