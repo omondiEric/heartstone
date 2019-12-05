@@ -11,6 +11,11 @@
 (defonce state-atom (atom {:state-history (list)
                            :undo-states   (list)}))
 
+(defn get-current-state
+  []
+  (first (:state-history (deref state-atom))))
+
+
 (defn create-game!
   []
   (get-client-state (first (:state-history (swap! state-atom update :state-history conj
@@ -25,13 +30,13 @@
 
 (defn end-turn!
   [player-id]
-  (let [previous-state (first (:state-history (deref state-atom)))]
+  (let [previous-state (get-current-state)]
     (swap! state-atom update :state-history conj (end-turn previous-state player-id))
     (get-client-state (first (:state-history (deref state-atom))))))
 
 (defn play-minion-card!
   [player-id card-id position target-id]
-  (let [previous-state (first (:state-history (deref state-atom)))]
+  (let [previous-state (get-current-state)]
     (if-not target-id
       (swap! state-atom update :state-history conj
              (play-minion-card previous-state player-id card-id position))
@@ -41,7 +46,7 @@
 
 (defn play-spell-card!
   [player-id card-id target-id]
-  (let [previous-state (first (:state-history (deref state-atom)))]
+  (let [previous-state (get-current-state)]
     (if-not target-id
       (swap! state-atom update :state-history conj
              (play-spell-card previous-state player-id card-id))
@@ -51,7 +56,7 @@
 
 (defn use-hero-power!
   [player-id target-id]
-  (let [previous-state (first (:state-history (deref state-atom)))]
+  (let [previous-state (get-current-state)]
     (if-not target-id
       (swap! state-atom update :state-history conj
              (do-hero-power previous-state player-id))
@@ -61,7 +66,7 @@
 
 (defn attack-with-minion!
   [player-id minion-id target-id]
-  (let [previous-state (first (:state-history (deref state-atom)))]
+  (let [previous-state (get-current-state)]
     (swap! state-atom update :state-history conj
            (attack-hero-or-minion previous-state player-id minion-id target-id))
     (get-client-state (first (:state-history (deref state-atom))))))
