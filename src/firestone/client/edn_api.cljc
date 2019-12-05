@@ -8,28 +8,34 @@
                                         play-spell-card]]
             [firestone.client.mapper :refer [get-client-state]]))
 
-(defonce state-atom (atom nil))
+(defonce state-atom (atom {:state-history (list)
+                           :undo-states (list)}))
 
 (defn create-game!
   []
-  (get-client-state (reset! state-atom (create-game [{:deck    ["Insect Swarm", "Vaporize", "Jonatan" "Explosive Trap"]
+  (get-client-state (first (:state-history (swap! state-atom update :state-history conj (create-game [{:deck    ["Insect Swarm", "Vaporize", "Jonatan" "Explosive Trap"]
                                                       :hand    ["Emil", "Al'Akir the Windlord", "Mad Scientist", "Venomstrike Trap", "Stormwind Knight"]
                                                       :mana    10
                                                       :hero "Carl"}
                                                      {:deck    ["Pippi", "Kato", "Alfred", "Vaporize"]
                                                       :hand    ["Vaporize", "Kato", "Explosive Trap", "Knife Juggler", "Snake Trap","Flesheating Ghoul"]
                                                       :mana    10
-                                                      :hero "Gustaf"}]))))
+                                                      :hero "Gustaf"}]))))))
 
 (defn end-turn!
   [player-id]
-  (get-client-state (swap! state-atom end-turn player-id)))
+  ;(get-client-state (swap! state-atom end-turn player-id))
+  (let [previous-state (first (:state-history (deref state-atom)))]
+    (swap! state-atom update :state-history conj (end-turn previous-state player-id))
+    (get-client-state (first (:state-history (deref state-atom))))))
 
 (defn play-minion-card!
   [player-id card-id position target-id]
+  (let [original-state (first (:state-history (deref state-atom)))]
+    (println "original-state: " original-state)
   (if-not target-id
     (get-client-state (swap! state-atom play-minion-card player-id card-id position))
-    (get-client-state (swap! state-atom play-minion-card player-id card-id position target-id))))
+    (get-client-state (swap! state-atom play-minion-card player-id card-id position target-id)))))
 
 (defn play-spell-card!
   [player-id card-id target-id]
