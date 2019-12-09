@@ -742,16 +742,21 @@
               state))
           state
           (get-minions state)))
+
 (defn remove-minion-from-graveyard
   "Removes a minion with the given id from the state."
   {:test (fn []
-           )}
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m")]}]) $
+                 (send-minion-to-graveyard $ "m")
+                 (remove-minion-from-graveyard $ "m")
+                 (is (empty? (get-in $ ["p1" :graveyard])))))}
   [state id]
-  (let [owner-id (:owner-id (get-minion state id))]
+  (let [owner-id (:owner-id (get-graveyard-minion state id))]
     (update-in state
                [:players owner-id :graveyard]
                (fn [minions]
                  (remove (fn [m] (= (:id m) id)) minions)))))
+
 (defn remove-minion
   "Removes a minion with the given id from the state."
   {:test (fn []

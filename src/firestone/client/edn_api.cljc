@@ -19,14 +19,23 @@
 (defn create-game!
   []
   (get-client-state (first (:state-history (swap! state-atom update :state-history conj
-                                                  (create-game [{:deck ["Insect Swarm", "Vaporize", "Jonatan" "Explosive Trap"]
-                                                                 :hand ["Jonatan", "Jonatan", "Jonatan", "Jonatan", "Stormwind Knight","Hadronox","Madicken"]
+                                                  (create-game [{:deck []
+                                                                 :hand []
+                                                                 :minions ["Jonatan"
+                                                                           "Jonatan"
+                                                                           "Hadronox"]
                                                                  :mana 10
                                                                  :hero "Carl"}
-                                                                {:deck ["Pippi", "Kato", "Alfred", "Vaporize"]
-                                                                 :hand ["Vaporize", "Kato", "Explosive Trap", "Knife Juggler", "Snake Trap", "Flesheating Ghoul"]
+                                                                {:deck ["Mio"
+                                                                        "Mio"
+                                                                        "Mio"]
+                                                                 :hand []
                                                                  :mana 10
-                                                                 :hero "Gustaf"}]))))))
+                                                                 :hero "Gustaf"
+                                                                 :minions ["The Mistcaller"
+                                                                           "The Mistcaller"
+                                                                           "The Mistcaller"
+                                                                           "The Mistcaller"]}]))))))
 
 (defn end-turn!
   [player-id]

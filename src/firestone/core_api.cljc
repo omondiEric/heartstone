@@ -496,7 +496,6 @@
            (is-not (-> (create-game [{:hand [(create-card "Stormwind Knight" :id "a")]}])
                        (sleepy? "a"))))}
   ([state player-id card-id position target-id]
-   (println "Action index before playing card: " (:action-index state))
    (cond (= (:type (get-definition (get-card state card-id))) :minion) (play-minion-card state player-id card-id position target-id)
          (= (:type (get-definition (get-card state card-id))) :spell) (play-spell-card state player-id card-id target-id)
          (= (:sub-type (get-definition (get-card state card-id))) :secret) (play-secret-card-fn state player-id card-id)))
