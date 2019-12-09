@@ -8,9 +8,14 @@
                                          character?
                                          create-game
                                          create-card
+                                         remove-minion-from-graveyard
                                          create-minion
+                                         has-property?
                                          create-secret
+                                         get-graveyard-minion
                                          friendly-minions?
+                                         get-minion-properties
+                                         get-graveyard
                                          get-active-secrets
                                          get-card
                                          get-player-id-in-turn
@@ -563,7 +568,36 @@
     :type        :minion
     :set         :knights-of-the-frozen-throne
     :rarity      :legendary
-    :description "Deathrattle: Summon your Taunt minions that died this game."}
+    :description "Deathrattle: Summon your Taunt minions that died this game."
+    :deathrattle (fn [state minion_id]
+                   (println state)
+                   (reduce (fn [$ m]
+                             (do
+                               (println "MINIONS")
+                               (println m)
+                               (println (has-property? $ (:id m) "taunt"))
+                               (println "CHECKING")
+                               (println (:permanent (:properties (get-graveyard-minion $ (:id m)))))
+                               (println ((:properties (get-graveyard-minion $ (:id m))) $ (:id m)))
+                               (println (:properties (get-graveyard-minion $ (:id m))))
+                               (println (get-graveyard-minion $ (:id m)))
+                               (println (or (contains? (:permanent (:properties (get-graveyard-minion $ (:id m)))) "taunt") (contains? (:temporary (:properties (get-graveyard-minion $ (:id m)))) (keyword "taunt"))))
+                               ;(println (add-minion-to-board $ (:player-id m) m (count (get-minions state (:player-id m)))))
+                               )
+                             (if (or (contains? (:permanent (:properties (get-graveyard-minion $ (:id m)))) "taunt") (contains? (:temporary (:properties (get-graveyard-minion $ (:id m)))) (keyword "taunt")))
+                               (as-> $ s
+                                     (do
+                                       (println "It was True")
+                                       (println "Summon Minion")
+                                       (println (:owner-id m))
+                                       (println (count (get-minions s (:owner-id m))))
+                                       (println "Trial State")
+                                       (println (add-minion-to-board s (:owner-id m) m (count (get-minions s (:owner-id m)))))
+                                       (println (add-minion-to-board (remove-minion-from-graveyard s (:id m)) (:owner-id m) m (count (get-minions s (:owner-id m)))))
+                                       s)
+                                 (add-minion-to-board s (:owner-id m) m (count (get-minions s (:owner-id m))))
+                                 (remove-minion-from-graveyard s (:id m)))
+                               $)) state (get-graveyard state (:owner-id (get-minion state minion_id)))))}
 
    "Knife Juggler"
    {:name                  "Knife Juggler"

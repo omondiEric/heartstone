@@ -9,6 +9,7 @@
                                          create-minion
                                          create-secret
                                          draw-card-to-hand
+                                         send-minion-to-graveyard
                                          do-game-event-functions
                                          get-all-played-cards-with-property
                                          get-card
@@ -21,6 +22,7 @@
                                          get-mana-cost
                                          get-minion
                                          get-minions
+                                         remove-minion-from-graveyard
                                          get-minion-properties
                                          get-minion-stats
                                          get-other-player-id
@@ -437,6 +439,7 @@
   [state]
   (as-> state $
         (reduce do-deathrattles $ (get-dead-minion-ids-with-deathrattles $))
+        (reduce send-minion-to-graveyard $ (map :id (get-dead-minions $)))
         (reduce remove-minions $ (map :id (get-dead-minions $)))))
 
 

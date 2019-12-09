@@ -11,10 +11,13 @@
                                          do-game-event-functions
                                          get-active-secrets
                                          get-card
+                                         get-graveyard-minion
                                          get-character
                                          get-characters
                                          get-deck
                                          get-hand
+                                         send-minion-to-graveyard
+                                         remove-minion
                                          get-hero
                                          get-minion
                                          get-minions
@@ -476,3 +479,20 @@
                (deal-damage $ "a")
                (do (is= (count (get-deck $ "p1")) 0)
                    (is= (count (get-hand $ "p1")) 1))))
+(deftest Hadronox
+         "Whenever this minion takes damage, draw a card."
+         (let [jo (create-minion "Jonatan" :id "j")
+               el (create-minion "Elisabeth" :id "e")
+               $  (create-game [{:deck [(create-card "Mio" :id "m")]
+                                :minions [(create-minion "Hadronox" :id "h"),
+                                          (create-minion "Mio" :id "m")]}])]
+           (as-> $ s
+               (add-minion-to-board s "p1" jo (count (get-minions $ "p1")))
+               (add-minion-to-board s "p1" el (count (get-minions $ "p1")))
+               (send-minion-to-graveyard s (:id jo))
+               (send-minion-to-graveyard s (:id el))
+               (remove-minion s (:id jo))
+               (remove-minion s (:id el))
+               (do-deathrattle s "h")
+               (is= (count (get-minions s "p1")) 4))))
+
