@@ -20,7 +20,7 @@
   []
   (get-client-state (first (:state-history (swap! state-atom update :state-history conj
                                                   (create-game [{:deck ["Insect Swarm", "Vaporize", "Jonatan" "Explosive Trap"]
-                                                                 :hand ["Emil", "Al'Akir the Windlord", "Mad Scientist", "Venomstrike Trap", "Stormwind Knight"]
+                                                                 :hand ["Jonatan", "Jonatan", "Jonatan", "Jonatan", "Stormwind Knight","Hadronox","Madicken"]
                                                                  :mana 10
                                                                  :hero "Carl"}
                                                                 {:deck ["Pippi", "Kato", "Alfred", "Vaporize"]
