@@ -418,6 +418,7 @@
   [state & card-ids]
   (reduce do-deathrattle state card-ids))
 
+;Remove Dead Minions has a small bug where minions killed by an effect such as vaporize will not activate deathrattles on minion cards
 (defn remove-dead-minions
   "Removes dead minions from the state and applies deathrattles recursively"
   {:test (fn []
