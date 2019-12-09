@@ -67,15 +67,11 @@
 
           (starts-with? uri "/undo")
           (let [params (read-json (slurp (:body request)))]
-            (println "Request uri: " (:uri request))
-            (println "params: " params)
             (create-response (undo! (:gameId params)))
             )
 
           (starts-with? uri "/redo")
           (let [params (read-json (slurp (:body request)))]
-            (println "Request uri: " (:uri request))
-            (println "params: " params)
             (create-response (redo! (:gameId params))))
 
           :else (create-response (clojure.string/lower-case (:uri request))))))
