@@ -529,14 +529,14 @@
    ;; sprint 5 definitions
 
    "Acolyte of Pain"
-   {:name        "Acolyte of Pain"
-    :attack      1
-    :health      3
-    :mana-cost   3
-    :type        :minion
-    :rarity      :common
-    :set         :classic
-    :description "Whenever this minion takes damage, draw a card."
+   {:name             "Acolyte of Pain"
+    :attack           1
+    :health           3
+    :mana-cost        3
+    :type             :minion
+    :rarity           :common
+    :set              :classic
+    :description      "Whenever this minion takes damage, draw a card."
     :on-minion-damage (fn [state this-minion-id kvs]
                         (if kvs
                           (let [this-minion (get-minion state this-minion-id)
@@ -549,14 +549,14 @@
                           state))}
 
    "Flesheating Ghoul"
-   {:name           "Flesheating Ghoul"
-    :attack         2
-    :health         3
-    :mana-cost      3
-    :set            :classic
-    :rarity         :common
-    :type           :minion
-    :description    "Whenever a minion dies, gain +1 Attack."
+   {:name            "Flesheating Ghoul"
+    :attack          2
+    :health          3
+    :mana-cost       3
+    :set             :classic
+    :rarity          :common
+    :type            :minion
+    :description     "Whenever a minion dies, gain +1 Attack."
     :on-minion-death (fn [state id _]
                        (modify-minion-stats state id 1 0))}
 
@@ -595,43 +595,43 @@
                                        (println (add-minion-to-board s (:owner-id m) m (count (get-minions s (:owner-id m)))))
                                        (println (add-minion-to-board (remove-minion-from-graveyard s (:id m)) (:owner-id m) m (count (get-minions s (:owner-id m)))))
                                        s)
-                                 (add-minion-to-board s (:owner-id m) m (count (get-minions s (:owner-id m))))
-                                 (remove-minion-from-graveyard s (:id m)))
+                                     (add-minion-to-board s (:owner-id m) m (count (get-minions s (:owner-id m))))
+                                     (remove-minion-from-graveyard s (:id m)))
                                $)) state (get-graveyard state (:owner-id (get-minion state minion_id)))))}
 
    "Knife Juggler"
-   {:name                  "Knife Juggler"
-    :attack                2
-    :health                2
-    :mana-cost             2
-    :type                  :minion
-    :set                   :classic
-    :rarity                :rare
-    :description           "After you summon a minion, deal 1 damage to a random enemy."
-    :on-minion-summon      (fn [state id _]
-                             (let [random-enemy (get-random-minion state (get-other-player-id (:owner-id (get-minion state id))))]
-                               (if (and (= (get-player-id-in-turn state) (:owner-id (get-minion state id)))
-                                        (> (count (get-minions state (get-other-player-id (:owner-id (get-minion state id))))) 0)
-                                        (> (count (get-minions state (:owner-id (get-minion state id)))) 1))
-                                 (deal-damage (first random-enemy) (:id (last random-enemy)) 1)
-                                  state)))}
+   {:name             "Knife Juggler"
+    :attack           2
+    :health           2
+    :mana-cost        2
+    :type             :minion
+    :set              :classic
+    :rarity           :rare
+    :description      "After you summon a minion, deal 1 damage to a random enemy."
+    :on-minion-summon (fn [state id _]
+                        (let [random-enemy (get-random-minion state (get-other-player-id (:owner-id (get-minion state id))))]
+                          (if (and (= (get-player-id-in-turn state) (:owner-id (get-minion state id)))
+                                   (> (count (get-minions state (get-other-player-id (:owner-id (get-minion state id))))) 0)
+                                   (> (count (get-minions state (:owner-id (get-minion state id)))) 1))
+                            (deal-damage (first random-enemy) (:id (last random-enemy)) 1)
+                            state)))}
 
    "Snake"
-   {:name          "Snake"
-    :attack        1
-    :health        1
-    :mana-cost     1
-    :type          :minion
-    :set           :classic}
+   {:name      "Snake"
+    :attack    1
+    :health    1
+    :mana-cost 1
+    :type      :minion
+    :set       :classic}
 
    "Snake Trap"
-   {:name               "Snake Trap"
-    :type               :spell
-    :mana-cost          2
-    :set                :classic
-    :rarity             :epic
-    :sub-type           :secret
-    :description        "Secret: When one of your minions is attacked summon three 1/1 Snakes."
+   {:name           "Snake Trap"
+    :type           :spell
+    :mana-cost      2
+    :set            :classic
+    :rarity         :epic
+    :sub-type       :secret
+    :description    "Secret: When one of your minions is attacked summon three 1/1 Snakes."
     :valid-trigger? (fn [state player-id attacker-id victim-id]
                       (and
                         (= player-id (:owner-id (get-character state victim-id)))
@@ -639,9 +639,9 @@
     :on-attack      (fn [state player-id attacker-id target-id]
                       (let [target-owner-id (:owner-id (get-character state target-id))]
                         (as-> state $
-                        (add-minion-to-board $ target-owner-id (create-minion "Snake") (count (get-minions $ target-owner-id)))
-                        (add-minion-to-board $ target-owner-id (create-minion "Snake") (count (get-minions $ target-owner-id)))
-                        (add-minion-to-board $ target-owner-id (create-minion "Snake") (count (get-minions $ target-owner-id))))))}
+                              (add-minion-to-board $ target-owner-id (create-minion "Snake") (count (get-minions $ target-owner-id)))
+                              (add-minion-to-board $ target-owner-id (create-minion "Snake") (count (get-minions $ target-owner-id)))
+                              (add-minion-to-board $ target-owner-id (create-minion "Snake") (count (get-minions $ target-owner-id))))))}
    })
 
 

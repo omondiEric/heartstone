@@ -42,7 +42,7 @@
              (play-minion-card previous-state player-id card-id position))
       (swap! state-atom update :state-history conj
              (play-minion-card previous-state player-id card-id position target-id)))
-    (get-client-state (first (:state-history (deref state-atom))))))
+    (get-client-state (get-current-state))))
 
 (defn play-spell-card!
   [player-id card-id target-id]

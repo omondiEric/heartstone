@@ -592,6 +592,7 @@
        (apply assoc state kvs))))
   ([]
    (create-game [])))
+
 (defn get-minion
   "Returns the minion with the given id."
   {:test (fn []
@@ -603,15 +604,27 @@
   (->> (get-minions state)
        (filter (fn [m] (= (:id m) id)))
        (first)))
+
+(defn send-minion-to-graveyard
+  {:test (fn []
+           (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")(create-minion "Ronja" :id "m2")]}]) $
+                 (send-minion-to-graveyard $ "m1")
+                 (send-minion-to-graveyard $ "m2")
+                 (is= (get-in $ [:players "p1" :graveyard])
+                      (get-minions $ "p1"))))}
+  [state minion-id]
+  (update-in state [:players (:owner-id (get-minion state minion-id)) :graveyard] conj (get-minion state minion-id)))
+
 (defn get-graveyard
   {:test (fn []
            (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")]}]) $
-               (send-minion-to-graveyard $ "m1")
-               (is= (get-graveyard $ "p1") (get-minions $ "p1"))))}
+                 (send-minion-to-graveyard $ "m1")
+                 (is= (get-graveyard $ "p1") (get-minions $ "p1"))))}
   ([state player-id]
    (get-in state [:players player-id :graveyard]))
   ([state]
    (concat (get-graveyard state "p1") (get-graveyard state "p2"))))
+
 (defn get-graveyard-minion
   "Returns the minion with the given id."
   {:test (fn []
@@ -671,14 +684,7 @@
            )}
   [state player-id]
   (count (get-in state [:players player-id :deck])))
-(defn send-minion-to-graveyard
-  {:test (fn []
-           (as-> (create-game [{:minions [(create-minion "Mio" :id "m1")(create-minion "Ronja" :id "m2")]}]) $
-                 (send-minion-to-graveyard $ "m1")
-                 (send-minion-to-graveyard $ "m2")
-                 (is= (get-graveyard $ "p1") (get-minions $ "p1"))))}
-  [state minion-id]
-  (update-in state [:players (:owner-id (get-minion state minion-id)) :graveyard] conj (get-minion state minion-id)))
+
 (defn replace-minion
   "Replaces a minion with the same id as the given new-minion."
   {:test (fn []
